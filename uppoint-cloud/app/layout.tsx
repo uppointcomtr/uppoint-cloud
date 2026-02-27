@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+
+import { defaultLocale } from "@/modules/i18n/config";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Uppoint Cloud",
-  description: "Production foundation for cloud.uppoint.com.tr",
+  description: "cloud.uppoint.com.tr icin uretim odakli bulut platform temeli",
 };
 
 export default function RootLayout({
@@ -23,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang={defaultLocale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

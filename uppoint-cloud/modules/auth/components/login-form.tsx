@@ -1,0 +1,125 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { signIn } from "next-auth/react";
+import { useForm } from "react-hook-form";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { getLoginSchema, type LoginInput } from "@/modules/auth/schemas/auth-schemas";
+import type { Locale } from "@/modules/i18n/config";
+import type { Dictionary } from "@/modules/i18n/dictionaries";
+import { withLocale } from "@/modules/i18n/paths";
+
+import { AuthCard } from "./auth-card";
+
+interface LoginFormProps {
+  locale: Locale;
+  dictionary: Dictionary["login"];
+}
+
+export function LoginForm({ locale, dictionary }: LoginFormProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") ?? withLocale("/dashboard", locale);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<LoginInput>({
+    resolver: zodResolver(getLoginSchema(locale)),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    let result: Awaited<ReturnType<typeof signIn>> | undefined;
+
+    try {
+      result = await signIn("credentials", {
+        ...values,
+        redirect: false,
+        callbackUrl,
+      });
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(false);
+
+    if (!result || result.error) {
+      setSubmitError(dictionary.errors.invalidCredentials);
+      return;
+    }
+
+    router.push(result.url ?? withLocale("/dashboard", locale));
+    router.refresh();
+  });
+
+  return (
+    <AuthCard
+      title={dictionary.title}
+      description={dictionary.description}
+      footer={
+        <p className="text-sm text-muted-foreground">
+          {dictionary.footerPrefix}{" "}
+          <Link
+            href={withLocale("/register", locale)}
+            className="text-primary underline-offset-4 hover:underline"
+          >
+            {dictionary.footerLink}
+          </Link>
+        </p>
+      }
+    >
+      <form className="space-y-4" onSubmit={onSubmit} noValidate>
+        <div className="space-y-2">
+          <Label htmlFor="email">{dictionary.fields.email}</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            {...form.register("email")}
+          />
+          {form.formState.errors.email ? (
+            <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">{dictionary.fields.password}</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            {...form.register("password")}
+          />
+          {form.formState.errors.password ? (
+            <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
+          ) : null}
+        </div>
+
+        {submitError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{submitError}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? dictionary.submitLoading : dictionary.submitIdle}
+        </Button>
+      </form>
+    </AuthCard>
+  );
+}

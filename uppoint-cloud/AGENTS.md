@@ -70,6 +70,7 @@ Do not replace this stack unless there is a strong technical reason and you expl
 * Keep auth code under a dedicated auth module
 * Keep validation schemas close to the feature or domain they validate
 * Keep route handlers thin and separate from business logic
+* Keep localization resources in a predictable dedicated location
 * When introducing a new folder, explain why it exists
 * Prefer predictable file locations so future maintenance is straightforward
 
@@ -83,6 +84,8 @@ Use this as the preferred project organization unless there is a strong reason t
 * `components/shared/` → shared application components with clear scope
 * `modules/` → domain-focused modules such as auth, users, billing, instances
 * `modules/auth/` → auth logic, schemas, services, guards, helpers
+* `modules/i18n/` → localization logic, locale config, translation helpers
+* `messages/` or `locales/` → translation dictionaries and locale resources
 * `lib/` → tightly scoped infrastructure utilities only
 * `lib/env/` → validated environment access
 * `lib/http/` → response helpers or transport utilities if needed
@@ -91,6 +94,36 @@ Use this as the preferred project organization unless there is a strong reason t
 * `tests/` → test utilities and higher-level test coverage where appropriate
 
 If a different structure is chosen, explain the reason and keep it equally disciplined.
+
+## Localization and language rules
+
+* The frontend application must be built with **multilingual support from the beginning**
+* The **primary/default language must be Turkish**
+* The **secondary language must be English**
+* All user-facing frontend content must be designed so it can be localized cleanly
+* Do not hardcode user-facing copy directly into scattered components when it should be translatable
+* Use a clean and maintainable internationalization structure
+* Turkish must be treated as the default locale for frontend routing, metadata, navigation, forms, validation messages, and core interface text unless explicitly specified otherwise
+* English must be supported as the secondary locale with equivalent coverage for important user-facing flows
+* New frontend features must be implemented in a localization-friendly way from the beginning
+* Do not treat English support as an afterthought or temporary patch
+* If a translation is missing, clearly identify it instead of silently mixing languages in the interface
+* Keep translation dictionaries/resources in a dedicated and predictable location such as `messages/`, `locales/`, or `modules/i18n/`
+* Locale configuration, locale resolution, and translation helpers must be kept organized and maintainable
+* Do not scatter translation keys or locale logic across unrelated modules without clear structure
+
+## Theme and appearance rules
+
+* The frontend must support both **light theme** and **dark theme**
+* The **default theme must be light**
+* Dark theme must be available as a first-class supported experience, not as an afterthought
+* All core user-facing pages and reusable UI components must be implemented to work correctly in both light and dark modes
+* Avoid building components that only look correct in a single theme
+* Theme behavior must be consistent across layouts, forms, dialogs, navigation, feedback states, and shared UI elements
+* Default styling decisions must account for readability, contrast, accessibility, and visual consistency in both themes
+* Do not hardcode colors in a way that breaks theme support
+* Prefer a maintainable token/theme-based approach so theme behavior remains predictable as the product grows
+* If a theme-specific limitation exists, explicitly identify it instead of silently degrading the UI
 
 ## API and server rules
 

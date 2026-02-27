@@ -1,0 +1,52 @@
+import { redirect } from "next/navigation";
+
+import { auth } from "@/auth";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { LogoutButton } from "@/modules/auth/components/logout-button";
+import { getDictionary } from "@/modules/i18n/dictionaries";
+import { withLocale } from "@/modules/i18n/paths";
+import { getLocaleFromParams } from "@/modules/i18n/server";
+
+export const dynamic = "force-dynamic";
+
+interface DashboardPageProps {
+  params: Promise<{ locale: string }>;
+}
+
+export default async function DashboardPage({ params }: DashboardPageProps) {
+  const locale = await getLocaleFromParams(params);
+  const dictionary = getDictionary(locale);
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect(`${withLocale("/login", locale)}?callbackUrl=${encodeURIComponent(withLocale("/dashboard", locale))}`);
+  }
+
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-6 py-16">
+      <header className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">{dictionary.dashboard.title}</h1>
+          <p className="text-sm text-muted-foreground">{dictionary.dashboard.description}</p>
+        </div>
+        <LogoutButton locale={locale} label={dictionary.logout.button} />
+      </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{dictionary.dashboard.cardTitle}</CardTitle>
+          <CardDescription>
+            {dictionary.dashboard.cardDescriptionPrefix} {session.user.email}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>{dictionary.dashboard.cardContent}</CardContent>
+      </Card>
+    </main>
+  );
+}

@@ -1,0 +1,34 @@
+import { redirect } from "next/navigation";
+
+import { auth } from "@/auth";
+import { RegisterForm } from "@/modules/auth/components/register-form";
+import { getDictionary } from "@/modules/i18n/dictionaries";
+import { getLocaleFromParams } from "@/modules/i18n/server";
+import { withLocale } from "@/modules/i18n/paths";
+
+export const dynamic = "force-dynamic";
+
+interface RegisterPageProps {
+  params: Promise<{ locale: string }>;
+}
+
+export default async function RegisterPage({ params }: RegisterPageProps) {
+  const locale = await getLocaleFromParams(params);
+  const session = await auth();
+
+  if (session?.user) {
+    redirect(withLocale("/dashboard", locale));
+  }
+
+  const dictionary = getDictionary(locale);
+
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-6 py-16">
+      <RegisterForm
+        locale={locale}
+        dictionary={dictionary.register}
+        apiErrors={dictionary.apiErrors}
+      />
+    </main>
+  );
+}

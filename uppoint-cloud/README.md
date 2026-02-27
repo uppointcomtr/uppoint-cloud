@@ -1,44 +1,123 @@
-# Uppoint Cloud Foundation
+# Uppoint Cloud
 
-Bootstrap foundation for `cloud.uppoint.com.tr` with a production-oriented
-baseline:
+Production-oriented foundation for `cloud.uppoint.com.tr`.
 
-- Next.js (App Router, TypeScript, strict mode)
+## Implemented milestone
+
+- Authentication MVP
+  - Registration (`/:locale/register`)
+  - Login (`/:locale/login`)
+  - Logout (dashboard action)
+  - Protected dashboard placeholder (`/:locale/dashboard`)
+  - Route protection via proxy + server-side checks
+  - Database-backed session persistence (Auth.js + Prisma adapter)
+  - Registration notification hooks for SMTP email + Verimor SMS
+- Localization foundation
+  - Primary/default locale: Turkish (`tr`)
+  - Secondary locale: English (`en`)
+  - Dedicated localization modules under `modules/i18n` and `messages`
+  - Locale-aware routing and redirects (`/tr` default)
+- Initial production serving setup
+  - systemd service definition
+  - Nginx reverse proxy configs (bootstrap HTTP + TLS)
+  - Let's Encrypt issuance and renewal command plan
+
+## Stack
+
+- Next.js App Router + TypeScript strict mode
 - shadcn/ui
-- Prisma + Managed PostgreSQL connection model
-- Zod-based environment validation
-- React Hook Form and Zod resolver dependencies
+- Prisma + Managed PostgreSQL
+- Zod
+- React Hook Form
+- Auth.js (`next-auth`) with Prisma adapter
 
-## Prerequisites
+## Environment variables
 
-- Node.js `22.x`
-- npm `10+`
+Create and maintain `.env` with real values (do not commit it):
 
-## Environment
-
-Copy `.env.example` to `.env` and set real values:
-
-```bash
-cp .env.example .env
-```
-
-Required variables:
-
+- `NODE_ENV`
 - `NEXT_PUBLIC_APP_URL`
 - `DATABASE_URL`
+- `AUTH_SECRET`
+- `AUTH_TRUST_HOST`
+- `AUTH_BCRYPT_ROUNDS`
+- `UPPOINT_DEFAULT_FROM_EMAIL`
+- `UPPOINT_EMAIL_BACKEND`
+- `UPPOINT_EMAIL_HOST`
+- `UPPOINT_EMAIL_PORT`
+- `UPPOINT_EMAIL_HOST_USER`
+- `UPPOINT_EMAIL_HOST_PASSWORD`
+- `UPPOINT_EMAIL_USE_TLS`
+- `UPPOINT_SMS_ENABLED`
+- `UPPOINT_SMS_API_URL`
+- `UPPOINT_SMS_USERNAME`
+- `UPPOINT_SMS_PASSWORD`
+- `UPPOINT_SMS_SOURCE_ADDR`
+- `UPPOINT_SMS_VALID_FOR`
+- `UPPOINT_SMS_DATACODING`
 
-## Commands
+## Auth and i18n architecture (high level)
+
+- Auth runtime config: [auth.ts](/opt/uppoint-cloud/auth.ts)
+- Credentials validation: [modules/auth/schemas/auth-schemas.ts](/opt/uppoint-cloud/modules/auth/schemas/auth-schemas.ts)
+- Registration service: [modules/auth/server/register-user.ts](/opt/uppoint-cloud/modules/auth/server/register-user.ts)
+- Login credential verification: [modules/auth/server/authenticate-user.ts](/opt/uppoint-cloud/modules/auth/server/authenticate-user.ts)
+- Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
+- Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
+- SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
+- Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
+- Locale configuration: [modules/i18n/config.ts](/opt/uppoint-cloud/modules/i18n/config.ts)
+- Locale path helpers: [modules/i18n/paths.ts](/opt/uppoint-cloud/modules/i18n/paths.ts)
+- Dictionaries: [messages/tr.ts](/opt/uppoint-cloud/messages/tr.ts), [messages/en.ts](/opt/uppoint-cloud/messages/en.ts)
+
+## Local development
 
 ```bash
-npm install
+npm ci
 npm run prisma:generate
 npm run dev
 ```
 
-Verification commands:
+## Verification
 
 ```bash
 npm run lint
 npm run typecheck
+npm run test
 npm run build
 ```
+
+## Production run on `/opt/uppoint-cloud`
+
+```bash
+cd /opt/uppoint-cloud
+npm ci
+npx prisma generate
+npx prisma migrate deploy
+npm run build
+sudo systemctl enable --now uppoint-cloud.service
+```
+
+Service file:
+- [ops/systemd/uppoint-cloud.service](/opt/uppoint-cloud/ops/systemd/uppoint-cloud.service)
+
+## Nginx + Let's Encrypt
+
+Prepared configs:
+
+- Bootstrap HTTP config (before cert issuance):
+  - [ops/nginx/cloud.uppoint.com.tr.bootstrap.conf](/opt/uppoint-cloud/ops/nginx/cloud.uppoint.com.tr.bootstrap.conf)
+- TLS config (after cert issuance):
+  - [ops/nginx/cloud.uppoint.com.tr.conf](/opt/uppoint-cloud/ops/nginx/cloud.uppoint.com.tr.conf)
+
+Detailed issuance + renewal steps:
+
+- [ops/README.md](/opt/uppoint-cloud/ops/README.md)
+
+## Deployment blockers for real certificate issuance
+
+Let's Encrypt issuance cannot complete unless all external requirements are ready:
+
+- `cloud.uppoint.com.tr` DNS points to this server
+- Ports `80` and `443` are reachable from the internet
+- Nginx serves `/.well-known/acme-challenge/` from `/var/www/certbot`
