@@ -196,7 +196,27 @@ Rules:
 
 ## Mandatory Git / GitHub discipline
 
-For every update intended to be committed or pushed, you must provide:
+For every update intended to be committed, pushed, or submitted as a pull request, you must follow these rules.
+
+### Before commit / push / pull request
+
+Always do the following first:
+
+* run lint
+* run type checks
+* run tests
+* run production build
+
+If any required verification fails:
+
+* do not recommend commit, push, or pull request creation as ready
+* explain the failure clearly
+* explain the risk
+* propose the fix
+
+### Commit requirements
+
+For every update intended to be committed, you must provide:
 
 1. A clear commit title
 2. A detailed commit body containing:
@@ -210,13 +230,47 @@ For every update intended to be committed or pushed, you must provide:
 4. An update to `CHANGELOG.md`
 5. A short implementation summary for maintainers
 
-Rules:
+### Push requirements
+
+Before recommending any push:
+
+* confirm verification status
+* summarize the exact commands executed
+* summarize remaining risks or blockers
+* confirm whether the change is safe to push
+* do not recommend push if the work is incomplete, unverified, or broken
+
+### Pull request requirements
+
+When a pull request is appropriate, provide:
+
+1. A clear PR title
+2. A structured PR description containing:
+
+   * purpose of the change
+   * scope of the change
+   * key files/modules affected
+   * risks / impact
+   * rollback note if relevant
+   * tests and verification performed
+   * known limitations or follow-up items
+
+### Branch and history rules
+
+* Use clear, descriptive branch names when relevant
+* Never use force push unless explicitly approved
+* Never rewrite shared history unless explicitly approved
+* Never hide breaking changes, risky migrations, or incomplete work
+
+### Safety rules
 
 * Never suggest pushing broken code
 * Never skip the test summary
 * Never omit the commit explanation
+* Never omit the PR explanation when a PR is created
 * Never leave undocumented TODO/FIXME items in critical paths
 * Never make breaking refactors without calling them out explicitly
+* Never perform destructive production-impacting changes without explicitly stating the risk, backup expectation, and rollback plan
 
 ## Output format for every work cycle
 
