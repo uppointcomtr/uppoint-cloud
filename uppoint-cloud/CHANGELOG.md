@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-28 (Production Middleware Session Fix)
+
+### Changed
+- Updated `proxy.ts` token resolution to use HTTPS-aware secure cookie detection for `next-auth` session token lookup.
+- Fixed production route protection behavior where authenticated users were redirected back to login despite valid sessions.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- Live E2E checks on `https://cloud.uppoint.com.tr` for `/tr` and `/en` auth flows.
+
 ## 2026-02-28 (Localization Revision)
 
 ### Added

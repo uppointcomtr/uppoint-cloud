@@ -17,6 +17,16 @@ function shouldBypassProxy(pathname: string): boolean {
   );
 }
 
+function usesSecureSessionCookie(request: NextRequest): boolean {
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+
+  if (forwardedProto) {
+    return forwardedProto.split(",")[0]?.trim() === "https";
+  }
+
+  return request.nextUrl.protocol === "https:";
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -32,9 +42,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
+  const useSecureCookie = usesSecureSessionCookie(request);
+
+  // Security-sensitive: align middleware token lookup with the secure cookie name set over HTTPS.
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
+    secureCookie: useSecureCookie,
+    cookieName: useSecureCookie
+      ? "__Secure-next-auth.session-token"
+      : "next-auth.session-token",
   });
 
   const redirectPath = resolveAuthRedirect(pathname, Boolean(token));
