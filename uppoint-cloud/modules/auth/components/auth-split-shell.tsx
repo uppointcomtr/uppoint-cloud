@@ -35,7 +35,7 @@ export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps
                 width={416}
                 height={127}
                 unoptimized
-                className="block h-7 w-auto dark:hidden"
+                className="block w-[180px] h-auto dark:hidden"
               />
               <Image
                 src="/logo/Uppoint-logo-wh.webp"
@@ -43,7 +43,7 @@ export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps
                 width={416}
                 height={127}
                 unoptimized
-                className="hidden h-7 w-auto dark:block"
+                className="hidden w-[180px] h-auto dark:block"
               />
               <div className="flex items-center gap-2">
                 <ThemeToggle labels={header.theme} iconOnly />
