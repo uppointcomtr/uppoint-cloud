@@ -32,11 +32,11 @@ export function AuthSplitShell({ locale, header, panel, children }: AuthSplitShe
             <LocaleSwitcher locale={locale} labels={header.locales} />
           </header>
 
-          <div className="w-full max-w-sm">
+          <div className="w-full max-w-sm flex-1">
             {children}
           </div>
 
-          <footer className="mt-8 text-center text-xs text-muted-foreground">
+          <footer className="text-center text-xs text-muted-foreground">
             © {new Date().getFullYear()} Uppoint Cloud
           </footer>
         </section>
