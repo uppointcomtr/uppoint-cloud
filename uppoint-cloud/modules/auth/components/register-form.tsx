@@ -226,7 +226,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">{dictionary.fields.phone}</Label>
+              <Label htmlFor="phone" className="sr-only">{dictionary.fields.phone}</Label>
               <Controller
                 control={form.control}
                 name="phone"

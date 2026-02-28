@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-02-28 (Register phone label visibility update)
+
+### Changed
+- `register` formundaki telefon alanı başlığı görselden kaldırıldı (`Label` artık `sr-only`)
+- Erişilebilirlik için telefon alanı etiketi screen-reader seviyesinde korunmaya devam ediyor
+
+### Verification
+- `npm run lint` → ✓
+- `npm run typecheck` → ✓
+- `npm run test` → ✓
+- `npm run build` → ✓
+
+---
+
 ## 2026-02-28 (Register phone input height alignment)
 
 ### Fixed
