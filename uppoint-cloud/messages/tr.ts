@@ -27,16 +27,16 @@ export const trMessages = {
     },
   },
   login: {
-    title: "Giriş yap",
-    description: "cloud.uppoint.com.tr çalışma alanına eriş",
-    footerPrefix: "Hesabın yok mu?",
+    title: "Oturum aç",
+    description: "Uppoint Cloud uygulamasına devam edin.",
+    footerPrefix: "Uppoint Cloud'ta yeni misiniz?",
     footerLink: "Hesap oluştur",
     fields: {
-      email: "E-posta",
+      email: "E-posta veya telefon numarası",
       password: "Şifre",
     },
-    submitIdle: "Giriş yap",
-    submitLoading: "Giriş yapılıyor...",
+    submitIdle: "Oturum aç",
+    submitLoading: "Oturum açılıyor...",
     errors: {
       unavailable: "Şu anda giriş yapılamıyor",
       invalidCredentials: "E-posta veya şifre hatalı",

@@ -14,12 +14,14 @@ interface AuthCardProps {
   description: string;
   footer: ReactNode;
   children: ReactNode;
+  headerContent?: ReactNode;
 }
 
-export function AuthCard({ title, description, footer, children }: AuthCardProps) {
+export function AuthCard({ title, description, footer, children, headerContent }: AuthCardProps) {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
+        {headerContent}
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>

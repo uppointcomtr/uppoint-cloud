@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-28 (Login Brand Copy and Logo Alignment)
+
+### Changed
+- Added theme-aware Uppoint logo rendering to the login card header without altering existing auth flow structure.
+- Revised TR/EN login copy to align with Uppoint Cloud product language.
+- Extended shared `AuthCard` to accept optional header content for reusable branded auth headers.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
 ## 2026-02-28 (Production Stability Hardening)
 
 ### Fixed

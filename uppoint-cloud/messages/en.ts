@@ -28,11 +28,11 @@ export const enMessages = {
   },
   login: {
     title: "Sign in",
-    description: "Access your cloud.uppoint.com.tr workspace",
-    footerPrefix: "Do you not have an account?",
-    footerLink: "Create one",
+    description: "Continue to the Uppoint Cloud application.",
+    footerPrefix: "New to Uppoint Cloud?",
+    footerLink: "Create account",
     fields: {
-      email: "Email",
+      email: "Email or phone number",
       password: "Password",
     },
     submitIdle: "Sign in",
