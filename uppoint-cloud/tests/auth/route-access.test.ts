@@ -12,6 +12,7 @@ describe("resolveAuthRedirect", () => {
     expect(resolveAuthRedirect("/tr/login", true)).toBe("/tr/dashboard");
     expect(resolveAuthRedirect("/en/register", true)).toBe("/en/dashboard");
     expect(resolveAuthRedirect("/tr/forgot-password", true)).toBe("/tr/dashboard");
+    expect(resolveAuthRedirect("/en/reset-password", true)).toBe("/en/dashboard");
   });
 
   it("falls back to default locale for non-prefixed protected routes", () => {

@@ -7,11 +7,14 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
 - Authentication MVP
   - Registration (`/:locale/register`)
   - Login (`/:locale/login`)
+  - Forgot password request (`/:locale/forgot-password`)
+  - Reset password (`/:locale/reset-password?token=...`)
   - Logout (dashboard action)
   - Protected dashboard placeholder (`/:locale/dashboard`)
   - Route protection via proxy + server-side checks
   - Database-backed session persistence (Auth.js + Prisma adapter)
   - Registration notification hooks for SMTP email + Verimor SMS
+  - Token-based password reset via email link
   - Root entry (`/` and `/:locale`) redirects directly to localized login page
 - Localization foundation
   - Primary/default locale: Turkish (`tr`)
@@ -46,6 +49,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_SECRET`
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
+- `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
 - `UPPOINT_DEFAULT_FROM_EMAIL`
 - `UPPOINT_EMAIL_BACKEND`
 - `UPPOINT_EMAIL_HOST`
@@ -75,6 +79,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Registration service: [modules/auth/server/register-user.ts](/opt/uppoint-cloud/modules/auth/server/register-user.ts)
 - Login credential verification: [modules/auth/server/authenticate-user.ts](/opt/uppoint-cloud/modules/auth/server/authenticate-user.ts)
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
+- Password reset service: [modules/auth/server/password-reset.ts](/opt/uppoint-cloud/modules/auth/server/password-reset.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)

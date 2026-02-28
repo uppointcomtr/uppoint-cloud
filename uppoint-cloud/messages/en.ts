@@ -48,9 +48,39 @@ export const enMessages = {
   },
   forgotPassword: {
     title: "Forgot password",
-    description: "Verify your account email to continue with password reset steps",
-    notice:
-      "Self-service password reset is not enabled in this build yet. Please contact support.",
+    description: "Enter your email to receive a password reset link",
+    fields: {
+      email: "Email",
+    },
+    submitIdle: "Send reset link",
+    submitLoading: "Sending...",
+    successMessage:
+      "If an account exists for this email address, a password reset link has been sent.",
+    errors: {
+      validationFailed: "Submitted data is invalid",
+      unavailable: "Unable to complete the request right now",
+      generic: "Unable to process password reset request",
+    },
+    backToLogin: "Back to sign in",
+  },
+  resetPassword: {
+    title: "Set new password",
+    description: "Create a new password for your account",
+    fields: {
+      password: "New password",
+      confirmPassword: "Confirm new password",
+    },
+    submitIdle: "Update password",
+    submitLoading: "Updating...",
+    successMessage: "Your password has been updated. You can now sign in.",
+    errors: {
+      invalidOrExpiredToken: "This reset link is invalid or expired",
+      confirmRequired: "Password confirmation is required",
+      confirmMismatch: "Passwords do not match",
+      validationFailed: "Submitted data is invalid",
+      unavailable: "Unable to complete the request right now",
+      generic: "Unable to update password",
+    },
     backToLogin: "Back to sign in",
   },
   register: {

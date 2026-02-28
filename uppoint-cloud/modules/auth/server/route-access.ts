@@ -5,7 +5,7 @@ import {
   withLocale,
 } from "@/modules/i18n/paths";
 
-const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password"]);
+const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password", "/reset-password"]);
 const PROTECTED_PREFIXES = ["/dashboard"];
 
 export function isProtectedRoute(pathname: string): boolean {

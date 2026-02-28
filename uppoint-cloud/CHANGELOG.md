@@ -1,17 +1,28 @@
 # Changelog
 
-## 2026-02-28 (Forgot password entry added to login flow)
+## 2026-02-28 (Password reset flow connected end-to-end)
 
 ### Added
-- Added `Şifremi unuttum?` / `Forgot password?` link to login password step.
-- Added localized forgot-password route pages:
+- Added `Şifremi unuttum?` / `Forgot password?` link to login flow (visible in both login steps).
+- Added localized forgot-password request pages:
   - `/{locale}/forgot-password`
   - `/forgot-password` (default locale redirect)
+- Added localized reset-password pages:
+  - `/{locale}/reset-password`
+  - `/reset-password` (default locale redirect)
+- Added password reset API endpoints:
+  - `POST /api/auth/forgot-password/request`
+  - `POST /api/auth/forgot-password/reset`
+- Added password-reset server service with secure token hashing and TTL-based expiry.
+- Added Prisma `PasswordResetToken` model and migration for token persistence.
 
 ### Changed
-- Included `/forgot-password` in auth-route redirect rules so authenticated users are sent to dashboard.
+- Included `/forgot-password` and `/reset-password` in auth-route redirect rules so authenticated users are sent to dashboard.
+- Updated route-access tests for new auth route coverage.
+- Updated README with password-reset routes, architecture, and env requirements.
 
 ### Verification
+- `npm run prisma:generate` -> ✓
 - `npm run lint` -> ✓
 - `npm run typecheck` -> ✓
 - `npm run test` -> ✓

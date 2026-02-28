@@ -48,9 +48,39 @@ export const trMessages = {
   },
   forgotPassword: {
     title: "Şifremi unuttum",
-    description: "Şifre sıfırlama adımları için hesap e-postanı doğrula",
-    notice:
-      "Bu sürümde self-servis şifre sıfırlama henüz aktif değil. Lütfen destek ekibi ile iletişime geçin.",
+    description: "Şifre sıfırlama bağlantısı göndermek için e-posta adresini gir",
+    fields: {
+      email: "E-Posta",
+    },
+    submitIdle: "Sıfırlama bağlantısı gönder",
+    submitLoading: "Gönderiliyor...",
+    successMessage:
+      "Eğer bu e-posta adresiyle kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderildi.",
+    errors: {
+      validationFailed: "Gönderilen bilgiler geçersiz",
+      unavailable: "Şu anda işlem tamamlanamıyor",
+      generic: "Şifre sıfırlama isteği alınamadı",
+    },
+    backToLogin: "Giriş ekranına dön",
+  },
+  resetPassword: {
+    title: "Yeni şifre belirle",
+    description: "Hesabın için yeni bir şifre oluştur",
+    fields: {
+      password: "Yeni şifre",
+      confirmPassword: "Yeni şifre (tekrar)",
+    },
+    submitIdle: "Şifreyi güncelle",
+    submitLoading: "Güncelleniyor...",
+    successMessage: "Şifren güncellendi. Giriş ekranından oturum açabilirsin.",
+    errors: {
+      invalidOrExpiredToken: "Bağlantı geçersiz veya süresi dolmuş",
+      confirmRequired: "Şifre tekrarı zorunludur",
+      confirmMismatch: "Şifreler eşleşmiyor",
+      validationFailed: "Gönderilen bilgiler geçersiz",
+      unavailable: "Şu anda işlem tamamlanamıyor",
+      generic: "Şifre güncellenemedi",
+    },
     backToLogin: "Giriş ekranına dön",
   },
   register: {
