@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-02-28 (Auth shell: hero image full-bleed background)
+
+### Changed
+- `auth-split-shell.tsx`: düz renk + dot pattern arka plan kaldırıldı; `auth-side-hero.jpg` `next/image fill + object-cover` ile tam sayfa arka plan olarak uygulandı. Üzerine `bg-black/55` overlay eklendi — kart okunabilirliğini korumak için.
+
+### Risk / Rollback
+- Görsel değişiklik; kart ve form işlevselliği etkilenmedi. Rollback: solid bg + dot pattern geri yükle.
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 25/25 passed ✓
+- `npm run build` → ✓, `uppoint-cloud.service` restarted ✓
+
+---
+
 ## 2026-02-28 (Forgot-password modal: password strength indicator on new password step)
 
 ### Changed
