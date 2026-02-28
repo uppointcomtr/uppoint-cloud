@@ -1,5 +1,85 @@
 # Changelog
 
+## 2026-02-28 (Forgot-password modal: password strength indicator on new password step)
+
+### Changed
+- `forgot-password-modal.tsx`: "Yeni şifre" adımına şifre gücü göstergesi eklendi — `password` state'inden canlı olarak `weak / medium / strong` hesaplanıyor; register formuyla birebir aynı 3-segmentli bar + etiket + hint metni (Info ikonu ile)
+
+### Risk / Rollback
+- Yalnızca görsel; iş mantığı değişmedi. Geri almak için strength blok'u kaldırmak yeterli.
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 25/25 passed ✓
+- `npm run build` → ✓, `uppoint-cloud.service` restarted ✓
+
+---
+
+## 2026-02-28 (Forgot-password modal: professional step-by-step redesign)
+
+### Changed
+- `forgot-password-modal.tsx`: tüm adım UI'ı yeniden tasarlandı:
+  - **RecoveryStepper**: 4 daireli animasyonlu progress stepper — tamamlananlar yeşil ✓, aktif adım ring efektli, aralarında dolum çizgisi
+  - **Email/SMS bilgi kutuları**: sade muted kutu yerine `Mail` / `Phone` ikonu + e-posta/numara + `Clock` ikonu ile kalan süre
+  - **Kod girişi**: `FloatingInput` yerine büyük, ortalanmış, monospace, `——————` placeholder'lı `text-2xl tracking-[0.4em]` input
+  - **Başarı ekranı**: `Alert` yerine merkezi `CheckCircle` ikonu + başlık + açıklama + buton
+  - `max-w-2xl` override kaldırıldı; `AppModal` default `max-w-xl` kullanılıyor
+- Tüm iş mantığı (API çağrıları, hata yönetimi, geri sayım) değişmedi
+
+### Risk / Rollback
+- Saf UI değişikliği; API/servis katmanı dokunulmadı. Rollback: önceki JSX'e dön.
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 25/25 passed ✓
+- `npm run build` → ✓, `uppoint-cloud.service` restarted ✓
+
+---
+
+## 2026-02-28 (PhoneInput: dark mode arka plan ve custom dropdown)
+
+### Changed
+- `phone-input.tsx`: native `<select>` yerine custom React dropdown — `bg-popover / border-border / text-popover-foreground` token'ları kullanılıyor; class-based dark modda native select dropdown'u tarayıcı sistemi stilini kullandığından CSS'i takip etmiyordu
+- `phone-input.tsx`: outer div'e `dark:bg-input/30` eklendi — `FloatingInput` ile aynı dark background ton uyumu sağlandı
+- `phone-input.tsx`: emoji bayraklar (`🇹🇷`) kaldırıldı, `TR +90` formatına geçildi — tarayıcılar emoji'yi metin boyutundan farklı render ettiğinden font tutarsızlığı oluşuyordu
+
+### Risk / Rollback
+- Custom dropdown: dışarıya tıklama ile kapanıyor, klavye navigasyonu yok (native select kadar değil). Gerekirse Radix Select kurulabilir.
+- Rollback: `CountrySelect` bileşenini kaldırıp native `<select>`'e dön.
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 20/20 passed ✓
+- `npm run build` → ✓, `uppoint-cloud.service` restarted ✓
+
+---
+
+## 2026-02-28 (Auth shell: tek merkezi kart tasarımı)
+
+### Changed
+- `auth-split-shell.tsx`: birden fazla tasarım iterasyonundan (dark split → beyaz → split hero → merkezi kart+hero) sonra nihai tasarım: tek merkezi kart
+  - `bg-neutral-100 dark:bg-zinc-950` + radial dot pattern arka plan (slate sınıflarından uzak duruldu — mavi tonu oluşturuyordu)
+  - `rounded-2xl border border-border/60 bg-background shadow-2xl dark:border-white/10 dark:shadow-black/60` kart stili — dark modda kartın arka plana karışmaması için
+  - Logo (180px genişlik, ışık/karanlık iki varyant), `ThemeToggle iconOnly` + `LocaleSwitcher` üstte
+  - Copyright footer en altta
+- `theme-toggle.tsx`: `iconOnly` prop eklendi — `size="sm" min-w-10 px-0` ikon-only mod
+- `locale-switcher.tsx`: `variant="outline" border-border/70 bg-background/80` stili — ince border eklendi
+- `login-form.tsx`, `register-form.tsx`: `headerContent` logo prop kaldırıldı (shell üstlendi)
+
+### Risk / Rollback
+- Görsel değişiklik; sayfa işlevselliği aynı. Rollback: `auth-split-shell.tsx` eski versiyona dön.
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 20/20 passed ✓
+- `npm run build` → ✓, `uppoint-cloud.service` restarted ✓
+
+---
+
 ## 2026-02-28 (Forgot-password popup flow with email+SMS verification)
 
 ### Changed
