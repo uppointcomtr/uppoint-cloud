@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Check, CheckCircle, Clock, Mail, Phone } from "lucide-react";
+import { Check, CheckCircle, Clock, Info, Mail, Phone } from "lucide-react";
 
 import { AppModal } from "@/components/shared/app-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -357,6 +357,19 @@ export function ForgotPasswordModal({
     setIsSubmitting(false);
   }
 
+  const passwordRulesMet = [
+    password.length >= 12,
+    /[a-z]/.test(password),
+    /[A-Z]/.test(password),
+    /[0-9]/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ].filter(Boolean).length;
+
+  const passwordStrength =
+    password.length === 0 ? null :
+    passwordRulesMet <= 2 ? "weak" :
+    passwordRulesMet <= 4 ? "medium" : "strong";
+
   const stepLabels = [
     stripNumber(dictionary.steps.email),
     stripNumber(dictionary.steps.emailCode),
@@ -544,14 +557,45 @@ export function ForgotPasswordModal({
         {/* ── Step: newPassword ── */}
         {step === "newPassword" && (
           <div className="space-y-4">
-            <FloatingInput
-              id="forgot-password-new-password"
-              type="password"
-              autoComplete="new-password"
-              label={dictionary.fields.password}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="space-y-2">
+              <FloatingInput
+                id="forgot-password-new-password"
+                type="password"
+                autoComplete="new-password"
+                label={dictionary.fields.password}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {passwordStrength !== null && (
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-1 gap-1">
+                    {([0, 1, 2] as const).map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          passwordStrength === "weak"   && i === 0 ? "bg-red-500"    :
+                          passwordStrength === "medium" && i <= 1  ? "bg-yellow-500" :
+                          passwordStrength === "strong"            ? "bg-green-500"  : "bg-muted"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    passwordStrength === "weak"   ? "text-red-500"                :
+                    passwordStrength === "medium" ? "text-yellow-500"             :
+                                                    "text-green-600 dark:text-green-400"
+                  }`}>
+                    {passwordStrength === "weak"   ? validation.passwordStrengthWeak   :
+                     passwordStrength === "medium" ? validation.passwordStrengthMedium :
+                                                     validation.passwordStrengthStrong}
+                  </span>
+                </div>
+              )}
+              <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                {validation.passwordHint}
+              </p>
+            </div>
             <FloatingInput
               id="forgot-password-confirm-password"
               type="password"
