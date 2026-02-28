@@ -53,10 +53,13 @@ export const enMessages = {
     fields: {
       name: "Name",
       email: "Email",
-      phone: "Phone (optional)",
+      phone: "Phone",
       phonePlaceholder: "+905551112233",
       password: "Password",
     },
+    nextIdle: "Next",
+    backIdle: "Back",
+    emailPrefix: "Email",
     submitIdle: "Create account",
     submitLoading: "Creating account...",
     errors: {
@@ -80,6 +83,7 @@ export const enMessages = {
   },
   validation: {
     emailInvalid: "Enter a valid email address",
+    phoneRequired: "Phone number is required",
     phoneFormat: "Phone must be in international format",
     passwordMin: "Password must be at least 12 characters",
     passwordMax: "Password must be at most 72 characters",
@@ -87,8 +91,11 @@ export const enMessages = {
     passwordUppercase: "Password must include an uppercase letter",
     passwordNumber: "Password must include a number",
     passwordSymbol: "Password must include a symbol",
-    nameMin: "Name must be at least 2 characters",
+    nameMin: "Name must be at least 3 characters",
     loginPasswordRequired: "Password is required",
+    passwordStrengthWeak: "Weak",
+    passwordStrengthMedium: "Medium",
+    passwordStrengthStrong: "Strong",
   },
   apiErrors: {
     invalidBody: "INVALID_BODY",

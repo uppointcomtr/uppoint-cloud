@@ -52,6 +52,7 @@ describe("registerUser", () => {
         {
           name: "Test User",
           email: "test@example.com",
+          phone: "+905551112233",
           password: "StrongPass!123",
         },
         dependencies,

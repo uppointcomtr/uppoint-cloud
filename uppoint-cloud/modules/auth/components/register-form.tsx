@@ -1,11 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, Controller, type Resolver } from "react-hook-form";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import type { Dictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 
 import { AuthCard } from "./auth-card";
+import { PhoneInput } from "./phone-input";
 
 interface RegisterResponse {
   success: boolean;
@@ -29,6 +31,7 @@ interface RegisterResponse {
 interface RegisterFormProps {
   locale: Locale;
   dictionary: Dictionary["register"];
+  validation: Dictionary["validation"];
   apiErrors: Dictionary["apiErrors"];
 }
 
@@ -51,8 +54,9 @@ function mapApiErrorCode(
   }
 }
 
-export function RegisterForm({ locale, dictionary, apiErrors }: RegisterFormProps) {
+export function RegisterForm({ locale, dictionary, validation, apiErrors }: RegisterFormProps) {
   const router = useRouter();
+  const [step, setStep] = useState<"email" | "details">("email");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,7 +70,22 @@ export function RegisterForm({ locale, dictionary, apiErrors }: RegisterFormProp
     },
   });
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const password = useWatch({ control: form.control, name: "password" }) ?? "";
+
+  const rulesMetCount = [
+    password.length >= 12,
+    /[a-z]/.test(password),
+    /[A-Z]/.test(password),
+    /[0-9]/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ].filter(Boolean).length;
+
+  const strengthLevel =
+    password.length === 0 ? null :
+    rulesMetCount <= 2 ? "weak" :
+    rulesMetCount <= 4 ? "medium" : "strong";
+
+  const submitRegistration = form.handleSubmit(async (values) => {
     setSubmitError(null);
     setIsSubmitting(true);
 
@@ -75,9 +94,7 @@ export function RegisterForm({ locale, dictionary, apiErrors }: RegisterFormProp
     try {
       response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
     } catch {
@@ -121,10 +138,46 @@ export function RegisterForm({ locale, dictionary, apiErrors }: RegisterFormProp
     router.refresh();
   });
 
+  async function continueToDetailsStep() {
+    setSubmitError(null);
+    const isEmailValid = await form.trigger("email");
+    if (!isEmailValid) return;
+    setStep("details");
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (step === "email") {
+      await continueToDetailsStep();
+      return;
+    }
+    await submitRegistration(event);
+  }
+
   return (
     <AuthCard
       title={dictionary.title}
       description={dictionary.description}
+      headerContent={
+        <div className="mb-2 inline-flex items-center" aria-hidden>
+          <Image
+            src="/logo/uppoint-logo-black.webp"
+            alt=""
+            width={416}
+            height={127}
+            unoptimized
+            className="block h-9 w-auto dark:hidden"
+          />
+          <Image
+            src="/logo/Uppoint-logo-wh.webp"
+            alt=""
+            width={416}
+            height={127}
+            unoptimized
+            className="hidden h-9 w-auto dark:block"
+          />
+        </div>
+      }
       footer={
         <p className="text-sm text-muted-foreground">
           {dictionary.footerPrefix}{" "}
@@ -138,53 +191,89 @@ export function RegisterForm({ locale, dictionary, apiErrors }: RegisterFormProp
       }
     >
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
-        <div className="space-y-2">
-          <Label htmlFor="name">{dictionary.fields.name}</Label>
-          <Input id="name" autoComplete="name" {...form.register("name")} />
-          {form.formState.errors.name ? (
-            <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
-          ) : null}
-        </div>
+        {step === "email" ? (
+          <div className="space-y-2">
+            <Label htmlFor="email">{dictionary.fields.email}</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              {...form.register("email")}
+            />
+            {form.formState.errors.email ? (
+              <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">{dictionary.emailPrefix}</p>
+              <p className="text-sm font-medium break-all">{form.getValues("email")}</p>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">{dictionary.fields.email}</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            {...form.register("email")}
-          />
-          {form.formState.errors.email ? (
-            <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-          ) : null}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">{dictionary.fields.name}</Label>
+              <Input id="name" autoComplete="name" {...form.register("name")} />
+              {form.formState.errors.name ? (
+                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
+              ) : null}
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="phone">{dictionary.fields.phone}</Label>
-          <Input
-            id="phone"
-            type="tel"
-            autoComplete="tel"
-            placeholder={dictionary.fields.phonePlaceholder}
-            {...form.register("phone")}
-          />
-          {form.formState.errors.phone ? (
-            <p className="text-sm text-destructive">{form.formState.errors.phone.message}</p>
-          ) : null}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">{dictionary.fields.phone}</Label>
+              <Controller
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <PhoneInput
+                    id="phone"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
+              {form.formState.errors.phone ? (
+                <p className="text-sm text-destructive">{form.formState.errors.phone.message}</p>
+              ) : null}
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">{dictionary.fields.password}</Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            {...form.register("password")}
-          />
-          {form.formState.errors.password ? (
-            <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
-          ) : null}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">{dictionary.fields.password}</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                {...form.register("password")}
+              />
+              {strengthLevel !== null && (
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-1 gap-1">
+                    {([0, 1, 2] as const).map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          strengthLevel === "weak"   && i === 0 ? "bg-red-500"    :
+                          strengthLevel === "medium" && i <= 1  ? "bg-yellow-500" :
+                          strengthLevel === "strong"            ? "bg-green-500"  : "bg-muted"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className={`text-xs font-medium ${
+                    strengthLevel === "weak"   ? "text-red-500"                :
+                    strengthLevel === "medium" ? "text-yellow-500"             :
+                                                 "text-green-600 dark:text-green-400"
+                  }`}>
+                    {strengthLevel === "weak"   ? validation.passwordStrengthWeak   :
+                     strengthLevel === "medium" ? validation.passwordStrengthMedium :
+                                                  validation.passwordStrengthStrong}
+                  </span>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {submitError ? (
           <Alert variant="destructive">
@@ -192,9 +281,29 @@ export function RegisterForm({ locale, dictionary, apiErrors }: RegisterFormProp
           </Alert>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? dictionary.submitLoading : dictionary.submitIdle}
-        </Button>
+        {step === "email" ? (
+          <Button type="submit" className="w-full">
+            {dictionary.nextIdle}
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? dictionary.submitLoading : dictionary.submitIdle}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setSubmitError(null);
+                form.clearErrors();
+                setStep("email");
+              }}
+            >
+              {dictionary.backIdle}
+            </Button>
+          </div>
+        )}
       </form>
     </AuthCard>
   );

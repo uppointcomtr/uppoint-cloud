@@ -1,5 +1,71 @@
 # Changelog
 
+## 2026-02-28 (AppHeader: logo 180px wide, fix layout jump)
+
+### Changed
+- Logo width: `h-8 w-auto` → `w-[180px] h-auto` (explicit width reserves layout space, eliminates CLS on click)
+- Header inner div: `h-14` → `h-16` to accommodate taller logo (~55px at 180px width)
+- Logo Link: added `shrink-0` to prevent flex compression causing layout shift
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
+## 2026-02-28 (PhoneInput: digits only + no leading zero)
+
+### Changed
+- `PhoneInput`: local number field now accepts digits only (`newNumber.replace(/\D/g, "")`) and strips leading zeros — prevents letters, spaces, dashes, etc.
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
+## 2026-02-28 (PhoneInput: strip leading zeros from local number)
+
+### Changed
+- `PhoneInput`: local number field now strips leading zeros on input (`newNumber.replace(/^0+/, "")`) — prevents entering `0` after country code
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
+## 2026-02-28 (Required Phone Field with Country Code Selector)
+
+### Changed
+- Phone field in registration form is now **required** (previously optional)
+- Zod `createPhoneSchema`: removed empty-string bypass (`value === ""`), added `min(1, phoneRequired)`, removed `.default("")` from `getRegisterSchema`
+- Phone field label: "Telefon (opsiyonel)" → "Telefon" (TR), "Phone (optional)" → "Phone" (EN)
+- `register-form.tsx`: raw `<Input>` replaced with `<Controller>` + `<PhoneInput>`
+- `tests/auth/register-user.test.ts`: `EMAIL_TAKEN` fixture now includes required `phone` field
+
+### Added
+- `PhoneInput` component (`modules/auth/components/phone-input.tsx`): country code `<select>` (20 countries, TR +90 default) + local number `<input>`, combined output in E.164 format via `Controller`
+- `validation.phoneRequired` message key in TR and EN dictionaries
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
 ## 2026-02-28 (Localized Email Validation Messages)
 
 ### Fixed

@@ -53,10 +53,13 @@ export const trMessages = {
     fields: {
       name: "Ad soyad",
       email: "E-posta",
-      phone: "Telefon (opsiyonel)",
+      phone: "Telefon",
       phonePlaceholder: "+905551112233",
       password: "Şifre",
     },
+    nextIdle: "Sonraki",
+    backIdle: "Geri",
+    emailPrefix: "E-posta",
     submitIdle: "Hesap oluştur",
     submitLoading: "Hesap oluşturuluyor...",
     errors: {
@@ -81,6 +84,7 @@ export const trMessages = {
   },
   validation: {
     emailInvalid: "Geçerli bir e-posta adresi girin",
+    phoneRequired: "Telefon numarası zorunludur",
     phoneFormat: "Telefon uluslararası formatta olmalıdır",
     passwordMin: "Şifre en az 12 karakter olmalı",
     passwordMax: "Şifre en fazla 72 karakter olmalı",
@@ -88,8 +92,11 @@ export const trMessages = {
     passwordUppercase: "Şifre en az bir büyük harf içermeli",
     passwordNumber: "Şifre en az bir rakam içermeli",
     passwordSymbol: "Şifre en az bir sembol içermeli",
-    nameMin: "Ad soyad en az 2 karakter olmalı",
+    nameMin: "Ad soyad en az 3 karakter olmalı",
     loginPasswordRequired: "Şifre zorunludur",
+    passwordStrengthWeak: "Zayıf",
+    passwordStrengthMedium: "Orta",
+    passwordStrengthStrong: "Güçlü",
   },
   apiErrors: {
     invalidBody: "INVALID_BODY",

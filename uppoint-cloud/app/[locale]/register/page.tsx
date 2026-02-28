@@ -27,6 +27,7 @@ export default async function RegisterPage({ params }: RegisterPageProps) {
       <RegisterForm
         locale={locale}
         dictionary={dictionary.register}
+        validation={dictionary.validation}
         apiErrors={dictionary.apiErrors}
       />
     </main>

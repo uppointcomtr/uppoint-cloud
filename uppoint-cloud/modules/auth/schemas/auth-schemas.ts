@@ -25,8 +25,9 @@ function createPhoneSchema(locale: Locale) {
   return z
     .string()
     .trim()
+    .min(1, validation.phoneRequired)
     .refine(
-      (value) => value === "" || /^\+?[1-9]\d{9,14}$/.test(value),
+      (value) => /^\+?[1-9]\d{9,14}$/.test(value),
       validation.phoneFormat,
     );
 }
@@ -48,9 +49,9 @@ export function getRegisterSchema(locale: Locale = defaultLocale) {
   const validation = getValidationMessages(locale);
 
   return z.object({
-    name: z.string().trim().min(2, validation.nameMin).max(100),
+    name: z.string().trim().min(3, validation.nameMin).max(100),
     email: createEmailSchema(locale),
-    phone: createPhoneSchema(locale).default(""),
+    phone: createPhoneSchema(locale),
     password: createPasswordSchema(locale),
   });
 }

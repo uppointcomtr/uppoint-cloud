@@ -16,11 +16,11 @@ interface AppHeaderProps {
 export function AppHeader({ locale, dictionary }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
+      <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
         <Link
           href={withLocale("/", locale)}
           aria-label={dictionary.brand}
-          className="inline-flex items-center"
+          className="inline-flex shrink-0 items-center"
         >
           <Image
             src="/logo/uppoint-logo-black.webp"
@@ -28,7 +28,7 @@ export function AppHeader({ locale, dictionary }: AppHeaderProps) {
             width={416}
             height={127}
             unoptimized
-            className="block h-8 w-auto dark:hidden"
+            className="block w-[180px] h-auto dark:hidden"
           />
           <Image
             src="/logo/Uppoint-logo-wh.webp"
@@ -36,7 +36,7 @@ export function AppHeader({ locale, dictionary }: AppHeaderProps) {
             width={416}
             height={127}
             unoptimized
-            className="hidden h-8 w-auto dark:block"
+            className="hidden w-[180px] h-auto dark:block"
           />
           <span className="sr-only">{dictionary.brand}</span>
         </Link>
