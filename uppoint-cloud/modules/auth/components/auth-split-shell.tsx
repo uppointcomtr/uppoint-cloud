@@ -49,19 +49,21 @@ export function AuthSplitShell({ locale, header, panel, children }: AuthSplitShe
           </footer>
         </section>
 
-        {/* RIGHT — Emerald gradient panel */}
+        {/* RIGHT — Full-bleed hero image panel */}
         <aside className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col lg:justify-between">
-          {/* Background layers */}
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_0%,oklch(0.35_0.12_155)_0%,oklch(0.14_0.05_160)_55%,oklch(0.10_0.02_155)_100%)]"
+          {/* Hero image */}
+          <Image
+            src="/images/auth/auth-hero.jpg"
+            alt=""
+            fill
+            priority
+            sizes="(min-width: 1024px) 60vw, 0px"
+            className="object-cover object-center"
           />
-          <div
-            aria-hidden
-            className="absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:56px_56px]"
-          />
-          <div aria-hidden className="absolute -right-20 -top-20 h-80 w-80 rounded-full bg-emerald-500/20 blur-[100px]" />
-          <div aria-hidden className="absolute bottom-10 left-10 h-64 w-64 rounded-full bg-primary/15 blur-[80px]" />
+          {/* Dark overlay — bottom fade for text legibility */}
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+          {/* Emerald tint layer */}
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_60%,oklch(0.35_0.12_155/0.35)_0%,transparent_65%)]" />
 
           {/* TOP: Logo badge */}
           <div className="relative z-10 p-10">
