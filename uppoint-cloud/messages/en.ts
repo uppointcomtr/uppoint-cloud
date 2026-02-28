@@ -29,12 +29,15 @@ export const enMessages = {
   login: {
     title: "Sign in",
     description: "Continue to the Uppoint Cloud application.",
+    accountPrefix: "Account",
     footerPrefix: "New to Uppoint Cloud?",
     footerLink: "Create account",
     fields: {
       email: "Email or phone number",
       password: "Password",
     },
+    nextIdle: "Next",
+    backIdle: "Back",
     submitIdle: "Sign in",
     submitLoading: "Signing in...",
     errors: {

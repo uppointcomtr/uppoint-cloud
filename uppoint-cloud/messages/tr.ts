@@ -29,12 +29,15 @@ export const trMessages = {
   login: {
     title: "Oturum aç",
     description: "Uppoint Cloud uygulamasına devam edin.",
+    accountPrefix: "Hesap",
     footerPrefix: "Uppoint Cloud'ta yeni misiniz?",
     footerLink: "Hesap oluştur",
     fields: {
       email: "E-posta veya telefon numarası",
       password: "Şifre",
     },
+    nextIdle: "Sonraki",
+    backIdle: "Geri",
     submitIdle: "Oturum aç",
     submitLoading: "Oturum açılıyor...",
     errors: {

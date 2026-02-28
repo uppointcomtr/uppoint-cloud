@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-28 (Two-Step Login UX)
+
+### Changed
+- Updated login flow to two-step progression:
+  - Step 1: identifier input with `Sonraki` / `Next`
+  - Step 2: password input and final sign-in action
+- Added localized account summary and back action labels for the password step.
+- Kept existing auth/session backend flow unchanged while improving login interaction parity with requested UX.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
 ## 2026-02-28 (Login Brand Copy and Logo Alignment)
 
 ### Changed

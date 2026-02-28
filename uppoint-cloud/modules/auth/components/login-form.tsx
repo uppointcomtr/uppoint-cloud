@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
@@ -28,6 +28,7 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? withLocale("/dashboard", locale);
+  const [step, setStep] = useState<"identifier" | "password">("identifier");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,7 +40,7 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
     },
   });
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const submitCredentials = form.handleSubmit(async (values) => {
     setSubmitError(null);
     setIsSubmitting(true);
 
@@ -67,6 +68,28 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
     router.push(result.url ?? withLocale("/dashboard", locale));
     router.refresh();
   });
+
+  async function continueToPasswordStep() {
+    setSubmitError(null);
+    const isEmailValid = await form.trigger("email");
+
+    if (!isEmailValid) {
+      return;
+    }
+
+    setStep("password");
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (step === "identifier") {
+      await continueToPasswordStep();
+      return;
+    }
+
+    await submitCredentials(event);
+  }
 
   return (
     <AuthCard
@@ -105,31 +128,40 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
       }
     >
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
-        <div className="space-y-2">
-          <Label htmlFor="email">{dictionary.fields.email}</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            {...form.register("email")}
-          />
-          {form.formState.errors.email ? (
-            <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-          ) : null}
-        </div>
+        {step === "identifier" ? (
+          <div className="space-y-2">
+            <Label htmlFor="email">{dictionary.fields.email}</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              {...form.register("email")}
+            />
+            {form.formState.errors.email ? (
+              <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">{dictionary.accountPrefix}</p>
+              <p className="text-sm font-medium break-all">{form.getValues("email")}</p>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="password">{dictionary.fields.password}</Label>
-          <Input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            {...form.register("password")}
-          />
-          {form.formState.errors.password ? (
-            <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
-          ) : null}
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">{dictionary.fields.password}</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                {...form.register("password")}
+              />
+              {form.formState.errors.password ? (
+                <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
+              ) : null}
+            </div>
+          </>
+        )}
 
         {submitError ? (
           <Alert variant="destructive">
@@ -137,9 +169,29 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
           </Alert>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? dictionary.submitLoading : dictionary.submitIdle}
-        </Button>
+        {step === "identifier" ? (
+          <Button type="submit" className="w-full">
+            {dictionary.nextIdle}
+          </Button>
+        ) : (
+          <div className="space-y-2">
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? dictionary.submitLoading : dictionary.submitIdle}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setSubmitError(null);
+                form.clearErrors("password");
+                setStep("identifier");
+              }}
+            >
+              {dictionary.backIdle}
+            </Button>
+          </div>
+        )}
       </form>
     </AuthCard>
   );
