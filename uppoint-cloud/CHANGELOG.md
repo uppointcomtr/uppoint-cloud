@@ -1,5 +1,50 @@
 # Changelog
 
+## 2026-02-28 (Auth audit: UX/security batch — findings #4-#10, #13-#14)
+
+### Added
+- **Email verification akışı** (audit #4):
+  - `modules/auth/server/email-verification.ts`: `createAndSendEmailVerificationToken()` + `verifyEmailToken()`.
+  - `app/api/auth/verify-email/route.ts`: GET endpoint (rate limited 10/15dk).
+  - `app/[locale]/verify-email/page.tsx` + `app/verify-email/page.tsx`: Doğrulama sayfası (success/error UI).
+  - Kayıt sonrası verification email otomatik gönderilir; register formu "E-postanızı doğrulayın" success adımını gösterir.
+- **Audit logging** (audit #7):
+  - `prisma/schema.prisma`: `AuditLog` modeli eklendi. Migration: `20260228182506_add_audit_log`.
+  - `lib/audit-log.ts`: `logAudit()` fire-and-forget utility.
+  - `login_success`, `login_otp_failed`, `register_success`, `password_reset_success`, `email_verified`, `email_verification_failed` events loglanıyor.
+- **Auth sayfaları SEO metadata** (audit #10):
+  - `login/page.tsx`, `register/page.tsx`, `verify-email/page.tsx` sayfalarına locale-aware `generateMetadata()` eklendi.
+  - TR/EN metadata anahtarları `messages/tr.ts` ve `messages/en.ts`'e eklendi.
+
+### Changed
+- **OTP "Yeniden Gönder" butonu** (audit #5):
+  - `login-form.tsx`: Email ve phone OTP adımlarında süre dolunca "Yeni kod gönder" butonu görünür; `startEmailChallenge`/`startPhoneChallenge` tekrar çağrılır.
+  - `messages/tr.ts` + `messages/en.ts`: `resendCodeIdle`, `resendCodeLoading` anahtarları.
+- **Fetch timeout 15sn** (audit #6):
+  - `login-form.tsx`, `forgot-password-modal.tsx`, `register-form.tsx`: `fetchWithTimeout()` helper eklendi, tüm `fetch()` çağrıları wrap edildi.
+- **Double-submit guard** (audit #13):
+  - Tüm async submit fonksiyonlarına `if (isSubmitting) return;` guard eklendi.
+- **OTP input autoFocus** (audit #9):
+  - `login-form.tsx`: email-otp ve phone-otp input'larına `autoFocus` eklendi.
+  - `forgot-password-modal.tsx`: emailCode ve smsCode input'larına `autoFocus` eklendi.
+- **Şifre kuralı checklist** (audit #8):
+  - `register-form.tsx` ve `forgot-password-modal.tsx`: Strength bar + hint metni kaldırıldı, her kural için ✓/✗ satır göstergesi eklendi.
+  - `validation.*` anahtarları: `passwordRuleMin`, `passwordRuleUppercase`, `passwordRuleLowercase`, `passwordRuleNumber`, `passwordRuleSymbol` eklendi.
+- **Forgot-password success auto-close** (audit #14):
+  - `forgot-password-modal.tsx`: Success adımında 5 sn sonra modal otomatik kapanır.
+- **Register auto-login hata mesajı** (audit #15):
+  - `messages/tr.ts` + `messages/en.ts`: `autoSignInFailed` mesajı netleştirildi ("Lütfen giriş yapın").
+  - `register-form.tsx`: Auto-login başarısız olsa bile success adımı gösterilir.
+- **Register locale payload**: `register-form.tsx` locale'i fetch body'ye ekler; `register/route.ts` bunu okuyarak verification email dilini belirler.
+
+### Verification
+- `npm run lint` -> ✓
+- `npx tsc --noEmit` -> ✓
+- `npm test` -> 29/29 ✓
+- `npm run build` -> ✓ servis restart edildi
+
+---
+
 ## 2026-02-28 (Security: rate limiting + phone code parsing fix — audit findings #1 #3)
 
 ### Changed

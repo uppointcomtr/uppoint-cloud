@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit } from "@/lib/rate-limit";
 import {
   LoginChallengeError,
   verifyLoginChallengeCode,
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
   // Rate limit: 10 attempts per 15 minutes per IP
   const rateLimitResponse = await withRateLimit("login-phone-verify", 10, 900);
   if (rateLimitResponse) return rateLimitResponse;
+
+  const ip = await getClientIp();
 
   let payload: unknown;
 
@@ -23,6 +26,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await verifyLoginChallengeCode(payload, "phone");
+
+    logAudit("login_success", ip, undefined, { mode: "phone" });
 
     return NextResponse.json(ok({ loginToken: result.loginToken }), { status: 200 });
   } catch (error) {
@@ -37,6 +42,10 @@ export async function POST(request: Request) {
         error.code === "MAX_ATTEMPTS_REACHED"
           ? 400
           : 500;
+
+      if (error.code === "INVALID_CODE" || error.code === "MAX_ATTEMPTS_REACHED") {
+        logAudit("login_otp_failed", ip, undefined, { mode: "phone", reason: error.code });
+      }
 
       return NextResponse.json(fail(error.code), { status });
     }

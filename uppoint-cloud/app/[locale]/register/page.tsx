@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -11,6 +12,12 @@ export const dynamic = "force-dynamic";
 
 interface RegisterPageProps {
   params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata({ params }: RegisterPageProps): Promise<Metadata> {
+  const locale = await getLocaleFromParams(params);
+  const { metadata } = getDictionary(locale);
+  return { title: metadata.register.title, description: metadata.register.description };
 }
 
 export default async function RegisterPage({ params }: RegisterPageProps) {

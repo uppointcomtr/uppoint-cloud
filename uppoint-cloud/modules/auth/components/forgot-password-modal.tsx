@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
-import { Check, CheckCircle, Clock, Info, Mail, Phone } from "lucide-react";
+import { Check, CheckCircle, Clock, Mail, Phone, X } from "lucide-react";
 
 import { AppModal } from "@/components/shared/app-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -77,6 +77,14 @@ function resolveErrorMessage(
     default:
       return dictionary.errors.generic;
   }
+}
+
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    window.clearTimeout(timer);
+  });
 }
 
 // Strip leading "1. " / "2. " numbering added in dictionary keys
@@ -181,7 +189,14 @@ export function ForgotPasswordModal({
 
   const isCodeExpired = countdownSeconds !== null && countdownSeconds <= 0;
 
+  useEffect(() => {
+    if (step !== "success") return;
+    const timer = window.setTimeout(() => onOpenChange(false), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [step, onOpenChange]);
+
   async function requestEmailCode() {
+    if (isSubmitting) return;
     setSubmitError(null);
     setSubmitInfo(null);
 
@@ -194,7 +209,7 @@ export function ForgotPasswordModal({
     setIsSubmitting(true);
     let response: Response;
     try {
-      response = await fetch("/api/auth/forgot-password/challenge/start", {
+      response = await fetchWithTimeout("/api/auth/forgot-password/challenge/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: parsedEmail.data, locale }),
@@ -232,6 +247,7 @@ export function ForgotPasswordModal({
   }
 
   async function verifyEmailCode() {
+    if (isSubmitting) return;
     setSubmitError(null);
     setSubmitInfo(null);
 
@@ -243,7 +259,7 @@ export function ForgotPasswordModal({
     setIsSubmitting(true);
     let response: Response;
     try {
-      response = await fetch("/api/auth/forgot-password/challenge/verify-email", {
+      response = await fetchWithTimeout("/api/auth/forgot-password/challenge/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challengeId, emailCode: parsedCode.data, locale }),
@@ -274,6 +290,7 @@ export function ForgotPasswordModal({
   }
 
   async function verifySmsCode() {
+    if (isSubmitting) return;
     setSubmitError(null);
 
     if (!challengeId) { setSubmitError(dictionary.errors.expiredChallenge); return; }
@@ -284,7 +301,7 @@ export function ForgotPasswordModal({
     setIsSubmitting(true);
     let response: Response;
     try {
-      response = await fetch("/api/auth/forgot-password/challenge/verify-sms", {
+      response = await fetchWithTimeout("/api/auth/forgot-password/challenge/verify-sms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challengeId, smsCode: parsedCode.data }),
@@ -308,6 +325,7 @@ export function ForgotPasswordModal({
   }
 
   async function completeReset() {
+    if (isSubmitting) return;
     setSubmitError(null);
 
     if (!challengeId || !resetToken) {
@@ -335,7 +353,7 @@ export function ForgotPasswordModal({
     setIsSubmitting(true);
     let response: Response;
     try {
-      response = await fetch("/api/auth/forgot-password/challenge/complete", {
+      response = await fetchWithTimeout("/api/auth/forgot-password/challenge/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challengeId, resetToken, password }),
@@ -357,18 +375,13 @@ export function ForgotPasswordModal({
     setIsSubmitting(false);
   }
 
-  const passwordRulesMet = [
-    password.length >= 12,
-    /[a-z]/.test(password),
-    /[A-Z]/.test(password),
-    /[0-9]/.test(password),
-    /[^A-Za-z0-9]/.test(password),
-  ].filter(Boolean).length;
-
-  const passwordStrength =
-    password.length === 0 ? null :
-    passwordRulesMet <= 2 ? "weak" :
-    passwordRulesMet <= 4 ? "medium" : "strong";
+  const passwordRules = [
+    { met: password.length >= 12,         label: validation.passwordRuleMin },
+    { met: /[A-Z]/.test(password),        label: validation.passwordRuleUppercase },
+    { met: /[a-z]/.test(password),        label: validation.passwordRuleLowercase },
+    { met: /[0-9]/.test(password),        label: validation.passwordRuleNumber },
+    { met: /[^A-Za-z0-9]/.test(password), label: validation.passwordRuleSymbol },
+  ];
 
   const stepLabels = [
     stripNumber(dictionary.steps.email),
@@ -452,6 +465,7 @@ export function ForgotPasswordModal({
               type="text"
               inputMode="numeric"
               maxLength={6}
+              autoFocus
               value={emailCode}
               onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="——————"
@@ -513,6 +527,7 @@ export function ForgotPasswordModal({
               type="text"
               inputMode="numeric"
               maxLength={6}
+              autoFocus
               value={smsCode}
               onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               placeholder="——————"
@@ -566,35 +581,18 @@ export function ForgotPasswordModal({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-              {passwordStrength !== null && (
-                <div className="flex items-center gap-2 pt-1">
-                  <div className="flex flex-1 gap-1">
-                    {([0, 1, 2] as const).map((i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          passwordStrength === "weak"   && i === 0 ? "bg-red-500"    :
-                          passwordStrength === "medium" && i <= 1  ? "bg-yellow-500" :
-                          passwordStrength === "strong"            ? "bg-green-500"  : "bg-muted"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className={`text-xs font-medium ${
-                    passwordStrength === "weak"   ? "text-red-500"                :
-                    passwordStrength === "medium" ? "text-yellow-500"             :
-                                                    "text-green-600 dark:text-green-400"
-                  }`}>
-                    {passwordStrength === "weak"   ? validation.passwordStrengthWeak   :
-                     passwordStrength === "medium" ? validation.passwordStrengthMedium :
-                                                     validation.passwordStrengthStrong}
-                  </span>
-                </div>
+              {password.length > 0 && (
+                <ul className="mt-1.5 grid grid-cols-1 gap-y-1">
+                  {passwordRules.map((rule) => (
+                    <li key={rule.label} className={`flex items-center gap-1.5 text-xs transition-colors ${rule.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                      {rule.met
+                        ? <Check className="h-3 w-3 shrink-0" />
+                        : <X className="h-3 w-3 shrink-0" />}
+                      {rule.label}
+                    </li>
+                  ))}
+                </ul>
               )}
-              <p className="flex items-start gap-1 text-xs text-muted-foreground">
-                <Info className="mt-0.5 h-3 w-3 shrink-0" />
-                {validation.passwordHint}
-              </p>
             </div>
             <FloatingInput
               id="forgot-password-confirm-password"

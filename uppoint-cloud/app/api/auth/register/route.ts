@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { createAndSendEmailVerificationToken } from "@/modules/auth/server/email-verification";
 import {
   registerUser,
   RegisterUserError,
 } from "@/modules/auth/server/register-user";
-import { sendRegistrationNotifications } from "@/modules/auth/server/auth-notifications";
 
 export async function POST(request: Request) {
   // Rate limit: 5 registration attempts per 10 minutes per IP
   const rateLimitResponse = await withRateLimit("register", 5, 600);
   if (rateLimitResponse) return rateLimitResponse;
+
+  const ip = await getClientIp();
 
   let payload: unknown;
 
@@ -24,19 +27,21 @@ export async function POST(request: Request) {
     });
   }
 
+  const rawPayload = payload as Record<string, unknown>;
+  const locale = typeof rawPayload.locale === "string" ? rawPayload.locale : "tr";
+  const baseUrl = new URL(request.url).origin;
+
   try {
     const user = await registerUser(payload);
 
-    // Security-sensitive: notification delivery failures must not expose internals to clients.
+    // Security-sensitive: email delivery failures must not expose internals to clients.
     try {
-      await sendRegistrationNotifications({
-        email: user.email,
-        name: user.name,
-        phone: user.phone,
-      });
-    } catch (notificationError) {
-      console.error("Failed to send registration notifications", notificationError);
+      await createAndSendEmailVerificationToken(user.email, locale, baseUrl);
+    } catch (emailError) {
+      console.error("Failed to send email verification", emailError);
     }
+
+    logAudit("register_success", ip, user.id);
 
     return NextResponse.json(ok({ userId: user.id }), {
       status: 201,

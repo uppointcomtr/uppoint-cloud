@@ -2,6 +2,18 @@ export const trMessages = {
   metadata: {
     title: "Uppoint Cloud",
     description: "cloud.uppoint.com.tr için üretim odaklı bulut platform temeli",
+    login: {
+      title: "Giriş Yap — Uppoint Cloud",
+      description: "Uppoint Cloud hesabınıza güvenli şekilde giriş yapın.",
+    },
+    register: {
+      title: "Hesap Oluştur — Uppoint Cloud",
+      description: "Uppoint Cloud'a katılın. Güvenli bulut altyapısına tek noktadan erişin.",
+    },
+    verifyEmail: {
+      title: "E-posta Doğrulama — Uppoint Cloud",
+      description: "Uppoint Cloud hesabınızın e-posta adresini doğrulayın.",
+    },
   },
   header: {
     brand: "Uppoint Cloud",
@@ -75,6 +87,8 @@ export const trMessages = {
     backIdle: "Geri",
     sendCodeIdle: "Kodu gönder",
     sendCodeLoading: "Kod gönderiliyor...",
+    resendCodeIdle: "Yeni kod gönder",
+    resendCodeLoading: "Gönderiliyor...",
     verifyCodeIdle: "Kodu doğrula ve oturum aç",
     verifyCodeLoading: "Doğrulanıyor...",
     errors: {
@@ -190,13 +204,28 @@ export const trMessages = {
     emailPrefix: "E-posta",
     submitIdle: "Hesap oluştur",
     submitLoading: "Hesap oluşturuluyor...",
+    successTitle: "Hesabınız oluşturuldu",
+    successDescription: "E-postanıza bir doğrulama bağlantısı gönderdik. Hesabınıza tam erişim için e-postanızı doğrulayın.",
+    goToDashboard: "Panele git",
     errors: {
       serverUnavailable: "Sunucuya bağlanılamıyor",
       generic: "Hesap oluşturulamadı",
-      autoSignInFailed: "Hesap oluştu, otomatik giriş başarısız",
+      autoSignInFailed: "Hesap oluştu, otomatik giriş başarısız oldu. Lütfen giriş yapın.",
       emailTaken: "Bu e-posta ile kayıtlı bir hesap zaten var",
       validationFailed: "Gönderilen bilgiler geçersiz",
       invalidBody: "Geçersiz istek gövdesi",
+    },
+  },
+  emailVerification: {
+    successTitle: "E-posta doğrulandı",
+    successDescription: "E-posta adresiniz başarıyla doğrulandı. Artık hesabınızın tüm özelliklerine erişebilirsiniz.",
+    errorTitle: "Doğrulama başarısız",
+    goToDashboard: "Panele git",
+    backToLogin: "Girişe dön",
+    errors: {
+      invalidOrExpired: "Bu doğrulama bağlantısı geçersiz veya süresi dolmuş.",
+      missingToken: "Doğrulama bağlantısı eksik.",
+      generic: "Doğrulama tamamlanamadı. Lütfen tekrar deneyin.",
     },
   },
   dashboard: {
@@ -226,6 +255,11 @@ export const trMessages = {
     passwordStrengthWeak: "Zayıf",
     passwordStrengthMedium: "Orta",
     passwordStrengthStrong: "Güçlü",
+    passwordRuleMin: "En az 12 karakter",
+    passwordRuleUppercase: "Büyük harf (A-Z)",
+    passwordRuleLowercase: "Küçük harf (a-z)",
+    passwordRuleNumber: "Rakam (0-9)",
+    passwordRuleSymbol: "Özel karakter (!@#...)",
     otpCodeFormat: "Doğrulama kodu 6 haneli olmalıdır",
   },
   apiErrors: {

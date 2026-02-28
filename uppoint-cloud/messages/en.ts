@@ -2,6 +2,18 @@ export const enMessages = {
   metadata: {
     title: "Uppoint Cloud",
     description: "Production-oriented cloud platform foundation for cloud.uppoint.com.tr",
+    login: {
+      title: "Sign In — Uppoint Cloud",
+      description: "Sign in to your Uppoint Cloud account securely.",
+    },
+    register: {
+      title: "Create Account — Uppoint Cloud",
+      description: "Join Uppoint Cloud. Access secure and scalable cloud infrastructure from one place.",
+    },
+    verifyEmail: {
+      title: "Verify Email — Uppoint Cloud",
+      description: "Verify your Uppoint Cloud account email address.",
+    },
   },
   header: {
     brand: "Uppoint Cloud",
@@ -75,6 +87,8 @@ export const enMessages = {
     backIdle: "Back",
     sendCodeIdle: "Send code",
     sendCodeLoading: "Sending code...",
+    resendCodeIdle: "Send new code",
+    resendCodeLoading: "Sending...",
     verifyCodeIdle: "Verify code and sign in",
     verifyCodeLoading: "Verifying...",
     errors: {
@@ -190,13 +204,28 @@ export const enMessages = {
     emailPrefix: "Email",
     submitIdle: "Create account",
     submitLoading: "Creating account...",
+    successTitle: "Account created",
+    successDescription: "We've sent a verification link to your email. Please verify your email to access all features.",
+    goToDashboard: "Go to dashboard",
     errors: {
       serverUnavailable: "Unable to contact the server",
       generic: "Unable to create account",
-      autoSignInFailed: "Account created, but automatic sign-in failed",
+      autoSignInFailed: "Account created, but automatic sign-in failed. Please sign in.",
       emailTaken: "An account with this email already exists",
       validationFailed: "Submitted data is invalid",
       invalidBody: "Invalid request body",
+    },
+  },
+  emailVerification: {
+    successTitle: "Email verified",
+    successDescription: "Your email address has been successfully verified. You now have full access to your account.",
+    errorTitle: "Verification failed",
+    goToDashboard: "Go to dashboard",
+    backToLogin: "Back to sign in",
+    errors: {
+      invalidOrExpired: "This verification link is invalid or has expired.",
+      missingToken: "Verification link is missing.",
+      generic: "Verification could not be completed. Please try again.",
     },
   },
   dashboard: {
@@ -225,6 +254,11 @@ export const enMessages = {
     passwordStrengthWeak: "Weak",
     passwordStrengthMedium: "Medium",
     passwordStrengthStrong: "Strong",
+    passwordRuleMin: "At least 12 characters",
+    passwordRuleUppercase: "Uppercase letter (A-Z)",
+    passwordRuleLowercase: "Lowercase letter (a-z)",
+    passwordRuleNumber: "Number (0-9)",
+    passwordRuleSymbol: "Special character (!@#...)",
     otpCodeFormat: "Verification code must be 6 digits",
   },
   apiErrors: {

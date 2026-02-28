@@ -41,6 +41,14 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    window.clearTimeout(timer);
+  });
+}
+
 function formatCountdown(seconds: number): string {
   const safeSeconds = Math.max(0, seconds);
   const minutesPart = Math.floor(safeSeconds / 60)
@@ -175,6 +183,7 @@ export function LoginForm({
   }
 
   async function startEmailChallenge() {
+    if (isSubmitting) return;
     setSubmitError(null);
     setSubmitInfo(null);
 
@@ -191,7 +200,7 @@ export function LoginForm({
     let response: Response;
 
     try {
-      response = await fetch("/api/auth/login/challenge/email/start", {
+      response = await fetchWithTimeout("/api/auth/login/challenge/email/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -233,6 +242,7 @@ export function LoginForm({
   }
 
   async function verifyEmailChallenge() {
+    if (isSubmitting) return;
     setSubmitError(null);
 
     if (!challengeId) {
@@ -257,7 +267,7 @@ export function LoginForm({
     let response: Response;
 
     try {
-      response = await fetch("/api/auth/login/challenge/email/verify", {
+      response = await fetchWithTimeout("/api/auth/login/challenge/email/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -283,6 +293,7 @@ export function LoginForm({
   }
 
   async function startPhoneChallenge() {
+    if (isSubmitting) return;
     setSubmitError(null);
     setSubmitInfo(null);
 
@@ -304,7 +315,7 @@ export function LoginForm({
     let response: Response;
 
     try {
-      response = await fetch("/api/auth/login/challenge/phone/start", {
+      response = await fetchWithTimeout("/api/auth/login/challenge/phone/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -347,6 +358,7 @@ export function LoginForm({
   }
 
   async function verifyPhoneChallenge() {
+    if (isSubmitting) return;
     setSubmitError(null);
 
     if (!challengeId) {
@@ -371,7 +383,7 @@ export function LoginForm({
     let response: Response;
 
     try {
-      response = await fetch("/api/auth/login/challenge/phone/verify", {
+      response = await fetchWithTimeout("/api/auth/login/challenge/phone/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -617,6 +629,7 @@ export function LoginForm({
                     inputMode="numeric"
                     maxLength={6}
                     autoComplete="one-time-code"
+                    autoFocus
                     placeholder="••••••"
                     value={otpCode}
                     onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -625,14 +638,25 @@ export function LoginForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Button
-                    type="button"
-                    className="w-full"
-                    disabled={isSubmitting || isCodeExpired}
-                    onClick={verifyEmailChallenge}
-                  >
-                    {isSubmitting ? dictionary.verifyCodeLoading : dictionary.verifyCodeIdle}
-                  </Button>
+                  {isCodeExpired ? (
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={isSubmitting}
+                      onClick={startEmailChallenge}
+                    >
+                      {isSubmitting ? dictionary.resendCodeLoading : dictionary.resendCodeIdle}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={isSubmitting}
+                      onClick={verifyEmailChallenge}
+                    >
+                      {isSubmitting ? dictionary.verifyCodeLoading : dictionary.verifyCodeIdle}
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -743,6 +767,7 @@ export function LoginForm({
                     inputMode="numeric"
                     maxLength={6}
                     autoComplete="one-time-code"
+                    autoFocus
                     placeholder="••••••"
                     value={otpCode}
                     onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -751,14 +776,25 @@ export function LoginForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Button
-                    type="button"
-                    className="w-full"
-                    disabled={isSubmitting || isCodeExpired}
-                    onClick={verifyPhoneChallenge}
-                  >
-                    {isSubmitting ? dictionary.verifyCodeLoading : dictionary.verifyCodeIdle}
-                  </Button>
+                  {isCodeExpired ? (
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={isSubmitting}
+                      onClick={startPhoneChallenge}
+                    >
+                      {isSubmitting ? dictionary.resendCodeLoading : dictionary.resendCodeIdle}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      className="w-full"
+                      disabled={isSubmitting}
+                      onClick={verifyPhoneChallenge}
+                    >
+                      {isSubmitting ? dictionary.verifyCodeLoading : dictionary.verifyCodeIdle}
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"

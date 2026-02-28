@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useForm, useWatch, Controller, type Resolver } from "react-hook-form";
 
-import { Info } from "lucide-react";
+import { Check, CheckCircle, X } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,14 @@ import { withLocale } from "@/modules/i18n/paths";
 
 import { AuthCard } from "./auth-card";
 import { PhoneInput } from "./phone-input";
+
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    window.clearTimeout(timer);
+  });
+}
 
 interface RegisterResponse {
   success: boolean;
@@ -57,7 +65,8 @@ function mapApiErrorCode(
 
 export function RegisterForm({ locale, dictionary, validation, apiErrors }: RegisterFormProps) {
   const router = useRouter();
-  const [step, setStep] = useState<"email" | "details">("email");
+  const [step, setStep] = useState<"email" | "details" | "success">("email");
+  const [successRedirectUrl, setSuccessRedirectUrl] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -73,30 +82,26 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
 
   const password = useWatch({ control: form.control, name: "password" }) ?? "";
 
-  const rulesMetCount = [
-    password.length >= 12,
-    /[a-z]/.test(password),
-    /[A-Z]/.test(password),
-    /[0-9]/.test(password),
-    /[^A-Za-z0-9]/.test(password),
-  ].filter(Boolean).length;
-
-  const strengthLevel =
-    password.length === 0 ? null :
-    rulesMetCount <= 2 ? "weak" :
-    rulesMetCount <= 4 ? "medium" : "strong";
+  const passwordRules = [
+    { met: password.length >= 12,        label: validation.passwordRuleMin },
+    { met: /[A-Z]/.test(password),       label: validation.passwordRuleUppercase },
+    { met: /[a-z]/.test(password),       label: validation.passwordRuleLowercase },
+    { met: /[0-9]/.test(password),       label: validation.passwordRuleNumber },
+    { met: /[^A-Za-z0-9]/.test(password), label: validation.passwordRuleSymbol },
+  ];
 
   const submitRegistration = form.handleSubmit(async (values) => {
+    if (isSubmitting) return;
     setSubmitError(null);
     setIsSubmitting(true);
 
     let response: Response;
 
     try {
-      response = await fetch("/api/auth/register", {
+      response = await fetchWithTimeout("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, locale }),
       });
     } catch {
       setSubmitError(dictionary.errors.serverUnavailable);
@@ -122,20 +127,21 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
         callbackUrl: withLocale("/dashboard", locale),
       });
     } catch {
-      setSubmitError(dictionary.errors.autoSignInFailed);
       setIsSubmitting(false);
+      setSuccessRedirectUrl(withLocale("/login", locale));
+      setStep("success");
       return;
     }
 
     setIsSubmitting(false);
 
-    if (!signInResult || signInResult.error) {
-      router.push(withLocale("/login", locale));
-      router.refresh();
-      return;
-    }
+    const redirectUrl =
+      signInResult && !signInResult.error
+        ? (signInResult.url ?? withLocale("/dashboard", locale))
+        : withLocale("/login", locale);
 
-    router.push(signInResult.url ?? withLocale("/dashboard", locale));
+    setSuccessRedirectUrl(redirectUrl);
+    setStep("success");
     router.refresh();
   });
 
@@ -153,6 +159,31 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
       return;
     }
     await submitRegistration(event);
+  }
+
+  if (step === "success") {
+    return (
+      <div className="flex flex-col items-center py-4 text-center">
+        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 ring-8 ring-primary/5">
+          <CheckCircle className="h-8 w-8 text-primary" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">{dictionary.successTitle}</h2>
+        <p className="mt-2 max-w-xs text-sm text-muted-foreground">
+          {dictionary.successDescription}
+        </p>
+        <Button
+          type="button"
+          className="mt-6 w-full"
+          onClick={() => {
+            if (successRedirectUrl) {
+              router.push(successRedirectUrl);
+            }
+          }}
+        >
+          {dictionary.goToDashboard}
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -237,35 +268,18 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
                 autoComplete="new-password"
                 {...form.register("password")}
               />
-              {strengthLevel !== null && (
-                <div className="flex items-center gap-2 pt-1">
-                  <div className="flex flex-1 gap-1">
-                    {([0, 1, 2] as const).map((i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full transition-colors ${
-                          strengthLevel === "weak"   && i === 0 ? "bg-red-500"    :
-                          strengthLevel === "medium" && i <= 1  ? "bg-yellow-500" :
-                          strengthLevel === "strong"            ? "bg-green-500"  : "bg-muted"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className={`text-xs font-medium ${
-                    strengthLevel === "weak"   ? "text-red-500"                :
-                    strengthLevel === "medium" ? "text-yellow-500"             :
-                                                 "text-green-600 dark:text-green-400"
-                  }`}>
-                    {strengthLevel === "weak"   ? validation.passwordStrengthWeak   :
-                     strengthLevel === "medium" ? validation.passwordStrengthMedium :
-                                                  validation.passwordStrengthStrong}
-                  </span>
-                </div>
+              {password.length > 0 && (
+                <ul className="mt-1.5 grid grid-cols-1 gap-y-1">
+                  {passwordRules.map((rule) => (
+                    <li key={rule.label} className={`flex items-center gap-1.5 text-xs transition-colors ${rule.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                      {rule.met
+                        ? <Check className="h-3 w-3 shrink-0" />
+                        : <X className="h-3 w-3 shrink-0" />}
+                      {rule.label}
+                    </li>
+                  ))}
+                </ul>
               )}
-              <p className="flex items-start gap-1 text-xs text-muted-foreground">
-                <Info className="mt-0.5 h-3 w-3 shrink-0" />
-                {validation.passwordHint}
-              </p>
             </div>
           </>
         )}

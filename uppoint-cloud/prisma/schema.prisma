@@ -112,6 +112,20 @@ model RateLimitAttempt {
   @@index([key, createdAt])
 }
 
+// Records security-relevant events for forensic analysis.
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // e.g. "login_success", "otp_failed", "password_reset"
+  ip        String?
+  userId    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+}
+
 model LoginChallenge {
   id                  String    @id @default(cuid())
   userId              String
