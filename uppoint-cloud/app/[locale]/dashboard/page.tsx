@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LogoutButton } from "@/modules/auth/components/logout-button";
+import { SessionTimeoutWarning } from "@/modules/auth/components/session-timeout-warning";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 import { getLocaleFromParams } from "@/modules/i18n/server";
@@ -30,6 +31,11 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl flex-col gap-6 px-6 py-16">
+      <SessionTimeoutWarning
+        locale={locale}
+        dictionary={dictionary.sessionTimeout}
+        sessionExpires={session.expires}
+      />
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{dictionary.dashboard.title}</h1>

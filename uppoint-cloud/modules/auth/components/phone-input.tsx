@@ -48,8 +48,14 @@ interface CountrySelectProps {
 
 function CountrySelect({ value, onChange, onBlur }: CountrySelectProps) {
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
 
+  const currentIndex = COUNTRY_CODES.findIndex((c) => c.code === value);
+  const selected = COUNTRY_CODES[currentIndex] ?? COUNTRY_CODES[0];
+
+  // Close on outside click
   useEffect(() => {
     function handleOutsideClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -60,17 +66,54 @@ function CountrySelect({ value, onChange, onBlur }: CountrySelectProps) {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  const selected = COUNTRY_CODES.find((c) => c.code === value) ?? COUNTRY_CODES[0];
+  // Focus listbox and scroll active item into view when dropdown opens
+  useEffect(() => {
+    if (!open) return;
+    listboxRef.current?.focus();
+    const items = listboxRef.current?.querySelectorAll("[role='option']");
+    const activeItem = items?.[activeIndex] as HTMLElement | undefined;
+    activeItem?.scrollIntoView({ block: "nearest" });
+  }, [open, activeIndex]);
+
+  function openDropdown() {
+    setActiveIndex(currentIndex >= 0 ? currentIndex : 0);
+    setOpen(true);
+  }
+
+  function handleTriggerKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openDropdown();
+    }
+  }
+
+  function handleListKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % COUNTRY_CODES.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + COUNTRY_CODES.length) % COUNTRY_CODES.length);
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const chosen = COUNTRY_CODES[activeIndex];
+      if (chosen) onChange(chosen.code);
+      setOpen(false);
+    } else if (e.key === "Escape" || e.key === "Tab") {
+      setOpen(false);
+    }
+  }
 
   return (
     <div ref={containerRef} className="relative h-full">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => (open ? setOpen(false) : openDropdown())}
+        onKeyDown={handleTriggerKeyDown}
         onBlur={onBlur}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex h-full items-center gap-1.5 border-r border-input px-3 text-sm text-foreground focus:outline-none"
+        className="flex h-full items-center gap-1.5 border-r border-input px-3 text-sm text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span className="font-medium">{selected.label}</span>
         <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -78,20 +121,30 @@ function CountrySelect({ value, onChange, onBlur }: CountrySelectProps) {
 
       {open && (
         <div
+          ref={listboxRef}
           role="listbox"
-          className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-52 w-32 overflow-auto rounded-md border border-border bg-popover shadow-md"
+          tabIndex={-1}
+          aria-activedescendant={`country-option-${activeIndex}`}
+          onKeyDown={handleListKeyDown}
+          className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-52 w-32 overflow-auto rounded-md border border-border bg-popover shadow-md focus:outline-none"
         >
-          {COUNTRY_CODES.map(({ code, label }) => (
+          {COUNTRY_CODES.map(({ code, label }, i) => (
             <div
               key={code}
+              id={`country-option-${i}`}
               role="option"
               aria-selected={code === value}
               onMouseDown={() => {
                 onChange(code);
                 setOpen(false);
               }}
-              className={`cursor-pointer px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground ${
-                code === value ? "bg-accent/40 font-medium" : ""
+              onMouseEnter={() => setActiveIndex(i)}
+              className={`cursor-pointer px-3 py-1.5 text-sm text-popover-foreground ${
+                i === activeIndex
+                  ? "bg-accent text-accent-foreground"
+                  : code === value
+                    ? "bg-accent/40 font-medium"
+                    : "hover:bg-accent hover:text-accent-foreground"
               }`}
             >
               {label}

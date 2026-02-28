@@ -236,6 +236,11 @@ export const trMessages = {
     cardContent:
       "Bu sayfa, kimlik doğrulama MVP kilometre taşı için bilerek minimal tutulmuştur.",
   },
+  sessionTimeout: {
+    warning: "Oturumunuz yakında sona eriyor.",
+    minutesRemaining: "dakika kaldı",
+    signOut: "Çıkış yap",
+  },
   logout: {
     button: "Çıkış yap",
   },

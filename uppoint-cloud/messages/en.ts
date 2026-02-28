@@ -235,6 +235,11 @@ export const enMessages = {
     cardDescriptionPrefix: "You are logged in as",
     cardContent: "This page is intentionally minimal for the authentication MVP milestone.",
   },
+  sessionTimeout: {
+    warning: "Your session is expiring soon.",
+    minutesRemaining: "minutes remaining",
+    signOut: "Sign out",
+  },
   logout: {
     button: "Sign out",
   },
