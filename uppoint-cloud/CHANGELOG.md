@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-02-28 (Locale switcher contrast fix for dark auth panel)
+
+### Changed
+- Updated `LocaleSwitcher` button styling for better theme contrast and visibility:
+  - switched from `ghost` to `outline` variant
+  - added explicit foreground/background/border contrast classes for dark auth panel contexts
+  - added optional `className` prop for future layout-specific tuning
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth hero image reverted and dark theme enforced)
+
+### Changed
+- Reverted auth split hero image source from `/logo/login-page.webp` back to `/images/auth/auth-hero.jpg`.
+- Set global default theme to dark (`modules/theme/config.ts`).
+- Forced dark theme rendering on auth split shell root for consistent black appearance on login/register pages.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth hero image source switched to login-page.webp)
+
+### Changed
+- Updated auth split hero image source from `/images/auth/auth-hero.jpg` to `/logo/login-page.webp` in `modules/auth/components/auth-split-shell.tsx`.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Auth pages: dark split layout redesign)
 
 ### Changed

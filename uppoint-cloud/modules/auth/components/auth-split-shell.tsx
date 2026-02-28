@@ -14,7 +14,7 @@ interface AuthSplitShellProps {
 
 export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps) {
   return (
-    <main className="relative isolate min-h-screen overflow-hidden">
+    <main className="dark relative isolate min-h-screen overflow-hidden">
       <div className="grid min-h-screen w-full lg:grid-cols-[440px_minmax(0,1fr)]">
 
         {/* LEFT — Dark form panel */}
