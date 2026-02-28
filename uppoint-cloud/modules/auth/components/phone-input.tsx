@@ -125,7 +125,7 @@ export function PhoneInput({ id, value, onChange, onBlur }: PhoneInputProps) {
   }
 
   return (
-    <div className="flex h-12 w-full overflow-visible rounded-md border border-input bg-transparent shadow-xs transition-colors focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/50">
+    <div className="flex h-12 w-full overflow-visible rounded-md border border-input bg-transparent shadow-xs transition-colors focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/50 dark:bg-input/30">
       <CountrySelect value={countryCode} onChange={handleCodeChange} onBlur={onBlur} />
       <input
         id={id}
