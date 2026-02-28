@@ -15,7 +15,7 @@ interface AuthSplitShellProps {
 
 export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-100 p-4 dark:bg-slate-950 sm:p-8">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-100 p-4 dark:bg-zinc-950 sm:p-8">
       {/* Page background pattern */}
       <div
         aria-hidden
