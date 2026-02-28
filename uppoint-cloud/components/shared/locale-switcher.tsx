@@ -24,7 +24,7 @@ export function LocaleSwitcher({ locale, labels }: LocaleSwitcherProps) {
   const targetLabel = targetLocale === "tr" ? labels.tr : labels.en;
 
   return (
-    <Button asChild variant="ghost" size="sm" className="min-w-16">
+    <Button asChild variant="ghost" size="sm" className="min-w-16 border border-border">
       <Link href={targetPath} hrefLang={targetLocale} lang={targetLocale}>
         {targetLabel}
       </Link>
