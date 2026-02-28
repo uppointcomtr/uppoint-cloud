@@ -26,10 +26,7 @@ function createPhoneSchema(locale: Locale) {
     .string()
     .trim()
     .min(1, validation.phoneRequired)
-    .refine(
-      (value) => /^\+?[1-9]\d{9,14}$/.test(value),
-      validation.phoneFormat,
-    );
+    .refine((value) => /^\+?[1-9]\d{9,14}$/.test(value), validation.phoneFormat);
 }
 
 function createPasswordSchema(locale: Locale) {
@@ -62,6 +59,20 @@ export function getLoginSchema(locale: Locale = defaultLocale) {
   return z.object({
     email: createEmailSchema(locale),
     password: z.string().min(1, validation.loginPasswordRequired),
+  });
+}
+
+export function getPhoneLoginSchema(locale: Locale = defaultLocale) {
+  return z.object({
+    phone: createPhoneSchema(locale),
+  });
+}
+
+export function getLoginOtpSchema(locale: Locale = defaultLocale) {
+  const validation = getValidationMessages(locale);
+
+  return z.object({
+    code: z.string().trim().regex(/^\d{6}$/, validation.otpCodeFormat),
   });
 }
 

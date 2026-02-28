@@ -7,6 +7,9 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
 - Authentication MVP
   - Registration (`/:locale/register`)
   - Login (`/:locale/login`)
+  - Login supports two flows on a segmented tab:
+    - Email login: email -> password -> email OTP (3-minute countdown) -> sign in
+    - Phone login: phone -> SMS OTP (3-minute countdown) -> sign in
   - Modal-based forgot-password flow inside login:
     - email verification code (3 min countdown)
     - SMS verification code (3 min countdown)
@@ -81,6 +84,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Credentials validation: [modules/auth/schemas/auth-schemas.ts](/opt/uppoint-cloud/modules/auth/schemas/auth-schemas.ts)
 - Registration service: [modules/auth/server/register-user.ts](/opt/uppoint-cloud/modules/auth/server/register-user.ts)
 - Login credential verification: [modules/auth/server/authenticate-user.ts](/opt/uppoint-cloud/modules/auth/server/authenticate-user.ts)
+- Login OTP challenge service: [modules/auth/server/login-challenge.ts](/opt/uppoint-cloud/modules/auth/server/login-challenge.ts)
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
 - Password reset service: [modules/auth/server/password-reset.ts](/opt/uppoint-cloud/modules/auth/server/password-reset.ts)
 - Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)

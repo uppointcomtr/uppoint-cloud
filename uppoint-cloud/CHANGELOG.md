@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-02-28 (Login upgraded: email/phone tabs with OTP-gated sign-in)
+
+### Changed
+- Reworked login UI into a segmented tab flow:
+  - `E-Posta`: email -> password -> email OTP
+  - `Telefon`: phone -> SMS OTP
+- Added 3-minute countdown handling for login OTP steps.
+- Enforced sign-in completion through one-time login token consumption (no direct password session creation from the UI flow).
+- Added login challenge backend service:
+  - `modules/auth/server/login-challenge.ts`
+- Added login challenge API routes:
+  - `POST /api/auth/login/challenge/email/start`
+  - `POST /api/auth/login/challenge/email/verify`
+  - `POST /api/auth/login/challenge/phone/start`
+  - `POST /api/auth/login/challenge/phone/verify`
+- Updated NextAuth credentials provider to consume validated one-time `loginToken`.
+- Added Prisma `LoginChallenge` model + migration.
+- Added TR/EN localization keys for tabbed OTP login and validation.
+- Added test coverage for login challenge service.
+
+### Verification
+- `npm run prisma:generate` -> ✓
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+- `npm run prisma:migrate:deploy` -> ✓
+
+---
+
 ## 2026-02-28 (Auth shell: hero image full-bleed background)
 
 ### Changed
