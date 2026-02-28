@@ -80,6 +80,7 @@ export const trMessages = {
     button: "Çıkış yap",
   },
   validation: {
+    emailInvalid: "Geçerli bir e-posta adresi girin",
     phoneFormat: "Telefon uluslararası formatta olmalıdır",
     passwordMin: "Şifre en az 12 karakter olmalı",
     passwordMax: "Şifre en fazla 72 karakter olmalı",

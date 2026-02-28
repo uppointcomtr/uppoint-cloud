@@ -3,10 +3,20 @@ import { z } from "zod";
 import { defaultLocale, type Locale } from "@/modules/i18n/config";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 
-const emailSchema = z.string().trim().email().max(254).transform((value) => value.toLowerCase());
-
 function getValidationMessages(locale: Locale) {
   return getDictionary(locale).validation;
+}
+
+function createEmailSchema(locale: Locale) {
+  const validation = getValidationMessages(locale);
+
+  return z
+    .string()
+    .trim()
+    .min(1, validation.emailInvalid)
+    .email(validation.emailInvalid)
+    .max(254, validation.emailInvalid)
+    .transform((value) => value.toLowerCase());
 }
 
 function createPhoneSchema(locale: Locale) {
@@ -39,7 +49,7 @@ export function getRegisterSchema(locale: Locale = defaultLocale) {
 
   return z.object({
     name: z.string().trim().min(2, validation.nameMin).max(100),
-    email: emailSchema,
+    email: createEmailSchema(locale),
     phone: createPhoneSchema(locale).default(""),
     password: createPasswordSchema(locale),
   });
@@ -49,7 +59,7 @@ export function getLoginSchema(locale: Locale = defaultLocale) {
   const validation = getValidationMessages(locale);
 
   return z.object({
-    email: emailSchema,
+    email: createEmailSchema(locale),
     password: z.string().min(1, validation.loginPasswordRequired),
   });
 }

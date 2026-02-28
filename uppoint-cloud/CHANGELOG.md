@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-28 (Localized Email Validation Messages)
+
+### Fixed
+- Replaced default Zod English email validation output with locale-aware messages for Turkish and English.
+- Ensured login/register email validation uses the current locale dictionary instead of global non-localized schema text.
+
+### Added
+- Auth schema tests to verify locale-specific email validation messages for `tr` and `en`.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
 ## 2026-02-28 (Two-Step Login UX)
 
 ### Changed

@@ -79,6 +79,7 @@ export const enMessages = {
     button: "Sign out",
   },
   validation: {
+    emailInvalid: "Enter a valid email address",
     phoneFormat: "Phone must be in international format",
     passwordMin: "Password must be at least 12 characters",
     passwordMax: "Password must be at most 72 characters",
