@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-02-28 (Auth shell: hero image kaldırıldı, sistem rengi glow efektleri eklendi)
+
+### Changed
+- `auth-split-shell.tsx`: hero image + siyah overlay kaldırıldı.
+- Arka plan `bg-background` (sistem teması) olarak ayarlandı.
+- 3 adet `primary` renk tabanlı glow blob eklendi (sol-üst büyük, sağ-alt orta, sağ-orta küçük). Light/dark modda farklı opaklık.
+
+### Risk / Rollback
+- Görsel değişiklik; kart ve form mantığı etkilenmedi. Rollback: `next/image fill` hero image geri yükle.
+
+### Verification
+- `npm run lint` -> ✓
+- `npx tsc --noEmit` -> ✓
+- `npm test` -> 29/29 ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Login form UI: ikon bilgi kartları ve büyük OTP input)
 
 ### Changed

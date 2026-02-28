@@ -15,20 +15,13 @@ interface AuthSplitShellProps {
 
 export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 p-4 sm:p-8">
-      {/* Full-bleed background image */}
-      <Image
-        src="/images/auth/auth-side-hero.jpg"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover"
-        aria-hidden
-      />
-
-      {/* Dark overlay for card readability */}
-      <div aria-hidden className="absolute inset-0 bg-black/55" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4 sm:p-8">
+      {/* Glow 1 — top-left, large, primary */}
+      <div aria-hidden className="pointer-events-none absolute -left-32 -top-32 h-[480px] w-[480px] rounded-full bg-primary/15 blur-[120px] dark:bg-primary/20" />
+      {/* Glow 2 — bottom-right, medium, primary tint */}
+      <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-24 h-[360px] w-[360px] rounded-full bg-primary/10 blur-[100px] dark:bg-primary/15" />
+      {/* Glow 3 — center-right, small accent */}
+      <div aria-hidden className="pointer-events-none absolute right-[15%] top-[30%] h-[220px] w-[220px] rounded-full bg-primary/8 blur-[80px] dark:bg-primary/12" />
 
       {/* Centered card */}
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-background shadow-2xl dark:border-white/10 dark:shadow-black/60">
