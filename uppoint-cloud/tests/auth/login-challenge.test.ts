@@ -44,10 +44,14 @@ describe("startPhoneLoginChallenge", () => {
     const result = await startPhoneLoginChallenge(
       {
         phone: "+905551112233",
+        password: "StrongPass!123",
         locale: "tr",
       },
       {
-        findUserByPhone: vi.fn().mockResolvedValue({ id: "u1", phone: "+905551112233" }),
+        findUserByPhone: vi
+          .fn()
+          .mockResolvedValue({ id: "u1", phone: "+905551112233", passwordHash: "hash" }),
+        verifyPassword: vi.fn().mockResolvedValue(true),
         deleteChallengesForUserAndMode: vi.fn().mockResolvedValue(undefined),
         createChallenge,
         sendSmsOtp,

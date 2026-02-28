@@ -84,6 +84,7 @@ export const enMessages = {
       expiredCode: "Code is invalid or expired",
       maxAttempts: "Too many invalid attempts. Please try again.",
       smsDisabled: "SMS verification service is currently unavailable",
+      emailDeliveryFailed: "Verification code could not be sent. Check the email address.",
     },
   },
   forgotPassword: {

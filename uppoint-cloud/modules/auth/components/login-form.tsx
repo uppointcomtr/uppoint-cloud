@@ -22,6 +22,7 @@ import { withLocale } from "@/modules/i18n/paths";
 
 import { AuthCard } from "./auth-card";
 import { ForgotPasswordModal } from "./forgot-password-modal";
+import { PhoneInput } from "./phone-input";
 
 type LoginMode = "email" | "phone";
 type EmailStep = "identifier" | "password" | "otp";
@@ -65,6 +66,8 @@ function mapLoginChallengeError(
       return dictionary.errors.maxAttempts;
     case "SMS_NOT_ENABLED":
       return dictionary.errors.smsDisabled;
+    case "EMAIL_DELIVERY_FAILED":
+      return dictionary.errors.emailDeliveryFailed;
     case "LOGIN_CHALLENGE_START_FAILED":
     case "LOGIN_CHALLENGE_VERIFY_FAILED":
       return dictionary.errors.unavailable;
@@ -652,13 +655,11 @@ export function LoginForm({
           <div className="space-y-4">
             {phoneStep === "identifier" ? (
               <>
-                <FloatingInput
+                <PhoneInput
                   id="phone"
-                  type="tel"
-                  label={dictionary.fields.phone}
-                  autoComplete="tel"
                   value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
+                  onChange={(value) => setPhone(value)}
+                  onBlur={() => {}}
                 />
 
                 <Button

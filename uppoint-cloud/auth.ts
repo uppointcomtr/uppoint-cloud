@@ -5,7 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env/server";
-import { authenticateUser } from "@/modules/auth/server/authenticate-user";
+import { consumeLoginToken } from "@/modules/auth/server/login-challenge";
 import { defaultLocale } from "@/modules/i18n/config";
 import { withLocale } from "@/modules/i18n/paths";
 
@@ -22,18 +22,14 @@ export const authOptions: NextAuthOptions = {
   },
   providers: [
     CredentialsProvider({
-      name: "E-posta ve Sifre",
+      name: "Uppoint Cloud Login Token",
       credentials: {
-        email: {
-          label: "E-posta",
-          type: "email",
-        },
-        password: {
-          label: "Sifre",
-          type: "password",
+        loginToken: {
+          label: "Login Token",
+          type: "text",
         },
       },
-      authorize: async (credentials) => authenticateUser(credentials),
+      authorize: async (credentials) => consumeLoginToken(credentials),
     }),
   ],
   callbacks: {

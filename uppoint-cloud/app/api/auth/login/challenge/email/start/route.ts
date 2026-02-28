@@ -29,6 +29,15 @@ export async function POST(request: Request) {
       return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
     }
 
+    if (
+      error instanceof Error &&
+      /recipients were rejected|recipient address reserved/i.test(error.message)
+    ) {
+      return NextResponse.json(fail("EMAIL_DELIVERY_FAILED"), {
+        status: 400,
+      });
+    }
+
     console.error("Failed to start email login challenge", error);
     return NextResponse.json(fail("LOGIN_CHALLENGE_START_FAILED"), {
       status: 500,

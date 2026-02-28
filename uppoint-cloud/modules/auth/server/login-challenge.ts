@@ -29,6 +29,7 @@ const loginPhoneStartSchema = z.object({
     .trim()
     .min(1)
     .refine((value) => PHONE_LOGIN_REGEX.test(value)),
+  password: z.string().min(1),
   locale: z.string().optional(),
 });
 
@@ -227,7 +228,8 @@ export async function startEmailLoginChallenge(
 }
 
 interface StartPhoneLoginDependencies {
-  findUserByPhone: (phone: string) => Promise<{ id: string; phone: string } | null>;
+  findUserByPhone: (phone: string) => Promise<{ id: string; phone: string; passwordHash: string } | null>;
+  verifyPassword: (password: string, hash: string) => Promise<boolean>;
   deleteChallengesForUserAndMode: (userId: string, mode: LoginChallengeMode) => Promise<void>;
   createChallenge: (input: {
     userId: string;
@@ -251,6 +253,7 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
       select: {
         id: true,
         phone: true,
+        passwordHash: true,
       },
     });
 
@@ -258,8 +261,9 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
       return null;
     }
 
-    return { id: user.id, phone: user.phone };
+    return { id: user.id, phone: user.phone, passwordHash: user.passwordHash };
   },
+  verifyPassword,
   deleteChallengesForUserAndMode: async (userId, mode) => {
     await prisma.loginChallenge.deleteMany({ where: { userId, mode } });
   },
@@ -293,8 +297,14 @@ export async function startPhoneLoginChallenge(
 
   const user = await dependencies.findUserByPhone(input.phone);
 
-  // Security-sensitive: do not reveal whether phone exists.
+  // Security-sensitive: do not reveal whether phone or password validation failed.
   if (!user) {
+    return { challengeId: null, codeExpiresAt: null };
+  }
+
+  const isPasswordValid = await dependencies.verifyPassword(input.password, user.passwordHash);
+
+  if (!isPasswordValid) {
     return { challengeId: null, codeExpiresAt: null };
   }
 

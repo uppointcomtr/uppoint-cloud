@@ -84,6 +84,7 @@ export const trMessages = {
       expiredCode: "Kod geçersiz veya süresi dolmuş",
       maxAttempts: "Çok fazla hatalı deneme yapıldı. Yeniden deneyin.",
       smsDisabled: "SMS doğrulama servisi şu anda kullanılamıyor",
+      emailDeliveryFailed: "Doğrulama kodu gönderilemedi. E-posta adresini kontrol edin.",
     },
   },
   forgotPassword: {
