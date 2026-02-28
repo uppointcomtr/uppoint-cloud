@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-02-28 (Auth account/email summary UI refinement)
+
+### Changed
+- Improved the step-2 account/email summary presentation in auth forms for better readability and hierarchy.
+- Updated login and register summary blocks to a consistent card style using theme tokens (border + muted background + stronger value emphasis).
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Register phone label visibility update)
 
 ### Changed

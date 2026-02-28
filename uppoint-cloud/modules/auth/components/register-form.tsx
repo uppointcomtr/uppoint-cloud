@@ -208,9 +208,13 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
           </div>
         ) : (
           <>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">{dictionary.emailPrefix}</p>
-              <p className="text-sm font-medium break-all">{form.getValues("email")}</p>
+            <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {dictionary.emailPrefix}
+              </p>
+              <p className="mt-1 break-all text-sm font-semibold text-foreground">
+                {form.getValues("email")}
+              </p>
             </div>
 
             <div className="space-y-2">
