@@ -31,7 +31,7 @@ export function LocaleSwitcher({ locale, labels, className }: LocaleSwitcherProp
       variant="outline"
       size="sm"
       className={cn(
-        "min-w-16 border-border/70 bg-background/80 font-semibold text-foreground hover:bg-accent/80 dark:bg-background/60",
+        "min-w-10 border-border/70 bg-background/80 font-semibold text-foreground hover:bg-accent/80 dark:bg-background/60",
         className,
       )}
     >
