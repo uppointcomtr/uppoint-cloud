@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 const COUNTRY_CODES = [
   { code: "+90",  label: "TR +90"  },
@@ -36,6 +37,69 @@ function parseValue(value: string): { countryCode: string; localNumber: string }
   return { countryCode: DEFAULT_CODE, localNumber: value };
 }
 
+interface CountrySelectProps {
+  value: string;
+  onChange: (code: string) => void;
+  onBlur: () => void;
+}
+
+function CountrySelect({ value, onChange, onBlur }: CountrySelectProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const selected = COUNTRY_CODES.find((c) => c.code === value) ?? COUNTRY_CODES[0];
+
+  return (
+    <div ref={containerRef} className="relative h-full">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        onBlur={onBlur}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex h-full items-center gap-1.5 border-r border-input px-3 text-sm text-foreground focus:outline-none"
+      >
+        <span className="font-medium">{selected.label}</span>
+        <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-52 w-32 overflow-auto rounded-md border border-border bg-popover shadow-md"
+        >
+          {COUNTRY_CODES.map(({ code, label }) => (
+            <div
+              key={code}
+              role="option"
+              aria-selected={code === value}
+              onMouseDown={() => {
+                onChange(code);
+                setOpen(false);
+              }}
+              className={`cursor-pointer px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground ${
+                code === value ? "bg-accent/40 font-medium" : ""
+              }`}
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface PhoneInputProps {
   id?: string;
   value: string;
@@ -61,20 +125,8 @@ export function PhoneInput({ id, value, onChange, onBlur }: PhoneInputProps) {
   }
 
   return (
-    <div className="flex h-12 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-colors focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/50">
-      <select
-        value={countryCode}
-        onChange={(e) => handleCodeChange(e.target.value)}
-        onBlur={onBlur}
-        className="h-full border-r border-input bg-transparent px-2 text-sm text-foreground focus:outline-none dark:[color-scheme:dark]"
-        aria-label="Country code"
-      >
-        {COUNTRY_CODES.map(({ code, label }) => (
-          <option key={code} value={code}>
-            {label}
-          </option>
-        ))}
-      </select>
+    <div className="flex h-12 w-full overflow-visible rounded-md border border-input bg-transparent shadow-xs transition-colors focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/50">
+      <CountrySelect value={countryCode} onChange={handleCodeChange} onBlur={onBlur} />
       <input
         id={id}
         type="tel"
