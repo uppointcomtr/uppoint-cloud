@@ -61,12 +61,12 @@ export function PhoneInput({ id, value, onChange, onBlur }: PhoneInputProps) {
   }
 
   return (
-    <div className="flex h-9 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-colors focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/50">
+    <div className="flex h-12 w-full overflow-hidden rounded-md border border-input bg-transparent shadow-xs transition-colors focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring/50">
       <select
         value={countryCode}
         onChange={(e) => handleCodeChange(e.target.value)}
         onBlur={onBlur}
-        className="border-r border-input bg-transparent px-2 text-sm text-foreground focus:outline-none"
+        className="h-full border-r border-input bg-transparent px-2 text-sm text-foreground focus:outline-none"
         aria-label="Country code"
       >
         {COUNTRY_CODES.map(({ code, label }) => (
@@ -83,7 +83,7 @@ export function PhoneInput({ id, value, onChange, onBlur }: PhoneInputProps) {
         onChange={(e) => handleNumberChange(e.target.value)}
         onBlur={onBlur}
         placeholder="5551112233"
-        className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+        className="h-full min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
       />
     </div>
   );

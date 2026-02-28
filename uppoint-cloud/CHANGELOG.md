@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-02-28 (Register phone input height alignment)
+
+### Fixed
+- `register` sayfasındaki `PhoneInput` yüksekliği `h-9` idi; `Ad Soyad` ve `Şifre` alanları (`FloatingInput`) ile uyumlu olacak şekilde `h-12` olarak güncellendi
+- Bileşik telefon alanında iç `select` ve `input` elemanları `h-full` yapılarak dikey hizalama tutarlı hale getirildi
+
+### Verification
+- `npm run lint` → ✓
+- `npm run typecheck` → ✓
+- `npm run test` → ✓
+- `npm run build` → ✓
+
+---
+
 ## 2026-02-28 (Auth forms: floating label inputs)
 
 ### Added
