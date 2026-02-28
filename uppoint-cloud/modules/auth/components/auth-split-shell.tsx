@@ -15,12 +15,20 @@ interface AuthSplitShellProps {
 
 export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-100 p-4 dark:bg-zinc-950 sm:p-8">
-      {/* Page background pattern */}
-      <div
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-zinc-950 p-4 sm:p-8">
+      {/* Full-bleed background image */}
+      <Image
+        src="/images/auth/auth-side-hero.jpg"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
         aria-hidden
-        className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle,oklch(0_0_0/0.06)_1px,transparent_1px)] [background-size:24px_24px] dark:[background-image:radial-gradient(circle,oklch(1_0_0/0.05)_1px,transparent_1px)]"
       />
+
+      {/* Dark overlay for card readability */}
+      <div aria-hidden className="absolute inset-0 bg-black/55" />
 
       {/* Centered card */}
       <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-background shadow-2xl dark:border-white/10 dark:shadow-black/60">
