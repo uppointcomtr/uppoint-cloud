@@ -15,19 +15,27 @@ interface AuthSplitShellProps {
 
 export function AuthSplitShell({ locale, header, panel, children }: AuthSplitShellProps) {
   return (
-    <main className="dark relative isolate min-h-screen overflow-hidden">
+    <main className="relative isolate min-h-screen overflow-hidden">
       <div className="grid min-h-screen w-full lg:grid-cols-[440px_minmax(0,1fr)]">
 
         {/* LEFT — Dark form panel */}
         <section className="relative z-10 flex min-h-screen flex-col border-r border-border/40 bg-background px-8 py-6">
           <header className="mb-10 flex items-center justify-between">
             <Image
+              src="/logo/uppoint-logo-black.webp"
+              alt="Uppoint Cloud"
+              width={416}
+              height={127}
+              unoptimized
+              className="block h-8 w-auto dark:hidden"
+            />
+            <Image
               src="/logo/Uppoint-logo-wh.webp"
               alt="Uppoint Cloud"
               width={416}
               height={127}
               unoptimized
-              className="h-8 w-auto"
+              className="hidden h-8 w-auto dark:block"
             />
             <LocaleSwitcher locale={locale} labels={header.locales} />
           </header>
