@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -96,26 +95,6 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
       description={dictionary.description}
       surface="plain"
       titleClassName="text-2xl leading-8"
-      headerContent={
-        <div className="mb-2 inline-flex items-center" aria-hidden>
-          <Image
-            src="/logo/uppoint-logo-black.webp"
-            alt=""
-            width={416}
-            height={127}
-            unoptimized
-            className="block h-9 w-auto dark:hidden"
-          />
-          <Image
-            src="/logo/Uppoint-logo-wh.webp"
-            alt=""
-            width={416}
-            height={127}
-            unoptimized
-            className="hidden h-9 w-auto dark:block"
-          />
-        </div>
-      }
       footer={
         <p className="text-sm text-muted-foreground">
           {dictionary.footerPrefix}{" "}

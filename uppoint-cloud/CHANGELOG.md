@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-02-28 (Auth pages: dark split layout redesign)
+
+### Changed
+- `auth-split-shell.tsx`: complete redesign — dark forced (`dark` class on root), left panel has logo + locale switcher at top and form centered, right panel uses emerald radial gradient + grid motif + glow blobs + feature list (`highlights`) + badges; no hero image dependency
+- `floating-input.tsx`: label background changed `bg-card` → `bg-background` so floating label blends correctly with dark form panel
+- `login-form.tsx`: removed in-form logo (now provided by shell)
+- `register-form.tsx`: removed in-form logo and unused `Image` import
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 20/20 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
 ## 2026-02-28 (Auth hero eyebrow text changed to CLOUD)
 
 ### Changed

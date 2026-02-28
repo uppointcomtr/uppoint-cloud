@@ -43,7 +43,7 @@ export const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           htmlFor={inputId}
           className={cn(
             "pointer-events-none absolute left-3 select-none text-muted-foreground transition-all duration-150",
-            "top-0 -translate-y-1/2 bg-card px-1 text-xs leading-none",
+            "top-0 -translate-y-1/2 bg-background px-1 text-xs leading-none",
             !focused &&
               "peer-placeholder-shown:top-1/2 peer-placeholder-shown:bg-transparent peer-placeholder-shown:px-0 peer-placeholder-shown:text-sm peer-placeholder-shown:leading-normal peer-placeholder-shown:-translate-y-1/2",
           )}
