@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-02-28 (Login form: telefon identifier adımı PhoneInput ile değiştirildi)
+
+### Changed
+- `login-form.tsx`: telefon sekmesindeki identifier adımında `FloatingInput type="tel"` kaldırıldı; register ekranıyla aynı `PhoneInput` bileşeni kullanılıyor (ülke kodu seçici + yerel numara alanı).
+
+### Risk / Rollback
+- Saf UI değişikliği; doğrulama mantığı (getPhoneLoginSchema) etkilenmedi — PhoneInput zaten `+90...` formatında tam numara döndürüyor. Rollback: FloatingInput geri yükle.
+
+### Verification
+- `npm run lint` -> ✓
+- `npx tsc --noEmit` -> ✓
+- `npm test` -> 29/29 ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Auth shell: hero image kaldırıldı, sistem rengi glow efektleri eklendi)
 
 ### Changed
