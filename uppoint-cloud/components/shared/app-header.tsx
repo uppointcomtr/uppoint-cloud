@@ -18,7 +18,7 @@ export function AppHeader({ locale, dictionary }: AppHeaderProps) {
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
         <Link
-          href={withLocale("/", locale)}
+          href={withLocale("/login", locale)}
           aria-label={dictionary.brand}
           className="inline-flex shrink-0 items-center"
         >

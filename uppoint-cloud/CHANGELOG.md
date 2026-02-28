@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-28 (Auth flow UX polish and emerald theme tokens)
+
+### Changed
+- Updated header logo target from locale root redirect to direct localized login route to remove redirect-jump effect when clicking the brand logo on login pages.
+- Updated login flow so `Şifremi unuttum?` / `Forgot password?` is shown only on the password step (after entering email), not on the first identifier step.
+- Applied emerald-focused primary/ring tokens for both light and dark themes (`--primary`, `--ring`, `--sidebar-primary`, `--sidebar-ring`) in global theme palette.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Build now auto-restarts Next.js service)
 
 ### Changed

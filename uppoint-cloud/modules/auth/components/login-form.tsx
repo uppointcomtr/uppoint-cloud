@@ -164,6 +164,13 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
                 <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
               ) : null}
             </div>
+
+            <Link
+              href={withLocale("/forgot-password", locale)}
+              className="inline-block text-sm text-primary underline-offset-4 hover:underline"
+            >
+              {dictionary.forgotPasswordLink}
+            </Link>
           </>
         )}
 
@@ -172,13 +179,6 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
             <AlertDescription>{submitError}</AlertDescription>
           </Alert>
         ) : null}
-
-        <Link
-          href={withLocale("/forgot-password", locale)}
-          className="inline-block text-sm text-primary underline-offset-4 hover:underline"
-        >
-          {dictionary.forgotPasswordLink}
-        </Link>
 
         {step === "identifier" ? (
           <Button type="submit" className="w-full">
