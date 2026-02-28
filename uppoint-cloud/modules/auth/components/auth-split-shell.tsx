@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
 
@@ -44,7 +45,10 @@ export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps
                 unoptimized
                 className="hidden h-7 w-auto dark:block"
               />
-              <LocaleSwitcher locale={locale} labels={header.locales} />
+              <div className="flex items-center gap-2">
+                <ThemeToggle labels={header.theme} iconOnly />
+                <LocaleSwitcher locale={locale} labels={header.locales} />
+              </div>
             </div>
 
             <div className="flex flex-1 flex-col justify-center py-8">
