@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-28 (Dark theme palette refined to corporate black)
+
+### Changed
+- Updated dark mode tokens in `app/globals.css` from pure black to a more corporate anthracite palette.
+- Tuned `background`, `card`, `popover`, `secondary/muted/accent`, and sidebar shades for softer depth.
+- Increased dark-mode `border` and `input` opacity so field/container boundaries are clearer.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Login form: telefon identifier adımı PhoneInput ile değiştirildi)
 
 ### Changed
