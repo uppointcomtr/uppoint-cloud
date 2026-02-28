@@ -32,10 +32,8 @@ export function AuthSplitShell({ locale, header, panel, children }: AuthSplitShe
             <LocaleSwitcher locale={locale} labels={header.locales} />
           </header>
 
-          <div className="flex flex-1 items-center">
-            <div className="w-full max-w-sm">
-              {children}
-            </div>
+          <div className="w-full max-w-sm">
+            {children}
           </div>
 
           <footer className="mt-8 text-center text-xs text-muted-foreground">
