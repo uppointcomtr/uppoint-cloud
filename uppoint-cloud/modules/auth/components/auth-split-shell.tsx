@@ -52,11 +52,12 @@ export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps
         <aside className="relative hidden min-h-screen overflow-hidden lg:flex lg:flex-col lg:justify-between">
           {/* Hero image */}
           <Image
-            src="/images/auth/auth-hero.jpg"
+            src="/images/auth/auth-side-hero.jpg"
             alt=""
             fill
             priority
-            sizes="(min-width: 1024px) 60vw, 0px"
+            quality={90}
+            sizes="(min-width: 1024px) calc(100vw - 440px), 0px"
             className="object-cover object-center"
           />
           {/* Dark overlay — bottom fade for text legibility */}

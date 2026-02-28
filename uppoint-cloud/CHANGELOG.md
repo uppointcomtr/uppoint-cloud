@@ -1,5 +1,62 @@
 # Changelog
 
+## 2026-02-28 (Auth hero source standardized to auth-side-hero)
+
+### Changed
+- Updated auth right-panel image source to `/images/auth/auth-side-hero.jpg`.
+- Removed dependency on `/public/images/bg/...` path; `public/images/bg/` is no longer used.
+- Restored existing tracked `public/images/auth/auth-hero.jpg` file in repository state to avoid accidental deletion side effects.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth hero image clarity fix while keeping cover)
+
+### Changed
+- Kept right panel image `cover` behavior and improved rendering clarity:
+  - increased Next.js image quality to `90`
+  - corrected `sizes` to match actual right-panel width: `(min-width: 1024px) calc(100vw - 440px), 0px`
+- This prevents undersized image selection on wide screens, which previously looked like excessive zoom/blur.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth hero image switched to images/bg/login/login-page.jpg)
+
+### Changed
+- Updated auth split-shell right panel image source to `/images/bg/login/login-page.jpg`.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth hero image switched to login-cloud.webp)
+
+### Changed
+- Updated auth split-shell right panel image source from `/images/auth/auth-hero.jpg` to `/logo/login-cloud.webp`.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Locale switcher contrast fix for dark auth panel)
 
 ### Changed
