@@ -160,6 +160,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
     <AuthCard
       title={dictionary.title}
       description={dictionary.description}
+      surface="plain"
       titleClassName="text-2xl leading-8"
       headerContent={
         <div className="mb-2 inline-flex items-center" aria-hidden>

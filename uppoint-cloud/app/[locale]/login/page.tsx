@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { AuthSplitShell } from "@/modules/auth/components/auth-split-shell";
 import { LoginForm } from "@/modules/auth/components/login-form";
 import { getDictionary } from "@/modules/i18n/dictionaries";
-import { getLocaleFromParams } from "@/modules/i18n/server";
 import { withLocale } from "@/modules/i18n/paths";
+import { getLocaleFromParams } from "@/modules/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,8 @@ export default async function LoginPage({ params }: LoginPageProps) {
   const dictionary = getDictionary(locale);
 
   return (
-    <main className="flex min-h-[calc(100vh-4rem)] w-full items-center justify-center px-6 py-16">
+    <AuthSplitShell locale={locale} header={dictionary.header} panel={dictionary.authShell}>
       <LoginForm locale={locale} dictionary={dictionary.login} />
-    </main>
+    </AuthSplitShell>
   );
 }

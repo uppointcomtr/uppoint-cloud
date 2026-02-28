@@ -26,6 +26,27 @@ export const enMessages = {
       register: "Create account",
     },
   },
+  authShell: {
+    eyebrow: "CLOUD",
+    title: "Access secure and scalable cloud infrastructure from a single control point.",
+    description:
+      "Create your account and sign in to manage cloud operations safely from one unified panel.",
+    badges: ["24/7 support", "Secure infrastructure", "High availability"],
+    highlights: [
+      {
+        title: "24/7 support",
+        description: "Continuous expert assistance for operations and technical requests.",
+      },
+      {
+        title: "Secure infrastructure",
+        description: "Designed with isolation, encryption, and controlled access principles.",
+      },
+      {
+        title: "Production-first architecture",
+        description: "Sustainable foundation built for growth and operational visibility.",
+      },
+    ],
+  },
   login: {
     title: "Sign in",
     description: "Continue to the Uppoint Cloud application.",

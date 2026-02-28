@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import { AuthSplitShell } from "@/modules/auth/components/auth-split-shell";
 import { RegisterForm } from "@/modules/auth/components/register-form";
 import { getDictionary } from "@/modules/i18n/dictionaries";
-import { getLocaleFromParams } from "@/modules/i18n/server";
 import { withLocale } from "@/modules/i18n/paths";
+import { getLocaleFromParams } from "@/modules/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,13 @@ export default async function RegisterPage({ params }: RegisterPageProps) {
   const dictionary = getDictionary(locale);
 
   return (
-    <main className="flex min-h-[calc(100vh-4rem)] w-full items-center justify-center px-6 py-16">
+    <AuthSplitShell locale={locale} header={dictionary.header} panel={dictionary.authShell}>
       <RegisterForm
         locale={locale}
         dictionary={dictionary.register}
         validation={dictionary.validation}
         apiErrors={dictionary.apiErrors}
       />
-    </main>
+    </AuthSplitShell>
   );
 }

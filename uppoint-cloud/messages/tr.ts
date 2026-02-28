@@ -26,6 +26,27 @@ export const trMessages = {
       register: "Hesap oluştur",
     },
   },
+  authShell: {
+    eyebrow: "CLOUD",
+    title: "Güvenli ve ölçeklenebilir bulut altyapısına tek noktadan erişin.",
+    description:
+      "Hesabını oluşturup giriş yaptıktan sonra tüm bulut operasyonlarını tek panelden güvenli şekilde yönetebilirsin.",
+    badges: ["7/24 destek", "Güvenli altyapı", "Yüksek erişilebilirlik"],
+    highlights: [
+      {
+        title: "7/24 destek",
+        description: "Operasyon ve teknik konularda kesintisiz uzman destek.",
+      },
+      {
+        title: "Güvenli altyapı",
+        description: "İzolasyon, şifreleme ve denetimli erişim prensipleriyle tasarlandı.",
+      },
+      {
+        title: "Üretim odaklı mimari",
+        description: "Sürdürülebilir, genişlemeye hazır ve operasyonel görünürlük sağlayan temel.",
+      },
+    ],
+  },
   login: {
     title: "Oturum aç",
     description: "Uppoint Cloud uygulamasına devam edin.",

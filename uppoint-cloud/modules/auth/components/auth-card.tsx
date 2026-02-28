@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface AuthCardProps {
   title: string;
@@ -16,6 +17,7 @@ interface AuthCardProps {
   children: ReactNode;
   headerContent?: ReactNode;
   titleClassName?: string;
+  surface?: "card" | "plain";
 }
 
 export function AuthCard({
@@ -25,9 +27,17 @@ export function AuthCard({
   children,
   headerContent,
   titleClassName,
+  surface = "card",
 }: AuthCardProps) {
   return (
-    <Card className="w-full max-w-md bg-card/80 shadow-2xl backdrop-blur-md">
+    <Card
+      className={cn(
+        "w-full max-w-md",
+        surface === "plain"
+          ? "border-0 bg-transparent shadow-none"
+          : "bg-card/80 shadow-2xl backdrop-blur-md",
+      )}
+    >
       <CardHeader>
         {headerContent}
         <CardTitle className={titleClassName}>{title}</CardTitle>

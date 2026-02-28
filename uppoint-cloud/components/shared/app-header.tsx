@@ -15,7 +15,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ locale, dictionary }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-40">
       <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
         <Link
           href={withLocale("/login", locale)}

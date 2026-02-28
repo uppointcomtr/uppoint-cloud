@@ -1,5 +1,138 @@
 # Changelog
 
+## 2026-02-28 (Auth hero eyebrow text changed to CLOUD)
+
+### Changed
+- Updated auth right-panel eyebrow label from `UPPOINT CLOUD` to `CLOUD` for both TR and EN locale dictionaries.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth hero brand text styling improved)
+
+### Changed
+- Improved right-panel hero brand block on auth pages:
+  - added white Uppoint logo in the overlay brand row
+  - increased and refined `UPPOINT CLOUD` label styling
+  - applied subtle glass-style container for better readability over the image
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth left panel controls simplified and top-aligned)
+
+### Changed
+- Removed theme toggle button from auth split layout controls.
+- Kept only locale switcher in the left panel.
+- Moved left panel alignment from centered to top-aligned.
+- Updated locale switcher placement to be left-aligned at the top of the left panel.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth pages switched to full-screen two-panel layout)
+
+### Changed
+- Removed card-like outer container from auth split shell and switched to full-screen two-panel layout.
+- Left auth panel now spans full height with a clean surface; right panel remains full-bleed hero image on desktop and hidden on mobile.
+- Added `surface` mode support to `AuthCard` and set login/register flows to `plain` so auth area is no longer rendered as a standalone card block.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth pages remove global navbar and move controls into left panel)
+
+### Changed
+- Removed global localized navbar rendering from `app/[locale]/layout.tsx` to keep auth pages strictly two-pane.
+- Moved locale switcher and theme toggle from top navbar into the auth left panel (`AuthSplitShell`), above the login/register cards.
+- Removed auth shell header-offset spacing (`-mt-16`, header-specific top padding) since navbar is no longer rendered.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth split layout updated with full-image right panel)
+
+### Changed
+- Updated auth split shell visual style to match requested layout:
+  - login/register content stays on the left panel
+  - right panel now renders a full-cover hero image on desktop
+  - right panel remains hidden on mobile for focused form flow
+- Downloaded and added a dedicated auth-side hero image:
+  - source: Unsplash
+  - file: `public/images/auth/auth-side-hero.jpg`
+- Added subtle dark overlay + lightweight dot texture on top of the hero image to keep overlay text readable.
+- Kept existing localized auth panel copy and trust badges over the image.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth split layout and subtle textured background)
+
+### Changed
+- Implemented split auth layout for localized login/register pages:
+  - auth form card remains on the left
+  - brand/trust panel is rendered on the right for desktop
+  - right panel is hidden on mobile
+- Added localized auth side-panel content (TR default, EN secondary):
+  - short brand copy
+  - trust badges (`7/24 destek`, `Güvenli altyapı`, etc.)
+  - concise highlight rows
+- Updated auth page background treatment with low-opacity gradient + subtle texture/pattern to reduce empty-space feel without visual noise.
+- Kept navbar container transparent so page background remains visible behind header area.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
+## 2026-02-28 (Auth pages brand motif background)
+
+### Changed
+- Added a subtle brand-motif background layer for localized login and register pages to reduce empty visual space while preserving readability.
+- Applied subtle radial dotted texture motif placements at auth page corners for stronger brand consistency.
+- Kept forgot-password and reset-password pages unchanged for focused flow consistency.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Auth flow UX polish and emerald theme tokens)
 
 ### Changed
