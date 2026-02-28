@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-02-28 (Login form UI: ikon bilgi kartları ve büyük OTP input)
+
+### Changed
+- `login-form.tsx`: E-Posta şifre adımında hesap bilgi kartına `Mail` ikonu eklendi.
+- `login-form.tsx`: Telefon şifre adımında hesap bilgi kartına `Smartphone` ikonu eklendi.
+- `login-form.tsx`: E-Posta OTP adımı `FloatingInput` kaldırıldı; büyük monospace kod girişi (`font-mono text-2xl tracking-[0.4em]`, `border-2`, `py-3.5`) ile değiştirildi.
+- `login-form.tsx`: Telefon OTP adımı aynı büyük monospace input ile değiştirildi.
+
+### Risk / Rollback
+- Saf görsel değişiklik; form mantığı ve OTP doğrulama akışı etkilenmedi. Rollback: FloatingInput geri yükle, ikon konteyner kaldır.
+
+### Verification
+- `npm run lint` -> ✓
+- `npx tsc --noEmit` -> ✓
+- `npm test` -> 29/29 ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Login upgraded: email/phone tabs with OTP-gated sign-in)
 
 ### Changed

@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 
+import { Clock, Mail, Smartphone } from "lucide-react";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floating-input";
@@ -23,7 +25,7 @@ import { ForgotPasswordModal } from "./forgot-password-modal";
 
 type LoginMode = "email" | "phone";
 type EmailStep = "identifier" | "password" | "otp";
-type PhoneStep = "identifier" | "otp";
+type PhoneStep = "identifier" | "password" | "otp";
 
 interface LoginFormProps {
   locale: Locale;
@@ -86,8 +88,9 @@ export function LoginForm({
   const [phoneStep, setPhoneStep] = useState<PhoneStep>("identifier");
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [phonePassword, setPhonePassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
 
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -138,7 +141,8 @@ export function LoginForm({
     setNowTimestamp(0);
     setEmailStep("identifier");
     setPhoneStep("identifier");
-    setPassword("");
+    setEmailPassword("");
+    setPhonePassword("");
   }
 
   async function signInWithToken(loginToken: string) {
@@ -172,7 +176,7 @@ export function LoginForm({
     setSubmitInfo(null);
 
     const credentialSchema = getLoginSchema(locale);
-    const parsed = credentialSchema.safeParse({ email, password });
+    const parsed = credentialSchema.safeParse({ email, password: emailPassword });
 
     if (!parsed.success) {
       setSubmitError(parsed.error.issues[0]?.message ?? dictionary.errors.unavailable);
@@ -280,9 +284,15 @@ export function LoginForm({
     setSubmitInfo(null);
 
     const parsedPhone = getPhoneLoginSchema(locale).safeParse({ phone });
+    const parsedPassword = getLoginSchema(locale).shape.password.safeParse(phonePassword);
 
     if (!parsedPhone.success) {
       setSubmitError(parsedPhone.error.issues[0]?.message ?? validation.phoneFormat);
+      return;
+    }
+
+    if (!parsedPassword.success) {
+      setSubmitError(parsedPassword.error.issues[0]?.message ?? dictionary.errors.invalidCredentials);
       return;
     }
 
@@ -296,6 +306,7 @@ export function LoginForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: parsedPhone.data.phone,
+          password: parsedPassword.data,
           locale,
         }),
       });
@@ -382,6 +393,11 @@ export function LoginForm({
     await signInWithToken(payload.data.loginToken);
   }
 
+  const currentStepIndex =
+    mode === "email"
+      ? emailStep === "identifier" ? 0 : emailStep === "password" ? 1 : 2
+      : phoneStep === "identifier" ? 0 : phoneStep === "password" ? 1 : 2;
+
   const activeStepLabel =
     mode === "email"
       ? emailStep === "identifier"
@@ -391,7 +407,13 @@ export function LoginForm({
           : dictionary.steps.otp
       : phoneStep === "identifier"
         ? dictionary.steps.identifier
-        : dictionary.steps.otp;
+        : phoneStep === "password"
+          ? dictionary.steps.password
+          : dictionary.steps.otp;
+
+  const isOtpStep =
+    (mode === "email" && emailStep === "otp") ||
+    (mode === "phone" && phoneStep === "otp");
 
   return (
     <AuthCard
@@ -412,42 +434,68 @@ export function LoginForm({
       }
     >
       <div className="space-y-4">
-        <div className="relative grid grid-cols-2 rounded-lg border border-border/60 bg-muted/30 p-1">
+        {/* Mode tabs */}
+        <div className="relative grid grid-cols-2 rounded-xl border border-border/60 bg-muted/30 p-1">
           <span
             aria-hidden
             className={cn(
-              "absolute bottom-1 left-1 top-1 w-[calc(50%-0.25rem)] rounded-md bg-background shadow-sm transition-transform duration-300",
+              "absolute bottom-1 left-1 top-1 w-[calc(50%-0.25rem)] rounded-lg bg-background shadow-sm transition-transform duration-300",
               mode === "phone" ? "translate-x-full" : "translate-x-0",
             )}
           />
-
           <button
             type="button"
             className={cn(
-              "relative z-10 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "relative z-10 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               mode === "email" ? "text-foreground" : "text-muted-foreground",
             )}
             onClick={() => resetFlowState("email")}
           >
+            <Mail className="h-3.5 w-3.5" />
             {dictionary.tabs.email}
           </button>
           <button
             type="button"
             className={cn(
-              "relative z-10 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "relative z-10 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
               mode === "phone" ? "text-foreground" : "text-muted-foreground",
             )}
             onClick={() => resetFlowState("phone")}
           >
+            <Smartphone className="h-3.5 w-3.5" />
             {dictionary.tabs.phone}
           </button>
         </div>
 
-        <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-2.5 text-sm font-medium text-muted-foreground">
-          {activeStepLabel}
-          {countdownSeconds !== null && ((mode === "email" && emailStep === "otp") || (mode === "phone" && phoneStep === "otp")) ? (
-            <span className="ml-2 text-foreground">{dictionary.countdownPrefix} {formatCountdown(countdownSeconds)}</span>
-          ) : null}
+        {/* Step indicator */}
+        <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+            {currentStepIndex + 1}
+          </div>
+          <span className="flex-1 text-sm font-semibold text-foreground">{activeStepLabel}</span>
+          {isOtpStep && countdownSeconds !== null ? (
+            <p className={cn(
+              "flex items-center gap-1 text-xs",
+              isCodeExpired ? "font-medium text-destructive" : "text-muted-foreground",
+            )}>
+              <Clock className="h-3 w-3 shrink-0" />
+              {formatCountdown(countdownSeconds)}
+            </p>
+          ) : (
+            <div className="flex items-center gap-1">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all duration-300",
+                    i === currentStepIndex ? "w-4 bg-primary" :
+                    i < currentStepIndex  ? "w-1.5 bg-primary/50" :
+                                            "w-1.5 bg-muted-foreground/20",
+                  )}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {submitError ? (
@@ -497,11 +545,16 @@ export function LoginForm({
 
             {emailStep === "password" ? (
               <>
-                <div className="rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {dictionary.accountPrefix}
-                  </p>
-                  <p className="mt-1 break-all text-sm font-semibold text-foreground">{email}</p>
+                <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Mail className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {dictionary.accountPrefix}
+                    </p>
+                    <p className="truncate text-sm font-semibold text-foreground">{email}</p>
+                  </div>
                 </div>
 
                 <FloatingInput
@@ -509,8 +562,8 @@ export function LoginForm({
                   type="password"
                   label={dictionary.fields.password}
                   autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  value={emailPassword}
+                  onChange={(event) => setEmailPassword(event.target.value)}
                 />
 
                 <button
@@ -539,7 +592,7 @@ export function LoginForm({
                     className="w-full"
                     onClick={() => {
                       setSubmitError(null);
-                      setPassword("");
+                      setEmailPassword("");
                       setEmailStep("identifier");
                     }}
                   >
@@ -551,15 +604,22 @@ export function LoginForm({
 
             {emailStep === "otp" ? (
               <>
-                <FloatingInput
-                  id="email-otp"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  label={dictionary.fields.otp}
-                  value={otpCode}
-                  onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                />
+                <div className="space-y-1.5">
+                  <label htmlFor="email-otp" className="text-xs font-medium text-muted-foreground">
+                    {dictionary.fields.otp}
+                  </label>
+                  <input
+                    id="email-otp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    placeholder="••••••"
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="w-full rounded-lg border-2 border-input bg-muted/20 py-3.5 text-center font-mono text-2xl tracking-[0.4em] text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-input/20"
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Button
@@ -604,25 +664,90 @@ export function LoginForm({
                 <Button
                   type="button"
                   className="w-full"
-                  disabled={isSubmitting}
-                  onClick={startPhoneChallenge}
+                  onClick={() => {
+                    setSubmitError(null);
+                    const result = getPhoneLoginSchema(locale).shape.phone.safeParse(phone);
+
+                    if (!result.success) {
+                      setSubmitError(result.error.issues[0]?.message ?? validation.phoneFormat);
+                      return;
+                    }
+
+                    setPhone(result.data);
+                    setPhoneStep("password");
+                  }}
                 >
-                  {isSubmitting ? dictionary.sendCodeLoading : dictionary.sendCodeIdle}
+                  {dictionary.nextIdle}
                 </Button>
+              </>
+            ) : null}
+
+            {phoneStep === "password" ? (
+              <>
+                <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Smartphone className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {dictionary.accountPrefix}
+                    </p>
+                    <p className="truncate text-sm font-semibold text-foreground">{phone}</p>
+                  </div>
+                </div>
+
+                <FloatingInput
+                  id="phone-password"
+                  type="password"
+                  label={dictionary.fields.password}
+                  autoComplete="current-password"
+                  value={phonePassword}
+                  onChange={(event) => setPhonePassword(event.target.value)}
+                />
+
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={isSubmitting}
+                    onClick={startPhoneChallenge}
+                  >
+                    {isSubmitting ? dictionary.sendCodeLoading : dictionary.sendCodeIdle}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setSubmitError(null);
+                      setPhonePassword("");
+                      setPhoneStep("identifier");
+                    }}
+                  >
+                    {dictionary.backIdle}
+                  </Button>
+                </div>
               </>
             ) : null}
 
             {phoneStep === "otp" ? (
               <>
-                <FloatingInput
-                  id="phone-otp"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  label={dictionary.fields.otp}
-                  value={otpCode}
-                  onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                />
+                <div className="space-y-1.5">
+                  <label htmlFor="phone-otp" className="text-xs font-medium text-muted-foreground">
+                    {dictionary.fields.otp}
+                  </label>
+                  <input
+                    id="phone-otp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    placeholder="••••••"
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="w-full rounded-lg border-2 border-input bg-muted/20 py-3.5 text-center font-mono text-2xl tracking-[0.4em] text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-input/20"
+                  />
+                </div>
 
                 <div className="space-y-2">
                   <Button
@@ -642,7 +767,7 @@ export function LoginForm({
                       setChallengeId(null);
                       setOtpCode("");
                       setExpiresAtTimestamp(null);
-                      setPhoneStep("identifier");
+                      setPhoneStep("password");
                     }}
                   >
                     {dictionary.backIdle}
