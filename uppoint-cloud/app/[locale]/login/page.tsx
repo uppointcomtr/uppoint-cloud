@@ -25,7 +25,12 @@ export default async function LoginPage({ params }: LoginPageProps) {
 
   return (
     <AuthSplitShell locale={locale} header={dictionary.header} panel={dictionary.authShell}>
-      <LoginForm locale={locale} dictionary={dictionary.login} />
+      <LoginForm
+        locale={locale}
+        dictionary={dictionary.login}
+        passwordRecoveryDictionary={dictionary.passwordRecovery}
+        validation={dictionary.validation}
+      />
     </AuthSplitShell>
   );
 }

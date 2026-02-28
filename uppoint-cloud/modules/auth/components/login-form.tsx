@@ -16,19 +16,29 @@ import type { Dictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 
 import { AuthCard } from "./auth-card";
+import { ForgotPasswordModal } from "./forgot-password-modal";
 
 interface LoginFormProps {
   locale: Locale;
   dictionary: Dictionary["login"];
+  passwordRecoveryDictionary: Dictionary["passwordRecovery"];
+  validation: Dictionary["validation"];
 }
 
-export function LoginForm({ locale, dictionary }: LoginFormProps) {
+export function LoginForm({
+  locale,
+  dictionary,
+  passwordRecoveryDictionary,
+  validation,
+}: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? withLocale("/dashboard", locale);
   const [step, setStep] = useState<"identifier" | "password">("identifier");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
+  const [recoveryModalVersion, setRecoveryModalVersion] = useState(0);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(getLoginSchema(locale)),
@@ -145,12 +155,16 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
               ) : null}
             </div>
 
-            <Link
-              href={withLocale("/forgot-password", locale)}
+            <button
+              type="button"
+              onClick={() => {
+                setRecoveryModalVersion((current) => current + 1);
+                setIsRecoveryModalOpen(true);
+              }}
               className="inline-block text-sm text-primary underline-offset-4 hover:underline"
             >
               {dictionary.forgotPasswordLink}
-            </Link>
+            </button>
           </>
         )}
 
@@ -184,6 +198,18 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
           </div>
         )}
       </form>
+
+      {isRecoveryModalOpen ? (
+        <ForgotPasswordModal
+          key={recoveryModalVersion}
+          open={isRecoveryModalOpen}
+          onOpenChange={setIsRecoveryModalOpen}
+          locale={locale}
+          dictionary={passwordRecoveryDictionary}
+          validation={validation}
+          initialEmail={form.getValues("email")}
+        />
+      ) : null}
     </AuthCard>
   );
 }

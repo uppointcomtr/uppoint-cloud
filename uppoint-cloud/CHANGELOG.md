@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-02-28 (Forgot-password popup flow with email+SMS verification)
+
+### Changed
+- Replaced standalone forgot/reset pages with a popup-based recovery flow inside login.
+- Added shared popup foundation component for consistent modal styling:
+  - `components/shared/app-modal.tsx`
+- Implemented multi-step password recovery modal:
+  - step 1: e-mail code request
+  - step 2: e-mail code verification with 3-minute countdown
+  - step 3: SMS code verification with 3-minute countdown
+  - step 4: new password + confirm password
+- Added new password reset challenge backend service:
+  - `modules/auth/server/password-reset-challenge.ts`
+- Added new API routes:
+  - `POST /api/auth/forgot-password/challenge/start`
+  - `POST /api/auth/forgot-password/challenge/verify-email`
+  - `POST /api/auth/forgot-password/challenge/verify-sms`
+  - `POST /api/auth/forgot-password/challenge/complete`
+- Added Prisma model + migration for multi-step challenge state:
+  - `PasswordResetChallenge`
+- Added TR/EN localization keys for the popup flow.
+- Redirected `/forgot-password` and `/reset-password` pages to localized login; recovery is now popup-only.
+
+### Verification
+- `npm run prisma:generate` -> ✓
+- `npm run prisma:migrate:deploy` -> ✓
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Auth hero source standardized to auth-side-hero)
 
 ### Changed

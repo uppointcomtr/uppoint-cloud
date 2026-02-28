@@ -1,8 +1,5 @@
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
-import { ForgotPasswordRequestForm } from "@/modules/auth/components/forgot-password-request-form";
-import { getDictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 import { getLocaleFromParams } from "@/modules/i18n/server";
 
@@ -14,17 +11,5 @@ interface ForgotPasswordPageProps {
 
 export default async function ForgotPasswordPage({ params }: ForgotPasswordPageProps) {
   const locale = await getLocaleFromParams(params);
-  const session = await auth();
-
-  if (session?.user) {
-    redirect(withLocale("/dashboard", locale));
-  }
-
-  const dictionary = getDictionary(locale);
-
-  return (
-    <main className="flex min-h-[calc(100vh-4rem)] w-full items-center justify-center px-6 py-16">
-      <ForgotPasswordRequestForm locale={locale} dictionary={dictionary.forgotPassword} />
-    </main>
-  );
+  redirect(withLocale("/login", locale));
 }

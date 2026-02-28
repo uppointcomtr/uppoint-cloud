@@ -18,6 +18,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   passwordResetTokens PasswordResetToken[]
+  passwordResetChallenges PasswordResetChallenge[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -73,4 +74,29 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model PasswordResetChallenge {
+  id                 String    @id @default(cuid())
+  userId             String
+  emailCodeHash      String
+  emailCodeVerifiedAt DateTime?
+  emailCodeExpiresAt DateTime
+  emailCodeAttempts  Int       @default(0)
+  smsCodeHash        String?
+  smsCodeVerifiedAt  DateTime?
+  smsCodeExpiresAt   DateTime?
+  smsCodeAttempts    Int       @default(0)
+  resetTokenHash     String?
+  resetTokenExpiresAt DateTime?
+  resetTokenUsedAt   DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([emailCodeExpiresAt])
+  @@index([smsCodeExpiresAt])
+  @@index([resetTokenExpiresAt])
 }

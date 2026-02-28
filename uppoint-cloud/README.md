@@ -7,15 +7,18 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
 - Authentication MVP
   - Registration (`/:locale/register`)
   - Login (`/:locale/login`)
-  - Forgot password request (`/:locale/forgot-password`)
-  - Reset password (`/:locale/reset-password?token=...`)
+  - Modal-based forgot-password flow inside login:
+    - email verification code (3 min countdown)
+    - SMS verification code (3 min countdown)
+    - new password + confirm password step
   - Logout (dashboard action)
   - Protected dashboard placeholder (`/:locale/dashboard`)
   - Route protection via proxy + server-side checks
   - Database-backed session persistence (Auth.js + Prisma adapter)
   - Registration notification hooks for SMTP email + Verimor SMS
-  - Token-based password reset via email link
-  - Root entry (`/` and `/:locale`) redirects directly to localized login page
+  - Token-based password reset completion after dual verification
+- Root entry (`/` and `/:locale`) redirects directly to localized login page
+- Legacy `/forgot-password` and `/reset-password` pages now redirect to localized login; recovery is popup-only
 - Localization foundation
   - Primary/default locale: Turkish (`tr`)
   - Secondary locale: English (`en`)
@@ -80,6 +83,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Login credential verification: [modules/auth/server/authenticate-user.ts](/opt/uppoint-cloud/modules/auth/server/authenticate-user.ts)
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
 - Password reset service: [modules/auth/server/password-reset.ts](/opt/uppoint-cloud/modules/auth/server/password-reset.ts)
+- Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
@@ -101,6 +105,7 @@ npm run dev
 ## Verification
 
 ```bash
+npm run prisma:migrate:deploy
 npm run lint
 npm run typecheck
 npm run test
