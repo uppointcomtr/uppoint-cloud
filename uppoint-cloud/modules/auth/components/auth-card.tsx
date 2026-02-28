@@ -19,7 +19,7 @@ interface AuthCardProps {
 
 export function AuthCard({ title, description, footer, children, headerContent }: AuthCardProps) {
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md bg-card/80 shadow-2xl backdrop-blur-md">
       <CardHeader>
         {headerContent}
         <CardTitle>{title}</CardTitle>

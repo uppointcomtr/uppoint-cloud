@@ -93,6 +93,7 @@ export const enMessages = {
     passwordSymbol: "Password must include a symbol",
     nameMin: "Name must be at least 3 characters",
     loginPasswordRequired: "Password is required",
+    passwordHint: "Password must be at least 12 characters and include an uppercase letter, lowercase letter, number, and symbol.",
     passwordStrengthWeak: "Weak",
     passwordStrengthMedium: "Medium",
     passwordStrengthStrong: "Strong",

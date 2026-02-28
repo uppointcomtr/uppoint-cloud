@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-02-28 (Register form: info icon on password hint)
+
+### Changed
+- Password hint now prefixed with Lucide `Info` icon (`h-3 w-3 mt-0.5 shrink-0`) for visual clarity
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
+## 2026-02-28 (Register form: password requirements hint)
+
+### Added
+- Static `passwordHint` text shown below the password strength bar on the register form
+- `validation.passwordHint` key in TR and EN dictionaries
+- TR: "Şifre en az 12 karakter ve büyük harf, küçük harf, rakam ile sembol içermelidir."
+- EN: "Password must be at least 12 characters and include an uppercase letter, lowercase letter, number, and symbol."
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
+## 2026-02-28 (Auth pages: fix blob visibility — add isolate to main)
+
+### Fixed
+- Blobs were not visible: `<main>` lacked a stacking context, so `-z-10` blobs fell behind the page's opaque white background
+- Added `isolate` class (`isolation: isolate`) to `<main>` on both login and register pages so blobs render correctly above the page background and below the card
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
+## 2026-02-28 (Auth pages: gradient blob background + glassmorphism card)
+
+### Changed
+- Login and register pages: added 3 decorative gradient blobs (indigo/violet/sky, `blur-[120px]`, `pointer-events-none aria-hidden -z-10`)
+- `AuthCard`: `bg-card/80 backdrop-blur-md shadow-2xl` for frosted glass effect
+- Login/register `<main>`: `min-h-[calc(100vh-3.5rem)]` → `min-h-[calc(100vh-4rem)]` (aligned with h-16 header)
+- Login blob arrangement: indigo top-left, violet bottom-right, sky center
+- Register blob arrangement: violet top-left, indigo bottom-right, sky upper-right
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
 ## 2026-02-28 (AppHeader: logo 180px wide, fix layout jump)
 
 ### Changed

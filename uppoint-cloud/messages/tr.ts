@@ -94,6 +94,7 @@ export const trMessages = {
     passwordSymbol: "Şifre en az bir sembol içermeli",
     nameMin: "Ad soyad en az 3 karakter olmalı",
     loginPasswordRequired: "Şifre zorunludur",
+    passwordHint: "Şifre en az 12 karakter ve büyük harf, küçük harf, rakam ile sembol içermelidir.",
     passwordStrengthWeak: "Zayıf",
     passwordStrengthMedium: "Orta",
     passwordStrengthStrong: "Güçlü",

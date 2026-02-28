@@ -8,6 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useForm, useWatch, Controller, type Resolver } from "react-hook-form";
 
+import { Info } from "lucide-react";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -271,6 +273,10 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
                   </span>
                 </div>
               )}
+              <p className="flex items-start gap-1 text-xs text-muted-foreground">
+                <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                {validation.passwordHint}
+              </p>
             </div>
           </>
         )}
