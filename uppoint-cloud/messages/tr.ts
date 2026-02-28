@@ -33,7 +33,7 @@ export const trMessages = {
     footerPrefix: "Uppoint Cloud'ta yeni misiniz?",
     footerLink: "Hesap oluştur",
     fields: {
-      email: "E-posta veya telefon numarası",
+      email: "E-Posta",
       password: "Şifre",
     },
     nextIdle: "Sonraki",

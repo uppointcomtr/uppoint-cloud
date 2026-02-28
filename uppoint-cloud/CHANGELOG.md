@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-02-28 (TR login email label text update)
+
+### Changed
+- Updated Turkish login first-step identifier label from "E-posta veya telefon numarası" to "E-Posta".
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Auth pages background effects removed)
 
 ### Changed
