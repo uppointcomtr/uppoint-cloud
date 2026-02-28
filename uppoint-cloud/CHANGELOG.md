@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-02-28 (Auth pages background effects removed)
+
+### Changed
+- Removed decorative blob background effect layers from localized login and register pages.
+- Simplified auth page `<main>` wrappers by dropping effect-related positioning classes (`relative`, `isolate`, `overflow-hidden`).
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Auth account/email summary UI refinement)
 
 ### Changed
