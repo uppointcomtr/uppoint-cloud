@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-02-28 (Theme Compliance and UX Controls)
+
+### Added
+- Theme provider with persisted user preference (`light`/`dark`) and default light behavior.
+- Theme initialization script to prevent inconsistent first paint between saved theme and rendered UI.
+- Shared locale header with theme toggle and locale switch controls.
+- Manual dark/light visual smoke checklist for TR/EN auth flows in `README.md`.
+
+### Changed
+- Updated localized layouts to include shared header controls.
+- Refined auth/dashboard page shells to account for header space in viewport layout.
+- Removed hardcoded destructive button text color in favor of theme token usage.
+- Extended design tokens with `destructive-foreground` for consistent contrast across themes.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
 ## 2026-02-28 (Production Middleware Session Fix)
 
 ### Changed

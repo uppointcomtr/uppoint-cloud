@@ -23,7 +23,7 @@ export default async function RegisterPage({ params }: RegisterPageProps) {
   const dictionary = getDictionary(locale);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center px-6 py-16">
+    <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl items-center justify-center px-6 py-16">
       <RegisterForm
         locale={locale}
         dictionary={dictionary.register}

@@ -3,6 +3,18 @@ export const enMessages = {
     title: "Uppoint Cloud",
     description: "Production-oriented cloud platform foundation for cloud.uppoint.com.tr",
   },
+  header: {
+    brand: "Uppoint Cloud",
+    home: "Home",
+    locales: {
+      tr: "TR",
+      en: "EN",
+    },
+    theme: {
+      switchToDark: "Dark theme",
+      switchToLight: "Light theme",
+    },
+  },
   home: {
     domain: "cloud.uppoint.com.tr",
     title: "Authentication MVP Foundation",

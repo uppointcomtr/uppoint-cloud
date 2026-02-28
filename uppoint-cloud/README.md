@@ -17,6 +17,10 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Secondary locale: English (`en`)
   - Dedicated localization modules under `modules/i18n` and `messages`
   - Locale-aware routing and redirects (`/tr` default)
+- Theme foundation
+  - Light theme as default
+  - Dark theme with persisted user preference (`localStorage`)
+  - Shared header UI includes locale switcher and theme toggle
 - Initial production serving setup
   - systemd service definition
   - Nginx reverse proxy configs (bootstrap HTTP + TLS)
@@ -69,6 +73,9 @@ Create and maintain `.env` with real values (do not commit it):
 - Locale configuration: [modules/i18n/config.ts](/opt/uppoint-cloud/modules/i18n/config.ts)
 - Locale path helpers: [modules/i18n/paths.ts](/opt/uppoint-cloud/modules/i18n/paths.ts)
 - Dictionaries: [messages/tr.ts](/opt/uppoint-cloud/messages/tr.ts), [messages/en.ts](/opt/uppoint-cloud/messages/en.ts)
+- Theme provider: [modules/theme/theme-provider.tsx](/opt/uppoint-cloud/modules/theme/theme-provider.tsx)
+- Theme config/script: [modules/theme/config.ts](/opt/uppoint-cloud/modules/theme/config.ts), [modules/theme/theme-script.ts](/opt/uppoint-cloud/modules/theme/theme-script.ts)
+- Shared header and controls: [components/shared/app-header.tsx](/opt/uppoint-cloud/components/shared/app-header.tsx), [components/shared/theme-toggle.tsx](/opt/uppoint-cloud/components/shared/theme-toggle.tsx), [components/shared/locale-switcher.tsx](/opt/uppoint-cloud/components/shared/locale-switcher.tsx)
 
 ## Local development
 
@@ -86,6 +93,21 @@ npm run typecheck
 npm run test
 npm run build
 ```
+
+## Visual smoke checklist (light/dark, TR/EN auth)
+
+Run this checklist after deployment or UI-affecting changes:
+
+1. Open `/tr/login` in a private window and confirm default theme is light.
+2. Switch to dark theme using the header toggle and refresh the page.
+3. Confirm dark theme persists after refresh on `/tr/login`.
+4. Navigate to `/tr/register` and verify form fields, labels, buttons, and alerts remain readable in dark theme.
+5. Switch locale to EN from header and confirm `/en/register` loads with dark theme still active.
+6. Navigate to `/en/login` and verify layout consistency and contrast in dark theme.
+7. Toggle back to light theme in EN and refresh `/en/login`; confirm persistence.
+8. Sign in and verify `/tr/dashboard` and `/en/dashboard` render correctly in both themes.
+9. Trigger an auth error state (invalid credentials) in TR and EN and verify alert contrast/readability in both themes.
+10. Verify focus rings are visible on keyboard navigation for all auth controls in both themes.
 
 ## Production run on `/opt/uppoint-cloud`
 

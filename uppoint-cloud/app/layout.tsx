@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { defaultLocale } from "@/modules/i18n/config";
+import { themeInitScript } from "@/modules/theme/theme-script";
+import { ThemeProvider } from "@/modules/theme/theme-provider";
 
 import "./globals.css";
 
@@ -26,11 +28,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang={defaultLocale}>
+    <html lang={defaultLocale} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

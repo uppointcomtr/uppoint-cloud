@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { AppHeader } from "@/components/shared/app-header";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { locales } from "@/modules/i18n/config";
 import { getLocaleFromParams } from "@/modules/i18n/server";
@@ -25,7 +26,13 @@ export async function generateMetadata({ params }: Omit<LocaleLayoutProps, "chil
 }
 
 export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
-  await getLocaleFromParams(params);
+  const locale = await getLocaleFromParams(params);
+  const dictionary = getDictionary(locale);
 
-  return children;
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <AppHeader locale={locale} dictionary={dictionary.header} />
+      {children}
+    </div>
+  );
 }

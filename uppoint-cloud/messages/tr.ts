@@ -3,6 +3,18 @@ export const trMessages = {
     title: "Uppoint Cloud",
     description: "cloud.uppoint.com.tr icin uretim odakli bulut platform temeli",
   },
+  header: {
+    brand: "Uppoint Cloud",
+    home: "Ana sayfa",
+    locales: {
+      tr: "TR",
+      en: "EN",
+    },
+    theme: {
+      switchToDark: "Koyu tema",
+      switchToLight: "Acik tema",
+    },
+  },
   home: {
     domain: "cloud.uppoint.com.tr",
     title: "Kimlik Dogrulama MVP Temeli",
