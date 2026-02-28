@@ -12,7 +12,7 @@ import { Info } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FloatingInput } from "@/components/ui/floating-input";
 import { Label } from "@/components/ui/label";
 import { getRegisterSchema, type RegisterInput } from "@/modules/auth/schemas/auth-schemas";
 import type { Locale } from "@/modules/i18n/config";
@@ -195,10 +195,10 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
         {step === "email" ? (
           <div className="space-y-2">
-            <Label htmlFor="email">{dictionary.fields.email}</Label>
-            <Input
+            <FloatingInput
               id="email"
               type="email"
+              label={dictionary.fields.email}
               autoComplete="email"
               {...form.register("email")}
             />
@@ -214,8 +214,12 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="name">{dictionary.fields.name}</Label>
-              <Input id="name" autoComplete="name" {...form.register("name")} />
+              <FloatingInput
+                id="name"
+                label={dictionary.fields.name}
+                autoComplete="name"
+                {...form.register("name")}
+              />
               {form.formState.errors.name ? (
                 <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
               ) : null}
@@ -241,10 +245,10 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">{dictionary.fields.password}</Label>
-              <Input
+              <FloatingInput
                 id="password"
                 type="password"
+                label={dictionary.fields.password}
                 autoComplete="new-password"
                 {...form.register("password")}
               />

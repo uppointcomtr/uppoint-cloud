@@ -10,8 +10,7 @@ import { useForm } from "react-hook-form";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FloatingInput } from "@/components/ui/floating-input";
 import { getLoginSchema, type LoginInput } from "@/modules/auth/schemas/auth-schemas";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
@@ -130,10 +129,10 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
         {step === "identifier" ? (
           <div className="space-y-2">
-            <Label htmlFor="email">{dictionary.fields.email}</Label>
-            <Input
+            <FloatingInput
               id="email"
               type="email"
+              label={dictionary.fields.email}
               autoComplete="email"
               {...form.register("email")}
             />
@@ -149,10 +148,10 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">{dictionary.fields.password}</Label>
-              <Input
+              <FloatingInput
                 id="password"
                 type="password"
+                label={dictionary.fields.password}
                 autoComplete="current-password"
                 {...form.register("password")}
               />

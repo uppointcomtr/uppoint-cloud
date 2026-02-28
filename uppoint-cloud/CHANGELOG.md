@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-02-28 (Auth forms: floating label inputs)
+
+### Added
+- `FloatingInput` component (`components/ui/floating-input.tsx`): floating label pattern — label sits inside the input at center, floats to the top border on focus or when a value is present; uses `useState` for focus tracking + `peer-placeholder-shown` for value detection; styled to match shadcn `Input` tokens
+
+### Changed
+- `login-form.tsx`: email and password fields now use `FloatingInput` (removed `Label + Input` pairs)
+- `register-form.tsx`: email, name, and password fields now use `FloatingInput`; phone field keeps `Label + PhoneInput` (composite component)
+
+### Verification
+- `npm run lint` → ✓
+- `npx tsc --noEmit` → ✓
+- `npm test` → 16/16 passed ✓
+- `npm run build` → ✓
+- `systemctl restart uppoint-cloud.service` → active ✓
+
+---
+
+
 ## 2026-02-28 (Register form: info icon on password hint)
 
 ### Changed
