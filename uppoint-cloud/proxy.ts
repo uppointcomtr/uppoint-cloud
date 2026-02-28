@@ -38,7 +38,7 @@ export async function proxy(request: NextRequest) {
 
   if (!locale) {
     const destination = request.nextUrl.clone();
-    destination.pathname = withLocale(pathname, defaultLocale);
+    destination.pathname = withLocale(pathname === "/" ? "/login" : pathname, defaultLocale);
     return NextResponse.redirect(destination);
   }
 

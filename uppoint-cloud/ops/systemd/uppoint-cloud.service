@@ -11,6 +11,9 @@ WorkingDirectory=/opt/uppoint-cloud
 Environment=NODE_ENV=production
 Environment=PORT=3000
 EnvironmentFile=-/etc/uppoint-cloud.env
+ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next
+ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache
+ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache/images
 ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3000
 Restart=always
 RestartSec=5
@@ -19,7 +22,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/opt/uppoint-cloud/.next
+ReadWritePaths=/opt/uppoint-cloud/.next /opt/uppoint-cloud/.next/cache /opt/uppoint-cloud/.next/cache/images
 
 [Install]
 WantedBy=multi-user.target

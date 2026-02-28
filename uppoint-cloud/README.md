@@ -12,6 +12,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Route protection via proxy + server-side checks
   - Database-backed session persistence (Auth.js + Prisma adapter)
   - Registration notification hooks for SMTP email + Verimor SMS
+  - Root entry (`/` and `/:locale`) redirects directly to localized login page
 - Localization foundation
   - Primary/default locale: Turkish (`tr`)
   - Secondary locale: English (`en`)
@@ -59,6 +60,13 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_SOURCE_ADDR`
 - `UPPOINT_SMS_VALID_FOR`
 - `UPPOINT_SMS_DATACODING`
+
+## Brand assets
+
+Store logo assets in `public/logo/` with these exact names for theme-aware header rendering:
+
+- `public/logo/uppoint-logo-black.webp` (used in light theme)
+- `public/logo/Uppoint-logo-wh.webp` (used in dark theme)
 
 ## Auth and i18n architecture (high level)
 

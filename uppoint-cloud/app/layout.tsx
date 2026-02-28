@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Uppoint Cloud",
-  description: "cloud.uppoint.com.tr icin uretim odakli bulut platform temeli",
+  description: "cloud.uppoint.com.tr için üretim odaklı bulut platform temeli",
 };
 
 export default function RootLayout({

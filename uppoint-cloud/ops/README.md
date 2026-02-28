@@ -30,6 +30,36 @@ AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
 ```
 
+### Safe deployment sequence (required)
+
+Use this sequence for every production deploy to avoid stale build/hash mismatches:
+
+```bash
+cd /opt/uppoint-cloud
+sudo systemctl stop uppoint-cloud.service
+mv .next ".next_backup_$(date +%s)" 2>/dev/null || true
+npm run build
+sudo chown -R www-data:www-data .next
+sudo systemctl daemon-reload
+sudo systemctl start uppoint-cloud.service
+```
+
+Mandatory post-deploy checks:
+
+```bash
+systemctl is-active uppoint-cloud.service
+curl -I https://cloud.uppoint.com.tr/tr/login
+CSS_PATH="$(curl -s https://cloud.uppoint.com.tr/tr/login | sed -n 's/.*href=\"\\(\\/_next\\/static\\/chunks\\/[^\" ]*\\.css\\)\".*/\\1/p' | head -n1)"
+curl -I "https://cloud.uppoint.com.tr${CSS_PATH}"
+journalctl -u uppoint-cloud.service -n 200 --no-pager | rg -n 'EACCES|Failed to write image to cache' || true
+```
+
+Expected results:
+
+- login route returns `200`
+- extracted CSS asset returns `200`
+- no permission/cache write errors in service logs
+
 ## 2. Nginx reverse proxy setup
 
 Bootstrap HTTP config (used before certificate issuance):

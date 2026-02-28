@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-02-28 (Production Stability Hardening)
+
+### Fixed
+- Resolved production rendering break caused by stale build artifacts and Next.js image cache permission errors.
+- Ensured root and locale entry flow remains login-first while preserving stable CSS delivery.
+
+### Changed
+- Updated logo rendering to `next/image` with `unoptimized` to avoid runtime optimizer cache write dependency for static local logo files.
+- Hardened systemd service with `ExecStartPre` directory initialization for `.next/cache/images` under `www-data`.
+- Expanded operational runbook with mandatory safe deploy sequence and post-deploy health checks.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- Runtime checks:
+  - `curl -I https://cloud.uppoint.com.tr/tr/login` => `200`
+  - CSS asset referenced by login page => `200`
+  - logo assets `/logo/uppoint-logo-black.webp` and `/logo/Uppoint-logo-wh.webp` => `200`
+
+## 2026-02-28 (Root Entry Redirect to Login)
+
+### Changed
+- Removed localized home landing behavior from root entry.
+- Updated `/` and `/{locale}` entry routes to redirect directly to `/{locale}/login`.
+- Aligned default first contact flow with authentication-first requirement.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+## 2026-02-28 (Theme-Aware Brand Logo Integration)
+
+### Changed
+- Updated shared app header to render theme-specific brand logos.
+- Light theme now uses `/logo/uppoint-logo-black.webp`.
+- Dark theme now uses `/logo/Uppoint-logo-wh.webp`.
+
+### Documentation
+- Added logo asset naming/placement requirements under `README.md`.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
 ## 2026-02-28 (Theme Compliance and UX Controls)
 
 ### Added
