@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-02-28 (Security: rate limiting + phone code parsing fix — audit findings #1 #3)
+
+### Changed
+- `prisma/schema.prisma`: `RateLimitAttempt` modeli eklendi (append-only, IP tabanlı rate limiting için).
+- Prisma migration uygulandı: `20260228180747_add_rate_limit_attempt`.
+- `lib/rate-limit.ts` oluşturuldu: `getClientIp()`, `checkRateLimit()`, `withRateLimit()` utilities. Probabilistic cleanup (%1 şans) tablo büyümesini önler.
+- Tüm 11 auth API route'una rate limiting eklendi:
+  - `/api/auth/register`: 5 / 10 dk
+  - `/api/auth/login/challenge/email/start`: 10 / 15 dk
+  - `/api/auth/login/challenge/email/verify`: 10 / 15 dk
+  - `/api/auth/login/challenge/phone/start`: 10 / 15 dk
+  - `/api/auth/login/challenge/phone/verify`: 10 / 15 dk
+  - `/api/auth/forgot-password/request`: 5 / 10 dk
+  - `/api/auth/forgot-password/challenge/start`: 5 / 10 dk
+  - `/api/auth/forgot-password/challenge/verify-email`: 10 / 15 dk
+  - `/api/auth/forgot-password/challenge/verify-sms`: 10 / 15 dk
+  - `/api/auth/forgot-password/challenge/complete`: 5 / 10 dk
+  - `/api/auth/forgot-password/reset`: 5 / 10 dk
+- `modules/auth/components/phone-input.tsx`: `SORTED_CODES` dizisi eklendi — `COUNTRY_CODES` uzun önekten kısa öneğe sıralandı. `+971` gibi uzun kodlar `+1` ile artık çakışmıyor.
+- **NOT**: Denetim raporu middleware.ts'in eksik olduğunu belirtti ancak incelemede `proxy.ts`'in zaten JWT tabanlı route koruması sağladığı görüldü (locale tespiti, secure cookie, callbackUrl dahil). Çift middleware oluşturulmadı.
+
+### Risk / Rollback
+- Rate limiting DB tablosuna yazar; yüksek trafik durumunda DB yüküne dikkat. Rollback: `withRateLimit` çağrılarını kaldır + tabloyu sil.
+- Destructive değil: yalnızca yeni tablo eklendi, mevcut tablolar değiştirilmedi.
+
+### Verification
+- `npm run lint` -> ✓
+- `npx tsc --noEmit` -> ✓
+- `npm test` -> 29/29 ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Dark theme palette refined to corporate black)
 
 ### Changed

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { fail, ok } from "@/lib/http/response";
+import { withRateLimit } from "@/lib/rate-limit";
 import {
   registerUser,
   RegisterUserError,
@@ -9,6 +10,10 @@ import {
 import { sendRegistrationNotifications } from "@/modules/auth/server/auth-notifications";
 
 export async function POST(request: Request) {
+  // Rate limit: 5 registration attempts per 10 minutes per IP
+  const rateLimitResponse = await withRateLimit("register", 5, 600);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let payload: unknown;
 
   try {

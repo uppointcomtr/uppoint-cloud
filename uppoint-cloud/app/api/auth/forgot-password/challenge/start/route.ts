@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { fail, ok } from "@/lib/http/response";
+import { withRateLimit } from "@/lib/rate-limit";
 import { startPasswordResetChallenge } from "@/modules/auth/server/password-reset-challenge";
 
 export async function POST(request: Request) {
+  // Rate limit: 5 attempts per 10 minutes per IP
+  const rateLimitResponse = await withRateLimit("forgot-password-challenge-start", 5, 600);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let payload: unknown;
 
   try {

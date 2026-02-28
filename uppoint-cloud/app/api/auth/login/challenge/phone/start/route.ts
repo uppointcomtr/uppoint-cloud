@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { fail, ok } from "@/lib/http/response";
+import { withRateLimit } from "@/lib/rate-limit";
 import {
   LoginChallengeError,
   startPhoneLoginChallenge,
 } from "@/modules/auth/server/login-challenge";
 
 export async function POST(request: Request) {
+  // Rate limit: 10 attempts per 15 minutes per IP
+  const rateLimitResponse = await withRateLimit("login-phone-start", 10, 900);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let payload: unknown;
 
   try {

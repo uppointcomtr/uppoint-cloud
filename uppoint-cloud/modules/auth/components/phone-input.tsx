@@ -28,8 +28,11 @@ const COUNTRY_CODES = [
 
 const DEFAULT_CODE = "+90";
 
+// Sort longest-first so "+971" is matched before "+1" (prefix overlap fix)
+const SORTED_CODES = [...COUNTRY_CODES].sort((a, b) => b.code.length - a.code.length);
+
 function parseValue(value: string): { countryCode: string; localNumber: string } {
-  for (const { code } of COUNTRY_CODES) {
+  for (const { code } of SORTED_CODES) {
     if (value.startsWith(code)) {
       return { countryCode: code, localNumber: value.slice(code.length) };
     }
