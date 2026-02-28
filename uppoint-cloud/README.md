@@ -107,6 +107,9 @@ npm run test
 npm run build
 ```
 
+Note: `npm run build` now automatically restarts `uppoint-cloud.service` when systemd and the service are available.
+Use `NEXT_SKIP_SERVICE_RESTART=1 npm run build` when you explicitly need to skip auto-restart.
+
 ## Visual smoke checklist (light/dark, TR/EN auth)
 
 Run this checklist after deployment or UI-affecting changes:

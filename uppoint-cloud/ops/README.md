@@ -10,6 +10,13 @@ npx prisma migrate deploy
 npm run build
 ```
 
+`npm run build` automatically restarts `uppoint-cloud.service` when available.
+If you need to keep the service stopped during a maintenance sequence, run:
+
+```bash
+NEXT_SKIP_SERVICE_RESTART=1 npm run build
+```
+
 Install the systemd service:
 
 ```bash
@@ -38,7 +45,7 @@ Use this sequence for every production deploy to avoid stale build/hash mismatch
 cd /opt/uppoint-cloud
 sudo systemctl stop uppoint-cloud.service
 mv .next ".next_backup_$(date +%s)" 2>/dev/null || true
-npm run build
+NEXT_SKIP_SERVICE_RESTART=1 npm run build
 sudo chown -R www-data:www-data .next
 sudo systemctl daemon-reload
 sudo systemctl start uppoint-cloud.service

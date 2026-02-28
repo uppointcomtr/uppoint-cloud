@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-02-28 (Build now auto-restarts Next.js service)
+
+### Changed
+- Updated `npm run build` to run `next build` and then automatically restart `uppoint-cloud.service` when systemd service is available.
+- Added `service:restart` npm script with safe detection and explicit restart status output.
+- Added `NEXT_SKIP_SERVICE_RESTART=1` bypass support for maintenance/deploy flows that intentionally keep the service stopped.
+- Updated deployment docs to reflect auto-restart behavior and the bypass command.
+- Increased login and register auth-card title size to `24px` (`text-2xl`) via reusable `AuthCard` title class support.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (Password reset flow connected end-to-end)
 
 ### Added
