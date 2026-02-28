@@ -30,6 +30,7 @@ export const trMessages = {
     title: "Oturum aç",
     description: "Uppoint Cloud uygulamasına devam edin.",
     accountPrefix: "Hesap",
+    forgotPasswordLink: "Şifremi unuttum?",
     footerPrefix: "Uppoint Cloud'ta yeni misiniz?",
     footerLink: "Hesap oluştur",
     fields: {
@@ -44,6 +45,13 @@ export const trMessages = {
       unavailable: "Şu anda giriş yapılamıyor",
       invalidCredentials: "E-posta veya şifre hatalı",
     },
+  },
+  forgotPassword: {
+    title: "Şifremi unuttum",
+    description: "Şifre sıfırlama adımları için hesap e-postanı doğrula",
+    notice:
+      "Bu sürümde self-servis şifre sıfırlama henüz aktif değil. Lütfen destek ekibi ile iletişime geçin.",
+    backToLogin: "Giriş ekranına dön",
   },
   register: {
     title: "Hesap oluştur",

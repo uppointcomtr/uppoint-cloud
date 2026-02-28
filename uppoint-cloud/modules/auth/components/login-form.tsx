@@ -162,6 +162,12 @@ export function LoginForm({ locale, dictionary }: LoginFormProps) {
               {form.formState.errors.password ? (
                 <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
               ) : null}
+              <Link
+                href={withLocale("/forgot-password", locale)}
+                className="inline-block text-sm text-primary underline-offset-4 hover:underline"
+              >
+                {dictionary.forgotPasswordLink}
+              </Link>
             </div>
           </>
         )}

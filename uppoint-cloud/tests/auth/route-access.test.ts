@@ -11,6 +11,7 @@ describe("resolveAuthRedirect", () => {
   it("redirects authenticated auth-page requests to locale dashboard", () => {
     expect(resolveAuthRedirect("/tr/login", true)).toBe("/tr/dashboard");
     expect(resolveAuthRedirect("/en/register", true)).toBe("/en/dashboard");
+    expect(resolveAuthRedirect("/tr/forgot-password", true)).toBe("/tr/dashboard");
   });
 
   it("falls back to default locale for non-prefixed protected routes", () => {

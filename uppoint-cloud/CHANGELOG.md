@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-02-28 (Forgot password entry added to login flow)
+
+### Added
+- Added `Şifremi unuttum?` / `Forgot password?` link to login password step.
+- Added localized forgot-password route pages:
+  - `/{locale}/forgot-password`
+  - `/forgot-password` (default locale redirect)
+
+### Changed
+- Included `/forgot-password` in auth-route redirect rules so authenticated users are sent to dashboard.
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓
+
+---
+
 ## 2026-02-28 (TR login email label text update)
 
 ### Changed

@@ -30,6 +30,7 @@ export const enMessages = {
     title: "Sign in",
     description: "Continue to the Uppoint Cloud application.",
     accountPrefix: "Account",
+    forgotPasswordLink: "Forgot password?",
     footerPrefix: "New to Uppoint Cloud?",
     footerLink: "Create account",
     fields: {
@@ -44,6 +45,13 @@ export const enMessages = {
       unavailable: "Unable to sign in right now",
       invalidCredentials: "Invalid email or password",
     },
+  },
+  forgotPassword: {
+    title: "Forgot password",
+    description: "Verify your account email to continue with password reset steps",
+    notice:
+      "Self-service password reset is not enabled in this build yet. Please contact support.",
+    backToLogin: "Back to sign in",
   },
   register: {
     title: "Create account",
