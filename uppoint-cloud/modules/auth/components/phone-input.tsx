@@ -66,7 +66,7 @@ export function PhoneInput({ id, value, onChange, onBlur }: PhoneInputProps) {
         value={countryCode}
         onChange={(e) => handleCodeChange(e.target.value)}
         onBlur={onBlur}
-        className="h-full border-r border-input bg-transparent px-2 text-sm text-foreground focus:outline-none"
+        className="h-full border-r border-input bg-transparent px-2 text-sm text-foreground focus:outline-none dark:[color-scheme:dark]"
         aria-label="Country code"
       >
         {COUNTRY_CODES.map(({ code, label }) => (
