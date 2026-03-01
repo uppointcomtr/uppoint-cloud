@@ -1,0 +1,4 @@
+# Uppoint Cloud PostgreSQL backup (daily at 02:00)
+SHELL=/bin/bash
+
+0 2 * * * root /opt/uppoint-cloud/scripts/backup-db.sh >> /var/log/uppoint-postgres-backup.log 2>&1

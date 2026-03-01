@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TenantRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -27,8 +33,35 @@ model User {
   passwordResetChallenges PasswordResetChallenge[]
   loginChallenges LoginChallenge[]
   registrationVerificationChallenges RegistrationVerificationChallenge[]
+  tenantMemberships TenantMembership[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model Tenant {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  deletedAt   DateTime?
+  members     TenantMembership[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model TenantMembership {
+  id        String     @id @default(cuid())
+  tenantId  String
+  userId    String
+  role      TenantRole @default(MEMBER)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId, role])
+  @@index([tenantId, role])
 }
 
 model Account {
@@ -125,11 +158,20 @@ model AuditLog {
   action    String   // e.g. "login_success", "otp_failed", "password_reset"
   ip        String?
   userId    String?
+  actorId   String?
+  targetId  String?
+  result    String?
+  reason    String?
+  requestId String?
+  userAgent String?
+  forwardedFor String?
   metadata  Json?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([action, createdAt])
+  @@index([requestId])
+  @@index([result, createdAt])
   @@index([createdAt])
 }
 
@@ -153,6 +195,15 @@ model LoginChallenge {
   @@index([loginTokenHash])     // consumeLoginToken → findChallengeByTokenHash
   @@index([codeExpiresAt])      // cleanup: süresi dolmuş challenge'lar
   @@index([loginTokenExpiresAt]) // cleanup: süresi dolmuş tokenlar
+}
+
+model RevokedSessionToken {
+  id        String   @id @default(cuid())
+  jti       String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 model RegistrationVerificationChallenge {

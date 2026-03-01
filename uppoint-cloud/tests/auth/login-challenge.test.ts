@@ -22,8 +22,12 @@ describe("startEmailLoginChallenge", () => {
           name: "User",
           passwordHash: "hash",
           emailVerified: new Date("2026-02-28T16:00:00.000Z"),
+          failedLoginAttempts: 0,
+          lockedUntil: null,
         }),
         verifyPassword: vi.fn().mockResolvedValue(false),
+        registerFailedPasswordAttempt: vi.fn().mockResolvedValue(undefined),
+        clearFailedPasswordAttempts: vi.fn().mockResolvedValue(undefined),
         deleteChallengesForUserAndMode: vi.fn(),
         createChallenge: vi.fn(),
         sendEmailOtp: vi.fn(),
@@ -51,8 +55,12 @@ describe("startEmailLoginChallenge", () => {
             name: "User",
             passwordHash: "hash",
             emailVerified: null,
+            failedLoginAttempts: 0,
+            lockedUntil: null,
           }),
           verifyPassword: vi.fn().mockResolvedValue(true),
+          registerFailedPasswordAttempt: vi.fn().mockResolvedValue(undefined),
+          clearFailedPasswordAttempts: vi.fn().mockResolvedValue(undefined),
           deleteChallengesForUserAndMode: vi.fn(),
           createChallenge: vi.fn(),
           sendEmailOtp: vi.fn(),
@@ -62,6 +70,40 @@ describe("startEmailLoginChallenge", () => {
         },
       ),
     ).rejects.toMatchObject({ code: "EMAIL_NOT_VERIFIED" });
+  });
+
+  it("does not start challenge for locked accounts", async () => {
+    const verifyPassword = vi.fn().mockResolvedValue(true);
+    const result = await startEmailLoginChallenge(
+      {
+        email: "locked@example.com",
+        password: "StrongPass!123",
+        locale: "tr",
+      },
+      {
+        findUserByEmail: vi.fn().mockResolvedValue({
+          id: "u-lock",
+          email: "locked@example.com",
+          name: "Locked User",
+          passwordHash: "hash",
+          emailVerified: new Date("2026-02-28T16:00:00.000Z"),
+          failedLoginAttempts: 5,
+          lockedUntil: new Date("2026-02-28T17:30:00.000Z"),
+        }),
+        verifyPassword,
+        registerFailedPasswordAttempt: vi.fn().mockResolvedValue(undefined),
+        clearFailedPasswordAttempts: vi.fn().mockResolvedValue(undefined),
+        deleteChallengesForUserAndMode: vi.fn(),
+        createChallenge: vi.fn(),
+        sendEmailOtp: vi.fn(),
+        now: vi.fn(() => new Date("2026-02-28T17:00:00.000Z")),
+        generateCode: vi.fn(() => "123456"),
+        hashValue: vi.fn(() => "hash"),
+      },
+    );
+
+    expect(result).toEqual({ challengeId: null, codeExpiresAt: null });
+    expect(verifyPassword).not.toHaveBeenCalled();
   });
 });
 
@@ -84,8 +126,12 @@ describe("startPhoneLoginChallenge", () => {
             phone: "+905551112233",
             passwordHash: "hash",
             emailVerified: new Date("2026-02-28T16:00:00.000Z"),
+            failedLoginAttempts: 0,
+            lockedUntil: null,
           }),
         verifyPassword: vi.fn().mockResolvedValue(true),
+        registerFailedPasswordAttempt: vi.fn().mockResolvedValue(undefined),
+        clearFailedPasswordAttempts: vi.fn().mockResolvedValue(undefined),
         deleteChallengesForUserAndMode: vi.fn().mockResolvedValue(undefined),
         createChallenge,
         sendSmsOtp,

@@ -26,7 +26,7 @@ sudo systemctl enable --now uppoint-cloud.service
 sudo systemctl status uppoint-cloud.service
 ```
 
-Environment values should be provided in `/etc/uppoint-cloud.env` (not in git), for example:
+Environment values should be provided in `/opt/uppoint-cloud/.env` (not in git), for example:
 
 ```bash
 NODE_ENV=production
@@ -36,6 +36,8 @@ AUTH_SECRET=replace-with-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
 ```
+
+This matches the shipped systemd unit (`EnvironmentFile=/opt/uppoint-cloud/.env`).
 
 ### Safe deployment sequence (required)
 
@@ -175,7 +177,25 @@ sudo systemctl restart fail2ban
 sudo fail2ban-client status nginx-uppoint-auth
 ```
 
-## 8. Redis backup automation
+## 8. PostgreSQL backup + DB cleanup automation
+
+Install cron entries:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-backup
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup
+```
+
+Run manual tests:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/backup-db.sh
+sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
+ls -lah /opt/backups/postgres
+```
+
+## 9. Redis backup automation
 
 Install cron entry:
 
@@ -191,7 +211,7 @@ sudo /opt/uppoint-cloud/scripts/backup-redis.sh
 ls -lah /opt/backups/redis
 ```
 
-## 9. Auth rate-limit auto tuning + report
+## 10. Auth rate-limit auto tuning + report
 
 Run analysis manually (report only):
 
@@ -225,7 +245,7 @@ Operational notes:
   - `/var/log/uppoint-cloud/auth-rate-limit/auth-rate-limit-latest.md`
   - `/var/log/uppoint-cloud/auth-rate-limit/auth-rate-limit-latest.json`
 
-## 10. Log rotation for ops jobs
+## 11. Log rotation for ops jobs
 
 Install the managed logrotate template:
 
@@ -246,13 +266,14 @@ Note:
 
 Covered logs:
 
-- `/var/log/uppoint-backup.log`
+- `/var/log/uppoint-postgres-backup.log`
+- `/var/log/uppoint-db-cleanup.log`
 - `/var/log/uppoint-redis-backup.log`
 - `/var/log/uppoint-auth-rate-limit-tune.log`
 - `/var/log/uppoint-health-probe.log`
 - `/var/log/postgresql/*.log`
 
-## 11. Tokenized health probe (Nginx + local monitoring)
+## 12. Tokenized health probe (Nginx + local monitoring)
 
 Sync app `HEALTHCHECK_TOKEN` from `.env` into an Nginx snippet and reload:
 

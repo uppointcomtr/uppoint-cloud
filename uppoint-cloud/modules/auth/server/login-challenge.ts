@@ -9,12 +9,15 @@ import { getLoginSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 
 import { sendAuthEmail } from "./email-service";
+import { hashOtpCode } from "./otp-hash";
 import { verifyPassword } from "./password";
 import { sendAuthSms } from "./sms-service";
 
 const LOGIN_OTP_TTL_MINUTES = 3;
 const LOGIN_TOKEN_TTL_MINUTES = 10;
 const LOGIN_MAX_ATTEMPTS = 5;
+const LOGIN_PASSWORD_MAX_ATTEMPTS = 5;
+const LOGIN_PASSWORD_LOCK_MINUTES = 15;
 const PHONE_LOGIN_REGEX = /^\+?[1-9]\d{9,14}$/;
 
 const loginEmailStartSchema = z.object({
@@ -53,7 +56,7 @@ function resolveLocale(value: string | undefined): Locale {
 }
 
 function hashValue(value: string): string {
-  return crypto.createHash("sha256").update(value).digest("hex");
+  return hashOtpCode(value);
 }
 
 function generateNumericCode(): string {
@@ -129,8 +132,12 @@ interface StartEmailLoginDependencies {
     name: string | null;
     passwordHash: string;
     emailVerified: Date | null;
+    failedLoginAttempts: number;
+    lockedUntil: Date | null;
   } | null>;
   verifyPassword: (password: string, hash: string) => Promise<boolean>;
+  registerFailedPasswordAttempt: (input: { userId: string; now: Date }) => Promise<void>;
+  clearFailedPasswordAttempts: (userId: string) => Promise<void>;
   deleteChallengesForUserAndMode: (userId: string, mode: LoginChallengeMode) => Promise<void>;
   createChallenge: (input: {
     userId: string;
@@ -154,9 +161,47 @@ const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
         name: true,
         passwordHash: true,
         emailVerified: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
       },
     }),
   verifyPassword,
+  registerFailedPasswordAttempt: async (input) => {
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          failedLoginAttempts: true,
+        },
+      });
+
+      if (!user) {
+        return;
+      }
+
+      const nextFailedAttempts = user.failedLoginAttempts + 1;
+      const shouldLock = nextFailedAttempts >= LOGIN_PASSWORD_MAX_ATTEMPTS;
+
+      await tx.user.update({
+        where: { id: input.userId },
+        data: {
+          failedLoginAttempts: nextFailedAttempts,
+          lockedUntil: shouldLock
+            ? expiresAtFrom(input.now, LOGIN_PASSWORD_LOCK_MINUTES)
+            : undefined,
+        },
+      });
+    });
+  },
+  clearFailedPasswordAttempts: async (userId) => {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+  },
   deleteChallengesForUserAndMode: async (userId, mode) => {
     await prisma.loginChallenge.deleteMany({ where: { userId, mode } });
   },
@@ -189,6 +234,7 @@ export async function startEmailLoginChallenge(
     return { challengeId: null, codeExpiresAt: null };
   }
 
+  const now = dependencies.now();
   const user = await dependencies.findUserByEmail(input.email);
 
   // Security-sensitive: do not reveal whether email or password failed.
@@ -196,9 +242,14 @@ export async function startEmailLoginChallenge(
     return { challengeId: null, codeExpiresAt: null };
   }
 
+  if (user.lockedUntil && user.lockedUntil > now) {
+    return { challengeId: null, codeExpiresAt: null };
+  }
+
   const passwordValid = await dependencies.verifyPassword(input.password, user.passwordHash);
 
   if (!passwordValid) {
+    await dependencies.registerFailedPasswordAttempt({ userId: user.id, now });
     return { challengeId: null, codeExpiresAt: null };
   }
 
@@ -209,7 +260,7 @@ export async function startEmailLoginChallenge(
     );
   }
 
-  const now = dependencies.now();
+  await dependencies.clearFailedPasswordAttempts(user.id);
   const codeExpiresAt = expiresAtFrom(now, LOGIN_OTP_TTL_MINUTES);
   const otpCode = dependencies.generateCode();
   const otpHash = dependencies.hashValue(otpCode);
@@ -248,8 +299,12 @@ interface StartPhoneLoginDependencies {
     phone: string;
     passwordHash: string;
     emailVerified: Date | null;
+    failedLoginAttempts: number;
+    lockedUntil: Date | null;
   } | null>;
   verifyPassword: (password: string, hash: string) => Promise<boolean>;
+  registerFailedPasswordAttempt: (input: { userId: string; now: Date }) => Promise<void>;
+  clearFailedPasswordAttempts: (userId: string) => Promise<void>;
   deleteChallengesForUserAndMode: (userId: string, mode: LoginChallengeMode) => Promise<void>;
   createChallenge: (input: {
     userId: string;
@@ -274,6 +329,8 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
         phone: true,
         passwordHash: true,
         emailVerified: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
       },
     });
 
@@ -286,9 +343,47 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
       phone: user.phone,
       passwordHash: user.passwordHash,
       emailVerified: user.emailVerified,
+      failedLoginAttempts: user.failedLoginAttempts,
+      lockedUntil: user.lockedUntil,
     };
   },
   verifyPassword,
+  registerFailedPasswordAttempt: async (input) => {
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: input.userId },
+        select: {
+          failedLoginAttempts: true,
+        },
+      });
+
+      if (!user) {
+        return;
+      }
+
+      const nextFailedAttempts = user.failedLoginAttempts + 1;
+      const shouldLock = nextFailedAttempts >= LOGIN_PASSWORD_MAX_ATTEMPTS;
+
+      await tx.user.update({
+        where: { id: input.userId },
+        data: {
+          failedLoginAttempts: nextFailedAttempts,
+          lockedUntil: shouldLock
+            ? expiresAtFrom(input.now, LOGIN_PASSWORD_LOCK_MINUTES)
+            : undefined,
+        },
+      });
+    });
+  },
+  clearFailedPasswordAttempts: async (userId) => {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+  },
   deleteChallengesForUserAndMode: async (userId, mode) => {
     await prisma.loginChallenge.deleteMany({ where: { userId, mode } });
   },
@@ -320,6 +415,7 @@ export async function startPhoneLoginChallenge(
     throw new LoginChallengeError("SMS_NOT_ENABLED", "SMS service is not enabled");
   }
 
+  const now = dependencies.now();
   const user = await dependencies.findUserByPhone(input.phone);
 
   // Security-sensitive: do not reveal whether phone or password validation failed.
@@ -327,9 +423,14 @@ export async function startPhoneLoginChallenge(
     return { challengeId: null, codeExpiresAt: null };
   }
 
+  if (user.lockedUntil && user.lockedUntil > now) {
+    return { challengeId: null, codeExpiresAt: null };
+  }
+
   const isPasswordValid = await dependencies.verifyPassword(input.password, user.passwordHash);
 
   if (!isPasswordValid) {
+    await dependencies.registerFailedPasswordAttempt({ userId: user.id, now });
     return { challengeId: null, codeExpiresAt: null };
   }
 
@@ -340,7 +441,7 @@ export async function startPhoneLoginChallenge(
     );
   }
 
-  const now = dependencies.now();
+  await dependencies.clearFailedPasswordAttempts(user.id);
   const codeExpiresAt = expiresAtFrom(now, LOGIN_OTP_TTL_MINUTES);
   const otpCode = dependencies.generateCode();
   const otpHash = dependencies.hashValue(otpCode);
@@ -582,6 +683,15 @@ const defaultConsumeLoginTokenDependencies: ConsumeLoginTokenDependencies = {
       if (consumed.count !== 1) {
         return false;
       }
+
+      await tx.user.update({
+        where: { id: input.userId },
+        data: {
+          lastLoginAt: input.now,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
 
       await tx.loginChallenge.deleteMany({
         where: {

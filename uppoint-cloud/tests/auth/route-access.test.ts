@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveAuthRedirect } from "@/modules/auth/server/route-access";
+import { resolveAuthRedirect, shouldPreserveCallbackUrl } from "@/modules/auth/server/route-access";
 
 describe("resolveAuthRedirect", () => {
   it("redirects unauthenticated dashboard requests to locale login", () => {
@@ -22,5 +22,18 @@ describe("resolveAuthRedirect", () => {
     expect(resolveAuthRedirect("/tr", false)).toBeNull();
     expect(resolveAuthRedirect("/tr/forgot-password", true)).toBeNull();
     expect(resolveAuthRedirect("/en/reset-password", true)).toBeNull();
+  });
+});
+
+describe("shouldPreserveCallbackUrl", () => {
+  it("returns true for protected routes configured with callback preservation", () => {
+    expect(shouldPreserveCallbackUrl("/dashboard")).toBe(true);
+    expect(shouldPreserveCallbackUrl("/dashboard/instances")).toBe(true);
+  });
+
+  it("returns false for public/auth routes", () => {
+    expect(shouldPreserveCallbackUrl("/login")).toBe(false);
+    expect(shouldPreserveCallbackUrl("/register")).toBe(false);
+    expect(shouldPreserveCallbackUrl("/")).toBe(false);
   });
 });

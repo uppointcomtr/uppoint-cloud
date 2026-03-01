@@ -2,6 +2,10 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import { getErrorMessages, resolveLocaleFromPathname } from "@/modules/i18n/error-messages";
+import { withLocale } from "@/modules/i18n/paths";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -14,17 +18,21 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     console.error("[ErrorBoundary]", error);
   }, [error]);
 
+  const pathname = usePathname();
+  const locale = resolveLocaleFromPathname(pathname);
+  const dictionary = getErrorMessages(locale);
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 text-center">
       <div className="space-y-2">
         <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
-          Hata
+          {dictionary.errorLabel}
         </p>
-        <h1 className="text-3xl font-bold tracking-tight">Bir şeyler yanlış gitti</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{dictionary.somethingWentWrongTitle}</h1>
         <p className="text-muted-foreground">
           {error.digest
-            ? `Hata kodu: ${error.digest}`
-            : "Beklenmedik bir hata oluştu. Lütfen tekrar deneyin."}
+            ? `${dictionary.codePrefix}: ${error.digest}`
+            : dictionary.fallbackDescription}
         </p>
       </div>
 
@@ -33,13 +41,13 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           onClick={reset}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
-          Tekrar dene
+          {dictionary.retry}
         </button>
         <Link
-          href="/"
+          href={withLocale("/login", locale)}
           className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
         >
-          Ana sayfaya dön
+          {dictionary.backToLogin}
         </Link>
       </div>
     </div>

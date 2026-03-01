@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { signOut } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
+import { performLogout } from "@/modules/auth/client/logout";
 import type { Locale } from "@/modules/i18n/config";
 import { withLocale } from "@/modules/i18n/paths";
 
@@ -65,7 +65,7 @@ export function SessionTimeoutWarning({
         size="sm"
         variant="outline"
         className="h-7 shrink-0 border-amber-300 bg-transparent text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40"
-        onClick={() => void signOut({ callbackUrl: withLocale("/login", locale) })}
+        onClick={() => void performLogout({ callbackUrl: withLocale("/login", locale) })}
       >
         {dictionary.signOut}
       </Button>

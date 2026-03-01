@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+
+import { getErrorMessages, resolveLocaleFromPathname } from "@/modules/i18n/error-messages";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -14,8 +16,14 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     console.error("[GlobalError]", error);
   }, [error]);
 
+  const locale = useMemo(
+    () => resolveLocaleFromPathname(typeof window !== "undefined" ? window.location.pathname : null),
+    [],
+  );
+  const dictionary = getErrorMessages(locale);
+
   return (
-    <html lang="tr">
+    <html lang={locale}>
       <body
         style={{
           margin: 0,
@@ -30,10 +38,12 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
       >
         <div style={{ textAlign: "center", padding: "2rem" }}>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "0.75rem" }}>
-            Beklenmeyen bir hata oluştu
+            {dictionary.unexpectedErrorTitle}
           </h1>
           <p style={{ color: "#a3a3a3", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
-            {error.digest ? `Hata kodu: ${error.digest}` : "Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin."}
+            {error.digest
+              ? `${dictionary.codePrefix}: ${error.digest}`
+              : dictionary.fallbackDescription}
           </p>
           <button
             onClick={reset}
@@ -47,7 +57,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               cursor: "pointer",
             }}
           >
-            Tekrar dene
+            {dictionary.retry}
           </button>
         </div>
       </body>

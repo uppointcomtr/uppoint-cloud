@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-import { resolveAuthRedirect } from "@/modules/auth/server/route-access";
+import { resolveAuthRedirect, shouldPreserveCallbackUrl } from "@/modules/auth/server/route-access";
 import { defaultLocale } from "@/modules/i18n/config";
 import {
   extractLocaleFromPath,
@@ -67,7 +67,7 @@ export async function proxy(request: NextRequest) {
   const destination = request.nextUrl.clone();
   destination.pathname = redirectPath;
 
-  if (!token && stripLocaleFromPath(pathname).startsWith("/dashboard")) {
+  if (!token && shouldPreserveCallbackUrl(stripLocaleFromPath(pathname))) {
     destination.searchParams.set("callbackUrl", pathname);
   }
 

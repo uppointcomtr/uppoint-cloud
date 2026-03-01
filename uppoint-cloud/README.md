@@ -128,7 +128,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Dictionaries: [messages/tr.ts](/opt/uppoint-cloud/messages/tr.ts), [messages/en.ts](/opt/uppoint-cloud/messages/en.ts)
 - Theme provider: [modules/theme/theme-provider.tsx](/opt/uppoint-cloud/modules/theme/theme-provider.tsx)
 - Theme config/script: [modules/theme/config.ts](/opt/uppoint-cloud/modules/theme/config.ts), [modules/theme/theme-script.ts](/opt/uppoint-cloud/modules/theme/theme-script.ts)
-- Shared header and controls: [components/shared/app-header.tsx](/opt/uppoint-cloud/components/shared/app-header.tsx), [components/shared/theme-toggle.tsx](/opt/uppoint-cloud/components/shared/theme-toggle.tsx), [components/shared/locale-switcher.tsx](/opt/uppoint-cloud/components/shared/locale-switcher.tsx)
+- Shared auth shell controls: [components/shared/theme-toggle.tsx](/opt/uppoint-cloud/components/shared/theme-toggle.tsx), [components/shared/locale-switcher.tsx](/opt/uppoint-cloud/components/shared/locale-switcher.tsx), [modules/auth/components/auth-split-shell.tsx](/opt/uppoint-cloud/modules/auth/components/auth-split-shell.tsx)
 
 ## Local development
 

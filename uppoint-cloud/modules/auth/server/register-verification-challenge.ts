@@ -8,6 +8,7 @@ import { env } from "@/lib/env/server";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 
 import { sendAuthEmail } from "./email-service";
+import { hashOtpCode } from "./otp-hash";
 import { sendAuthSms } from "./sms-service";
 
 const REGISTER_CODE_TTL_MINUTES = 3;
@@ -38,7 +39,7 @@ function resolveLocale(value: string | undefined): Locale {
 }
 
 function hashValue(value: string): string {
-  return crypto.createHash("sha256").update(value).digest("hex");
+  return hashOtpCode(value);
 }
 
 function generateNumericCode(): string {

@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026-03-01 (Security + architecture closure batch: remaining findings 1-16)
+
+### Changed
+- **JWT revoke/blacklist hardening**:
+  - `RevokedSessionToken` modeli eklendi ve logout sırasında `sessionJti` revoke akışı bağlandı.
+  - `auth.ts` JWT callback, revoke listesine düşen oturumları otomatik geçersiz sayacak şekilde güncellendi.
+- **OTP hashing hardening**:
+  - OTP hash üretimi HMAC tabanlı hale getirildi (`AUTH_OTP_PEPPER` / `AUTH_SECRET` fallback).
+- **Account lockout policy**:
+  - Login başlangıcında kilitli hesap kontrolü eklendi.
+  - Hatalı parola denemeleri `failedLoginAttempts/lockedUntil` alanlarıyla takip edilip 15 dk kilitleme uygulanıyor.
+- **Tenant/RBAC foundation**:
+  - `Tenant` + `TenantMembership` modelleri ve `TenantRole` enum’u eklendi.
+  - Tenant erişim/rol doğrulaması için `modules/tenant/server/scope.ts` eklendi.
+- **Managed PostgreSQL script compatibility**:
+  - `scripts/backup-db.sh` ve `scripts/cleanup-db.sh` artık `.env` dosyasını source etmek yerine yalnız `DATABASE_URL` satırını güvenli parse ediyor.
+  - Özel karakter içeren `.env` satırları script kırılmasına neden olmuyor.
+- **E2E health smoke fix**:
+  - `tests/e2e/auth-http-smoke.test.ts` production `HEALTHCHECK_TOKEN` davranışını (401/200) destekleyecek şekilde güncellendi.
+- **Audit schema standardization**:
+  - `AuditLog` alanları genişletildi: `actorId`, `targetId`, `result`, `reason`, `requestId`, `userAgent`, `forwardedFor`.
+  - `lib/audit-log.ts` bu alanları otomatik normalize edip dolduruyor.
+- **Audit immutability (DB-level)**:
+  - `AuditLog` satırlarını update etmeyi engelleyen PostgreSQL trigger eklendi.
+- **CSP tightening**:
+  - Nginx CSP policy stricter direktiflerle güncellendi (`object-src 'none'`, `frame-ancestors 'none'`, `worker-src`, `manifest-src`, vb.).
+  - `X-Frame-Options` `DENY` olarak sertleştirildi.
+- **Ops docs consistency**:
+  - `ops/README.md` environment dosya yolu `EnvironmentFile=/opt/uppoint-cloud/.env` ile senkronize edildi.
+- **DB cron automation completion**:
+  - `ops/cron/uppoint-postgres-backup` ve `ops/cron/uppoint-db-cleanup` eklendi.
+  - `ops/logrotate/uppoint-cloud` PostgreSQL backup ve cleanup log dosyalarını kapsayacak şekilde güncellendi.
+- **Logout invalidation polish**:
+  - `modules/auth/client/logout.ts` ile tüm logout giriş noktaları tekleştirildi.
+  - Session timeout uyarısı dahil tüm sign-out akışları önce `/api/auth/logout` (revoke/audit), sonra `signOut` çalıştırıyor.
+- **Route protection extensibility**:
+  - `modules/auth/server/route-access.ts` route-policy yapısı genişletilebilir hale getirildi.
+  - Callback URL korunacak korumalı rotalar merkezi yapıdan yönetiliyor.
+- **Rate-limit fallback growth control**:
+  - Prisma fallback cleanup, olasılıksal (%1) modelden deterministik ve interval-throttled modele geçirildi.
+- **Locale-aware global errors**:
+  - `app/global-error.tsx`, `app/not-found.tsx`, `app/[locale]/error.tsx` TR/EN locale algısına göre metin üretiyor.
+  - `modules/i18n/error-messages.ts` eklendi.
+- **Dead zero-byte file cleanup**:
+  - Kullanılmayan boş dosyalar kaldırıldı:
+    - `components/shared/app-header.tsx`
+    - `modules/auth/components/forgot-password-request-form.tsx`
+    - `modules/auth/components/reset-password-form.tsx`
+
+### Added
+- Testler:
+  - `tests/auth/session-revocation.test.ts`
+  - `tests/auth/otp-hash.test.ts`
+  - `tests/tenant/tenant-scope.test.ts`
+  - `tests/auth/audit-log.test.ts`
+  - `tests/auth/logout-client.test.ts`
+  - `tests/auth/rate-limit-fallback.test.ts`
+  - `tests/i18n/error-messages.test.ts`
+
 ## 2026-03-01 (Security re-audit: logout rate limiting)
 
 ### Changed

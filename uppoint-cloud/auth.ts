@@ -5,6 +5,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env/server";
+import { generateSessionJti, isSessionJtiRevoked } from "@/lib/session-revocation";
 import { consumeLoginToken } from "@/modules/auth/server/login-challenge";
 import { defaultLocale } from "@/modules/i18n/config";
 import { withLocale } from "@/modules/i18n/paths";
@@ -39,11 +40,25 @@ export const authOptions: NextAuthOptions = {
         token.email = user.email;
         token.name = user.name;
         token.tokenVersion = typeof user.tokenVersion === "number" ? user.tokenVersion : 0;
+        token.sessionJti = typeof token.sessionJti === "string" ? token.sessionJti : generateSessionJti();
         token.revoked = false;
         return token;
       }
 
       if (!token.sub) {
+        return token;
+      }
+
+      const revokedByJti = await isSessionJtiRevoked(
+        typeof token.sessionJti === "string" ? token.sessionJti : undefined,
+      );
+
+      if (revokedByJti) {
+        token.sub = "";
+        token.email = undefined;
+        token.name = undefined;
+        token.tokenVersion = undefined;
+        token.revoked = true;
         return token;
       }
 

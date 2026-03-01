@@ -90,14 +90,36 @@ async function resolveRequestAuditContext(): Promise<Record<string, unknown>> {
       requestId,
       userAgent: userAgent ? userAgent.slice(0, 255) : null,
       ip: resolvedIp,
+      forwardedFor: forwardedFor ? forwardedFor.slice(0, 255) : null,
     };
   } catch {
     return {
       requestId: randomUUID(),
       userAgent: null,
       ip: null,
+      forwardedFor: null,
     };
   }
+}
+
+function pickString(input: unknown): string | undefined {
+  return typeof input === "string" && input.trim().length > 0 ? input.trim() : undefined;
+}
+
+function resolveAuditResult(action: AuditAction, metadata?: Record<string, unknown>): string {
+  const explicitResult = pickString(metadata?.result);
+  if (explicitResult) {
+    return explicitResult.toUpperCase();
+  }
+
+  const normalizedAction = action.toLowerCase();
+  if (normalizedAction.includes("failed") || normalizedAction.includes("exceeded")) {
+    return "FAILURE";
+  }
+  if (normalizedAction.includes("success") || normalizedAction.includes("verified")) {
+    return "SUCCESS";
+  }
+  return "INFO";
 }
 
 /**
@@ -113,6 +135,13 @@ export function logAudit(
   void (async () => {
     const requestContext = await resolveRequestAuditContext();
     const safeMetadata = metadata ? redactSensitiveMetadata(metadata) : {};
+    const result = resolveAuditResult(action, safeMetadata);
+    const reason = pickString(safeMetadata.reason);
+    const targetId = pickString(safeMetadata.targetId) ?? pickString(safeMetadata.targetUserId);
+    const requestId = pickString(requestContext.requestId);
+    const userAgent = pickString(requestContext.userAgent);
+    const forwardedFor = pickString(requestContext.forwardedFor);
+
     const composedMetadata = {
       ...safeMetadata,
       request: requestContext,
@@ -123,6 +152,13 @@ export function logAudit(
         action,
         ip,
         userId: userId ?? undefined,
+        actorId: userId ?? undefined,
+        targetId,
+        result,
+        reason,
+        requestId,
+        userAgent,
+        forwardedFor,
         metadata: composedMetadata as Prisma.InputJsonValue,
       },
     });

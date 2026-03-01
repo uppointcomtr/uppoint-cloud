@@ -4,25 +4,39 @@
 
 set -euo pipefail
 umask 077
-umask 077
 
 BACKUP_DIR="/opt/backups/postgres"
-DB_NAME="uppoint_cloud"
-DB_USER="uppoint_user"
+ENV_FILE="/opt/uppoint-cloud/.env"
 KEEP_DAYS=14
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+
+if [ -z "${DATABASE_URL:-}" ] && [ -f "$ENV_FILE" ]; then
+  DATABASE_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | tail -n1 | cut -d '=' -f2-)"
+fi
+
+# Optional quote cleanup: DATABASE_URL="..." or DATABASE_URL='...'
+if [ -n "${DATABASE_URL:-}" ]; then
+  DATABASE_URL="${DATABASE_URL%\"}"
+  DATABASE_URL="${DATABASE_URL#\"}"
+  DATABASE_URL="${DATABASE_URL%\'}"
+  DATABASE_URL="${DATABASE_URL#\'}"
+fi
+
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "[backup] HATA: DATABASE_URL tanımlı değil." >&2
+  exit 1
+fi
+
+DB_NAME_FROM_URL="$(printf '%s' "$DATABASE_URL" | sed -E 's#^[^:]+://[^/]+/([^?]+).*$#\1#')"
+DB_NAME="${DB_NAME_FROM_URL:-database}"
 BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_${TIMESTAMP}.sql.gz"
 TMP_FILE="${BACKUP_FILE}.tmp"
 
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
-chmod 700 "$BACKUP_DIR"
 
 # pg_dump ile yedek al; önce geçici dosyaya yaz
-PGPASSFILE="/root/.pgpass" pg_dump \
-  -h localhost \
-  -U "$DB_USER" \
-  -d "$DB_NAME" \
+pg_dump "$DATABASE_URL" \
   --format=plain \
   --no-owner \
   --no-acl \
@@ -44,7 +58,6 @@ fi
 
 # Geçici dosyayı kalıcı konuma taşı (atomic)
 mv "$TMP_FILE" "$BACKUP_FILE"
-chmod 600 "$BACKUP_FILE"
 chmod 600 "$BACKUP_FILE"
 
 echo "[backup] Tamamlandı: $BACKUP_FILE ($(du -sh "$BACKUP_FILE" | cut -f1))"

@@ -30,7 +30,31 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
 
   beforeAll(async () => {
     const healthResponse = await fetchWithTimeout("/api/health");
-    expect(healthResponse.status).toBe(200);
+
+    if (healthResponse.status === 200) {
+      const payload = await healthResponse.json() as { status?: string };
+      expect(payload.status).toBe("ok");
+      return;
+    }
+
+    // Production may require x-health-token for /api/health.
+    expect(healthResponse.status).toBe(401);
+    const unauthorizedPayload = await healthResponse.json() as { status?: string };
+    expect(unauthorizedPayload.status).toBe("unauthorized");
+
+    const healthToken = process.env.E2E_HEALTHCHECK_TOKEN ?? process.env.HEALTHCHECK_TOKEN;
+    if (!healthToken) {
+      return;
+    }
+
+    const authorizedHealthResponse = await fetchWithTimeout("/api/health", {
+      headers: {
+        "x-health-token": healthToken,
+      },
+    });
+    expect(authorizedHealthResponse.status).toBe(200);
+    const authorizedPayload = await authorizedHealthResponse.json() as { status?: string };
+    expect(authorizedPayload.status).toBe("ok");
   });
 
   afterAll(async () => {

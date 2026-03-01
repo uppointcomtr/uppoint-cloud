@@ -9,6 +9,7 @@ import { registerSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 
 import { sendAuthEmail } from "./email-service";
+import { hashOtpCode } from "./otp-hash";
 import { hashPassword } from "./password";
 import { sendAuthSms } from "./sms-service";
 
@@ -46,7 +47,7 @@ function resolveLocale(value: string | undefined): Locale {
 }
 
 function hashValue(value: string): string {
-  return crypto.createHash("sha256").update(value).digest("hex");
+  return hashOtpCode(value);
 }
 
 function generateNumericCode(): string {
