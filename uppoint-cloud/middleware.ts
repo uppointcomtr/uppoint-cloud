@@ -4,11 +4,15 @@ import { getToken } from "next-auth/jwt";
 
 import { resolveAuthRedirect } from "@/modules/auth/server/route-access";
 import { defaultLocale } from "@/modules/i18n/config";
-import { extractLocaleFromPath, stripLocaleFromPath, withLocale } from "@/modules/i18n/paths";
+import {
+  extractLocaleFromPath,
+  stripLocaleFromPath,
+  withLocale,
+} from "@/modules/i18n/paths";
 
 const PUBLIC_FILE_PATTERN = /\.[^/]+$/;
 
-function shouldBypassProxy(pathname: string): boolean {
+function shouldBypassMiddleware(pathname: string): boolean {
   return (
     pathname.startsWith("/api")
     || pathname.startsWith("/_next")
@@ -27,10 +31,10 @@ function usesSecureSessionCookie(request: NextRequest): boolean {
   return request.nextUrl.protocol === "https:";
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (shouldBypassProxy(pathname)) {
+  if (shouldBypassMiddleware(pathname)) {
     return NextResponse.next();
   }
 

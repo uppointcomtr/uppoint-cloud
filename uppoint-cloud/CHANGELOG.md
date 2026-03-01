@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-03-01 (Middleware standardizasyonu — proxy.ts -> middleware.ts)
+
+### Changed
+- Edge route koruma dosyası Next.js standart adıyla güncellendi:
+  - `proxy.ts` kaldırıldı
+  - Aynı JWT + locale + callbackUrl koruma mantığı `middleware.ts` dosyasına taşındı
+- Dokümantasyon referansı güncellendi:
+  - `README.md` route protection referansı `middleware.ts` olarak değiştirildi
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run build` -> ✓ (`uppoint-cloud.service` restarted)
+
 ## 2026-03-01 (Auth hardening batch — remaining security findings closure)
 
 ### Changed
