@@ -58,6 +58,8 @@ Do not replace this stack unless there is a strong technical reason and you expl
   * validation
 * Do not mix unsafe client logic with sensitive server logic
 * Keep server-only code server-only
+* Every route returning tenant-specific data must call `assertTenantAccess()`; this cannot be delegated to middleware — it must be explicit in each handler
+* When adding a new protected route, update `modules/auth/server/route-access.ts → PROTECTED_ROUTES`; this is the single source of truth for route protection
 
 ## Folder structure rules
 
@@ -162,6 +164,12 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Prepare for secure cookies, session protection, route protection, and future RBAC
 * Add defensive handling for auth flows, database writes, and sensitive actions
 * Never leak internal implementation details to the client
+* Never store raw tokens in the database: send the raw token in email/URL, store only the SHA-256 hash in the DB
+* Always compare tokens and OTP hashes with `crypto.timingSafeEqual()` — `===` is vulnerable to timing attacks
+* Hash OTP codes with HMAC-SHA256 and a secret pepper; plain SHA-256 is rainbow-table-attackable
+* Every auth endpoint must have two rate-limit layers: (1) IP-based and (2) identifier-based (email/phone/challengeId); omitting either enables credential stuffing
+* All responses that could reveal user existence, account state, or registration status must be neutral — different HTTP status codes or error codes are information leaks
+* In security-critical paths, infrastructure failure must be fail-closed (reject, do not pass); fail-open is only acceptable where explicitly documented for business continuity
 
 ## Error handling and observability
 
@@ -172,6 +180,7 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Separate user-facing errors from internal diagnostic errors
 * Do not log secrets, tokens, passwords, or sensitive personal data
 * Redact sensitive values in logs
+* Every state-changing auth operation must call `logAudit()`; when adding a new auth flow, add the corresponding action type to the `AuditAction` union in `lib/audit-log.ts`
 
 ## Quality rules
 
@@ -198,6 +207,8 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Keep database access predictable and minimal
 * Avoid unnecessary query complexity
 * Do not silently change schema or production-critical data behavior
+* Every active-record query on a model with a `deletedAt` field must include `where: { deletedAt: null }`; omitting it allows soft-deleted records to become accessible again
+* When adding a new append-only or time-bounded table (challenge, token, revoked session, etc.), add the corresponding DELETE query to `scripts/cleanup-db.sh`; without it the table grows without bound
 
 ## Dependency rules
 
@@ -226,6 +237,7 @@ Rules:
   * why
   * what remains risky
 * Always list the exact commands executed
+* Test mocks for cryptographic operations must use realistic values: a SHA-256 hash mock must be a valid 64-character hex string (e.g. `"a".repeat(64)`), not a human-readable placeholder like `"my-hash"`
 
 ## Mandatory Git / GitHub discipline
 

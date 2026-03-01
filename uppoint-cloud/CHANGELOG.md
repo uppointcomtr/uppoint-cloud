@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-01 (docs: harden AGENTS.md with 10 rules derived from real security findings)
+
+### Changed
+- `AGENTS.md`: Added 10 engineering rules across 5 sections based on security bugs encountered in this project:
+  - **Architecture rules**: tenant isolation enforcement (`assertTenantAccess()` mandatory in every handler), route protection checklist (`PROTECTED_ROUTES` as single source of truth)
+  - **Security rules**: raw token storage prohibition (hash-in-DB, raw-in-email), `timingSafeEqual` mandatory for token comparison, HMAC-SHA256+pepper for OTP hashing, dual rate-limit layers (IP + identifier), account enumeration neutrality, fail-closed infrastructure failure requirement
+  - **Error handling rules**: `logAudit()` mandatory for every state-changing auth operation, action types must be added to `AuditAction` union
+  - **Database rules**: `where: { deletedAt: null }` mandatory on soft-delete models, new time-bounded tables must have cleanup entries in `scripts/cleanup-db.sh`
+  - **Testing rules**: cryptographic test mocks must use valid 64-char hex strings, not human-readable placeholders
+
 ## 2026-03-01 (Security closure batch: soft-delete enforcement, tenant bootstrap, idempotency, ops hardening)
 
 ### Changed
