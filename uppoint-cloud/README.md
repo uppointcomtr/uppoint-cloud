@@ -85,6 +85,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_VALID_FOR`
 - `UPPOINT_SMS_DATACODING`
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
+- `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
 
 ## Upstash rate limit activation
 
@@ -116,7 +117,6 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Auth runtime config: [auth.ts](/opt/uppoint-cloud/auth.ts)
 - Credentials validation: [modules/auth/schemas/auth-schemas.ts](/opt/uppoint-cloud/modules/auth/schemas/auth-schemas.ts)
 - Registration verification challenge service: [modules/auth/server/register-verification-challenge.ts](/opt/uppoint-cloud/modules/auth/server/register-verification-challenge.ts)
-- Login credential verification: [modules/auth/server/authenticate-user.ts](/opt/uppoint-cloud/modules/auth/server/authenticate-user.ts)
 - Login OTP challenge service: [modules/auth/server/login-challenge.ts](/opt/uppoint-cloud/modules/auth/server/login-challenge.ts)
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
 - Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)
@@ -168,7 +168,7 @@ Use `npm run build:deploy` for build + service restart.
 Auth E2E smoke suite lives under `tests/e2e/` and validates live HTTP behavior for:
 - login/register page reachability
 - register route rate limit behavior
-- unverified account rejection (`EMAIL_NOT_VERIFIED`)
+- unverified-account enumeration resistance (neutral login-start response)
 - forgot-password challenge contract baseline
 
 Run:
@@ -212,7 +212,7 @@ Run this checklist after deployment or UI-affecting changes:
 
 ## Security hardening notes
 
-- `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated (`410 ENDPOINT_DEPRECATED`) to keep only the dual-verification challenge flow active.
+- `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated and now explicitly return `410 ENDPOINT_DEPRECATED` as unified JSON.
 - `POST /api/auth/verify-email` is the only mutation endpoint for email verification; `GET /api/auth/verify-email` returns `405`.
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
 - `logAudit()` emits structured `[security-signal]` log lines for high-risk auth/tenant failures (`rate_limit_exceeded`, OTP failures, tenant access denials) to support alert pipelines.

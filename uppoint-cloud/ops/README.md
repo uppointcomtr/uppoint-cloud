@@ -51,9 +51,15 @@ AUTH_BCRYPT_ROUNDS=12
 HEALTHCHECK_TOKEN=replace-with-strong-random-token
 UPPOINT_ALLOWED_HOSTS=cloud.uppoint.com.tr
 UPPOINT_ALLOWED_ORIGINS=https://cloud.uppoint.com.tr
+AUDIT_FALLBACK_LOG_PATH=/var/log/uppoint-cloud/audit-fallback.log
 ```
 
 This matches the shipped systemd unit (`EnvironmentFile=/opt/uppoint-cloud/.env`).
+
+Managed PostgreSQL note:
+
+- Default architecture uses managed PostgreSQL.
+- `scripts/tune-system.sh` applies PostgreSQL kernel/DB tuning only when DATABASE_URL points to a local host (`localhost/127.0.0.1/::1`) or `UPPOINT_ENABLE_LOCAL_PG_TUNING=1` is explicitly set.
 
 ### Safe deployment sequence (required)
 
@@ -300,6 +306,7 @@ Covered logs:
 - `/var/log/uppoint-redis-backup.log`
 - `/var/log/uppoint-auth-rate-limit-tune.log`
 - `/var/log/uppoint-health-probe.log`
+- `/var/log/uppoint-cloud/audit-fallback.log`
 - `/var/log/postgresql/*.log`
 
 ## 12. Tokenized health probe (Nginx + local monitoring)

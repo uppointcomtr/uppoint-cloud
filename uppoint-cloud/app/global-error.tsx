@@ -24,38 +24,19 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
 
   return (
     <html lang={locale}>
-      <body
-        style={{
-          margin: 0,
-          fontFamily: "system-ui, sans-serif",
-          backgroundColor: "#0a0a0a",
-          color: "#fafafa",
-          display: "flex",
-          minHeight: "100vh",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div style={{ textAlign: "center", padding: "2rem" }}>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: "0.75rem" }}>
+      <body className="m-0 flex min-h-screen items-center justify-center bg-background text-foreground">
+        <div className="w-full max-w-md px-8 py-10 text-center">
+          <h1 className="mb-3 text-2xl font-semibold tracking-tight">
             {dictionary.unexpectedErrorTitle}
           </h1>
-          <p style={{ color: "#a3a3a3", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+          <p className="mb-6 text-sm text-muted-foreground">
             {error.digest
               ? `${dictionary.codePrefix}: ${error.digest}`
               : dictionary.fallbackDescription}
           </p>
           <button
             onClick={reset}
-            style={{
-              padding: "0.5rem 1.25rem",
-              borderRadius: "0.375rem",
-              border: "none",
-              backgroundColor: "#059669",
-              color: "#fff",
-              fontSize: "0.9rem",
-              cursor: "pointer",
-            }}
+            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             {dictionary.retry}
           </button>

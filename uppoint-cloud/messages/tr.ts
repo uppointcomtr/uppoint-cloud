@@ -270,6 +270,7 @@ export const trMessages = {
       title: "Tenant erişim durumu doğrulanamadı",
       description: "Hesabınız için aktif tenant üyeliği tespit edilemedi veya erişim izni doğrulanamadı.",
       noMembership: "Aktif tenant üyeliği bulunamadı. Lütfen destek ekibiyle iletişime geçin.",
+      selectionRequired: "Birden fazla tenant üyeliğiniz var. Lütfen tenant seçimi yaparak devam edin.",
       accessDenied: "Tenant erişim izni doğrulanamadı. Lütfen yetkili bir hesapla yeniden deneyin.",
     },
   },

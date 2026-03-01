@@ -8,24 +8,16 @@ set -euo pipefail
 ENV_FILE="/opt/uppoint-cloud/.env"
 AUDIT_LOG_RETENTION_DAYS="${AUDIT_LOG_RETENTION_DAYS:-180}"
 
-if [ -z "${DATABASE_URL:-}" ] && [ -f "$ENV_FILE" ]; then
-  DATABASE_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | tail -n1 | cut -d '=' -f2-)"
-fi
-
-if [ -f "$ENV_FILE" ]; then
-  parsed_retention="$(grep -E '^AUDIT_LOG_RETENTION_DAYS=' "$ENV_FILE" | tail -n1 | cut -d '=' -f2- || true)"
-  if [ -n "$parsed_retention" ]; then
-    AUDIT_LOG_RETENTION_DAYS="$parsed_retention"
+load_env_file() {
+  if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
   fi
-fi
+}
 
-# Optional quote cleanup: DATABASE_URL="..." or DATABASE_URL='...'
-if [ -n "${DATABASE_URL:-}" ]; then
-  DATABASE_URL="${DATABASE_URL%\"}"
-  DATABASE_URL="${DATABASE_URL#\"}"
-  DATABASE_URL="${DATABASE_URL%\'}"
-  DATABASE_URL="${DATABASE_URL#\'}"
-fi
+load_env_file
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "[cleanup] HATA: DATABASE_URL tanımlı değil." >&2

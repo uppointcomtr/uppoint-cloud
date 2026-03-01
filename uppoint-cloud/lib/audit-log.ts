@@ -1,10 +1,13 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
+import { appendFile, mkdir } from "fs/promises";
+import { dirname } from "path";
 import type { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
 
 import { prisma } from "@/db/client";
+import { env } from "@/lib/env";
 
 export type AuditAction =
   | "register_success"
@@ -40,6 +43,43 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "tenant_access_denied",
   "tenant_role_insufficient",
 ]);
+const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
+
+let auditFallbackPathChecked = false;
+let auditFallbackPathReady = false;
+
+async function ensureAuditFallbackPath(): Promise<boolean> {
+  if (auditFallbackPathChecked) {
+    return auditFallbackPathReady;
+  }
+
+  auditFallbackPathChecked = true;
+
+  try {
+    await mkdir(dirname(AUDIT_FALLBACK_LOG_PATH), { recursive: true });
+    auditFallbackPathReady = true;
+  } catch {
+    auditFallbackPathReady = false;
+  }
+
+  return auditFallbackPathReady;
+}
+
+async function writeAuditFallbackLine(payload: Record<string, unknown>): Promise<void> {
+  if (!(await ensureAuditFallbackPath())) {
+    return;
+  }
+
+  try {
+    await appendFile(
+      AUDIT_FALLBACK_LOG_PATH,
+      `${JSON.stringify(payload)}\n`,
+      { encoding: "utf8" },
+    );
+  } catch {
+    // Do not throw from audit fallback sink.
+  }
+}
 
 function redactSensitiveMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
   const output: Record<string, unknown> = {};
@@ -233,6 +273,7 @@ export async function logAudit(
       error: error instanceof Error ? error.message : "unknown",
       at: new Date().toISOString(),
     };
+    await writeAuditFallbackLine(fallbackPayload);
     console.error("[audit-fallback]", JSON.stringify(fallbackPayload));
     console.error("[audit] Failed to write audit log:", action, error);
   }

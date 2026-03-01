@@ -6,14 +6,13 @@ import { prisma } from "@/db/client";
 import { assertTenantAccess } from "@/modules/tenant/server/scope";
 
 interface ResolveUserTenantDependencies {
-  findFirstMembership: (userId: string) => Promise<{ tenantId: string; role: TenantRole } | null>;
-  findMembershipByTenant: (input: { userId: string; tenantId: string }) => Promise<{ tenantId: string; role: TenantRole } | null>;
+  findMemberships: (userId: string) => Promise<Array<{ tenantId: string; role: TenantRole }>>;
   assertAccess: (input: { tenantId: string; userId: string; minimumRole: TenantRole }) => Promise<{ tenantId: string; role: TenantRole }>;
 }
 
 const defaultDependencies: ResolveUserTenantDependencies = {
-  findFirstMembership: async (userId) =>
-    prisma.tenantMembership.findFirst({
+  findMemberships: async (userId) =>
+    prisma.tenantMembership.findMany({
       where: {
         userId,
         tenant: {
@@ -21,20 +20,7 @@ const defaultDependencies: ResolveUserTenantDependencies = {
         },
       },
       orderBy: { createdAt: "asc" },
-      select: {
-        tenantId: true,
-        role: true,
-      },
-    }),
-  findMembershipByTenant: async ({ userId, tenantId }) =>
-    prisma.tenantMembership.findFirst({
-      where: {
-        userId,
-        tenantId,
-        tenant: {
-          deletedAt: null,
-        },
-      },
+      take: 2,
       select: {
         tenantId: true,
         role: true,
@@ -44,7 +30,9 @@ const defaultDependencies: ResolveUserTenantDependencies = {
 };
 
 export class UserTenantContextError extends Error {
-  constructor(public readonly code: "TENANT_NOT_FOUND" | "TENANT_ACCESS_DENIED") {
+  constructor(
+    public readonly code: "TENANT_NOT_FOUND" | "TENANT_ACCESS_DENIED" | "TENANT_SELECTION_REQUIRED",
+  ) {
     super(code);
     this.name = "UserTenantContextError";
   }
@@ -71,20 +59,18 @@ export async function resolveUserTenantContext(
     }
   }
 
-  const firstMembership = await dependencies.findFirstMembership(input.userId);
+  const memberships = await dependencies.findMemberships(input.userId);
 
-  if (!firstMembership) {
+  if (memberships.length === 0) {
     throw new UserTenantContextError("TENANT_NOT_FOUND");
   }
 
-  const membership = await dependencies.findMembershipByTenant({
-    userId: input.userId,
-    tenantId: firstMembership.tenantId,
-  });
-
-  if (!membership) {
-    throw new UserTenantContextError("TENANT_ACCESS_DENIED");
+  if (memberships.length > 1) {
+    // Security-sensitive: force explicit tenant selection when multiple memberships exist.
+    throw new UserTenantContextError("TENANT_SELECTION_REQUIRED");
   }
+
+  const membership = memberships[0]!;
 
   try {
     await dependencies.assertAccess({

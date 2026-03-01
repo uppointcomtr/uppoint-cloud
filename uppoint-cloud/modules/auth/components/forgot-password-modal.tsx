@@ -190,12 +190,6 @@ export function ForgotPasswordModal({
 
   const isCodeExpired = countdownSeconds !== null && countdownSeconds <= 0;
 
-  useEffect(() => {
-    if (step !== "success") return;
-    const timer = window.setTimeout(() => onOpenChange(false), 5_000);
-    return () => window.clearTimeout(timer);
-  }, [step, onOpenChange]);
-
   async function requestEmailCode() {
     if (isSubmitting) return;
     setSubmitError(null);

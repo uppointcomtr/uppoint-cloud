@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-03-01 (hardening follow-up: deprecated auth routes, tenant selection safety, audit fallback sink)
+
+### Fixed
+- Closed legacy forgot-password endpoint contract drift by adding explicit routes:
+  - `POST /api/auth/forgot-password/request` -> `410 ENDPOINT_DEPRECATED` JSON
+  - `POST /api/auth/forgot-password/reset` -> `410 ENDPOINT_DEPRECATED` JSON
+  - files:
+    - `app/api/auth/forgot-password/request/route.ts`
+    - `app/api/auth/forgot-password/reset/route.ts`
+- Prevented ambiguous tenant fallback selection:
+  - `resolveUserTenantContext` now requires explicit tenant selection when user has multiple memberships.
+  - added `TENANT_SELECTION_REQUIRED` handling in dashboard UX/messages.
+  - files:
+    - `modules/tenant/server/user-tenant.ts`
+    - `app/[locale]/dashboard/page.tsx`
+    - `messages/tr.ts`
+    - `messages/en.ts`
+- Removed dead auth server paths to reduce maintenance/security drift:
+  - deleted `modules/auth/server/authenticate-user.ts`
+  - deleted `modules/auth/server/auth-notifications.ts`
+  - deleted `tests/auth/authenticate-user.test.ts`
+
+### Changed
+- Edge fail-closed startup guard strengthened:
+  - `proxy.ts` now throws in production when resolved host/origin allowlists are empty.
+- Audit fallback improved with optional persistent JSONL sink:
+  - `lib/audit-log.ts` writes redacted fallback events to `AUDIT_FALLBACK_LOG_PATH` (default `/var/log/uppoint-cloud/audit-fallback.log`) on DB write failures.
+  - `lib/env/server.ts` accepts `AUDIT_FALLBACK_LOG_PATH`.
+- Ops/service updates for audit fallback durability:
+  - `ops/systemd/uppoint-cloud.service` now prepares `/var/log/uppoint-cloud` and allows write access.
+  - `ops/logrotate/uppoint-cloud` now rotates `/var/log/uppoint-cloud/audit-fallback.log`.
+- Nginx drift checker now tolerates auth burst-only divergence caused by runtime tuning:
+  - `scripts/check-nginx-config-drift.sh`
+- Script environment loading hardened by sourcing `.env` once instead of brittle grep/cut parsing:
+  - `scripts/backup-db.sh`
+  - `scripts/cleanup-db.sh`
+  - `scripts/health-probe.sh`
+- `scripts/tune-system.sh` now skips local PostgreSQL tuning by default for managed-DB deployments unless explicitly enabled.
+
+### Tests
+- Added deprecated-route unit coverage:
+  - `tests/auth/deprecated-forgot-password-routes.test.ts`
+- Extended e2e smoke coverage:
+  - `tests/e2e/auth-http-smoke.test.ts` now verifies `410 ENDPOINT_DEPRECATED` behavior for legacy forgot-password endpoint.
+
+### Documentation
+- Updated:
+  - `README.md`
+  - `ops/README.md`
+
 ## 2026-03-01 (ci fix: move remote smoke workflow to repository root)
 
 ### Fixed

@@ -28,6 +28,14 @@ const ALLOWED_ORIGINS = resolveAllowedOrigins({
   configuredOrigins: process.env.UPPOINT_ALLOWED_ORIGINS,
 });
 
+if (IS_PRODUCTION && ALLOWED_HOSTS.size === 0) {
+  throw new Error("Production host allowlist is empty; set NEXT_PUBLIC_APP_URL and/or UPPOINT_ALLOWED_HOSTS");
+}
+
+if (IS_PRODUCTION && ALLOWED_ORIGINS.size === 0) {
+  throw new Error("Production origin allowlist is empty; set NEXT_PUBLIC_APP_URL and/or UPPOINT_ALLOWED_ORIGINS");
+}
+
 function getOrCreateRequestId(request: NextRequest): string {
   const incoming = request.headers.get("x-request-id")?.trim();
   return incoming && incoming.length > 0 ? incoming : crypto.randomUUID();

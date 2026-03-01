@@ -107,7 +107,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             <p className="text-sm text-muted-foreground">
               {tenantContextError === "TENANT_NOT_FOUND"
                 ? dictionary.dashboard.tenantContextError.noMembership
-                : dictionary.dashboard.tenantContextError.accessDenied}
+                : tenantContextError === "TENANT_SELECTION_REQUIRED"
+                  ? dictionary.dashboard.tenantContextError.selectionRequired
+                  : dictionary.dashboard.tenantContextError.accessDenied}
             </p>
           )}
         </CardContent>

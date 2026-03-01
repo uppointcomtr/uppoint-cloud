@@ -15,6 +15,13 @@ hash_of() {
   sha256sum "$file_path" | awk '{print $1}'
 }
 
+hash_of_normalized_site() {
+  local file_path="$1"
+  sed -E 's/(limit_req zone=uppoint_auth_per_ip burst=)[0-9]+( nodelay;)/\1<burst>\2/' "$file_path" \
+    | sha256sum \
+    | awk '{print $1}'
+}
+
 check_site_file() {
   if [ ! -f "$target_site_file" ]; then
     echo "[drift] missing target file: $target_site_file" >&2
@@ -40,6 +47,21 @@ check_site_file() {
 
   if [ "$target_hash" = "$bootstrap_hash" ]; then
     echo "[drift] ok: $target_site_file matches bootstrap template"
+    return
+  fi
+
+  local target_normalized_hash tls_normalized_hash bootstrap_normalized_hash
+  target_normalized_hash="$(hash_of_normalized_site "$target_site_file")"
+  tls_normalized_hash="$(hash_of_normalized_site "$template_tls")"
+  bootstrap_normalized_hash="$(hash_of_normalized_site "$template_bootstrap")"
+
+  if [ "$target_normalized_hash" = "$tls_normalized_hash" ]; then
+    echo "[drift] warn: $target_site_file differs from TLS template only by auth burst (expected after tuning)"
+    return
+  fi
+
+  if [ "$target_normalized_hash" = "$bootstrap_normalized_hash" ]; then
+    echo "[drift] warn: $target_site_file differs from bootstrap template only by auth burst (expected after tuning)"
     return
   fi
 

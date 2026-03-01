@@ -269,6 +269,7 @@ export const enMessages = {
       title: "Tenant access status could not be validated",
       description: "No active tenant membership was found for this account or access could not be verified.",
       noMembership: "No active tenant membership is available. Please contact support.",
+      selectionRequired: "Your account belongs to multiple tenants. Please continue with an explicit tenant selection.",
       accessDenied: "Tenant access could not be verified. Please retry with an authorized account.",
     },
   },

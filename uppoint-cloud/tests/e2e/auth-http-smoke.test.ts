@@ -182,4 +182,19 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(payload.success).toBe(false);
     expect(payload.error).toBe("VALIDATION_FAILED");
   });
+
+  it("returns 410 JSON for deprecated forgot-password legacy endpoints", async () => {
+    const response = await fetchWithTimeout("/api/auth/forgot-password/request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    expect(response.status).toBe(410);
+    const payload = await response.json() as { success: boolean; error?: string };
+    expect(payload.success).toBe(false);
+    expect(payload.error).toBe("ENDPOINT_DEPRECATED");
+  });
 });

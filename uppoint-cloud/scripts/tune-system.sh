@@ -15,6 +15,49 @@
 
 set -euo pipefail
 
+ENV_FILE="/opt/uppoint-cloud/.env"
+ENABLE_LOCAL_PG_TUNING="${UPPOINT_ENABLE_LOCAL_PG_TUNING:-0}"
+
+load_env_file() {
+  if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+  fi
+}
+
+extract_database_host() {
+  local db_url="$1"
+  printf '%s' "$db_url" | sed -E 's#^[^:]+://([^@/]+@)?([^/:?]+).*$#\2#'
+}
+
+is_local_database_host() {
+  case "$1" in
+    localhost|127.0.0.1|::1)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+load_env_file
+
+DATABASE_URL_VALUE="${DATABASE_URL:-}"
+DATABASE_HOST=""
+if [ -n "$DATABASE_URL_VALUE" ]; then
+  DATABASE_HOST="$(extract_database_host "$DATABASE_URL_VALUE")"
+fi
+
+LOCAL_PG_TUNING_ENABLED=0
+if [ "$ENABLE_LOCAL_PG_TUNING" = "1" ]; then
+  LOCAL_PG_TUNING_ENABLED=1
+elif is_local_database_host "$DATABASE_HOST"; then
+  LOCAL_PG_TUNING_ENABLED=1
+fi
+
 # ── Donanım tespiti ──────────────────────────────────────────────────────────
 TOTAL_RAM_KB=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
 TOTAL_RAM_MB=$(( TOTAL_RAM_KB / 1024 ))
@@ -39,49 +82,50 @@ printf "║  uppoint tune-system — %-34s║\n" "$(date '+%Y-%m-%d %H:%M:%S')"
 printf "║  RAM: %-8s GB   CPU: %-4s çekirdek   Disk: %-5s  ║\n" "$TOTAL_RAM_GB" "$CPU_COUNT" "$DISK_TYPE"
 echo "╚══════════════════════════════════════════════════════════╝"
 
-# ── 1. PostgreSQL ─────────────────────────────────────────────────────────────
+# ── 1. PostgreSQL (yalnızca local/self-hosted kullanımında) ──────────────────
 PG_VERSION=17
 PG_CONF_D="/etc/postgresql/${PG_VERSION}/main/conf.d"
 PG_TUNED="${PG_CONF_D}/99-uppoint-tuned.conf"
 PG_UNIT="postgresql@${PG_VERSION}-main"
 
-# max_connections: RAM/100, [100, 300]
-MAX_CONN=$(( TOTAL_RAM_MB / 100 ))
-(( MAX_CONN < 100 )) && MAX_CONN=100
-(( MAX_CONN > 300 )) && MAX_CONN=300
+if [ "$LOCAL_PG_TUNING_ENABLED" -eq 1 ] && [ -d "/etc/postgresql/${PG_VERSION}" ]; then
+  # max_connections: RAM/100, [100, 300]
+  MAX_CONN=$(( TOTAL_RAM_MB / 100 ))
+  (( MAX_CONN < 100 )) && MAX_CONN=100
+  (( MAX_CONN > 300 )) && MAX_CONN=300
 
-# shared_buffers: RAM'in %25'i, max 8 GB
-SB=$(( TOTAL_RAM_MB / 4 ))
-(( SB > 8192 )) && SB=8192
+  # shared_buffers: RAM'in %25'i, max 8 GB
+  SB=$(( TOTAL_RAM_MB / 4 ))
+  (( SB > 8192 )) && SB=8192
 
-# effective_cache_size: RAM'in %75'i
-EC=$(( TOTAL_RAM_MB * 3 / 4 ))
+  # effective_cache_size: RAM'in %75'i
+  EC=$(( TOTAL_RAM_MB * 3 / 4 ))
 
-# work_mem: RAM / (max_connections × 2), [4 MB – 256 MB]
-# Tüm bağlantılar aynı anda sort yapmaz; ortalama aktif bağlantı × 2 ← güvenli çarpan
-WM=$(( TOTAL_RAM_MB / ( MAX_CONN * 2 ) ))
-(( WM < 4   )) && WM=4
-(( WM > 256 )) && WM=256
+  # work_mem: RAM / (max_connections × 2), [4 MB – 256 MB]
+  # Tüm bağlantılar aynı anda sort yapmaz; ortalama aktif bağlantı × 2 ← güvenli çarpan
+  WM=$(( TOTAL_RAM_MB / ( MAX_CONN * 2 ) ))
+  (( WM < 4   )) && WM=4
+  (( WM > 256 )) && WM=256
 
-# maintenance_work_mem: RAM'in %6.25'i, max 2 GB
-MMW=$(( TOTAL_RAM_MB / 16 ))
-(( MMW > 2048 )) && MMW=2048
+  # maintenance_work_mem: RAM'in %6.25'i, max 2 GB
+  MMW=$(( TOTAL_RAM_MB / 16 ))
+  (( MMW > 2048 )) && MMW=2048
 
-# wal_buffers: shared_buffers'ın %3'ü, [1 MB – 64 MB]
-WB=$(( SB * 3 / 100 ))
-(( WB < 1  )) && WB=1
-(( WB > 64 )) && WB=64
+  # wal_buffers: shared_buffers'ın %3'ü, [1 MB – 64 MB]
+  WB=$(( SB * 3 / 100 ))
+  (( WB < 1  )) && WB=1
+  (( WB > 64 )) && WB=64
 
-# autovacuum: daha sık çalışır, table bloat + txid wraparound önler
-AV_NAPTIME="20s"
-AV_VACUUM_THRESHOLD="50"
-AV_ANALYZE_THRESHOLD="50"
-AV_VACUUM_SCALE="0.05"
-AV_ANALYZE_SCALE="0.02"
+  # autovacuum: daha sık çalışır, table bloat + txid wraparound önler
+  AV_NAPTIME="20s"
+  AV_VACUUM_THRESHOLD="50"
+  AV_ANALYZE_THRESHOLD="50"
+  AV_VACUUM_SCALE="0.05"
+  AV_ANALYZE_SCALE="0.02"
 
-mkdir -p "$PG_CONF_D"
+  mkdir -p "$PG_CONF_D"
 
-cat > "$PG_TUNED" <<PGEOF
+  cat > "$PG_TUNED" <<PGEOF
 # Otomatik oluşturuldu — tune-system.sh — $(date '+%Y-%m-%d %H:%M:%S')
 # RAM: ${TOTAL_RAM_GB} GB  |  CPU: ${CPU_COUNT} çekirdek  |  Disk: ${DISK_TYPE}
 # Değiştirmek için: sudo bash /opt/uppoint-cloud/scripts/tune-system.sh
@@ -112,24 +156,30 @@ autovacuum_vacuum_scale_factor   = ${AV_VACUUM_SCALE}
 autovacuum_analyze_scale_factor  = ${AV_ANALYZE_SCALE}
 PGEOF
 
-echo ""
-echo "── PostgreSQL ──────────────────────────────────────────────"
-echo "  max_connections             = ${MAX_CONN}"
-echo "  shared_buffers              = ${SB} MB"
-echo "  effective_cache_size        = ${EC} MB"
-echo "  work_mem                    = ${WM} MB"
-echo "  maintenance_work_mem        = ${MMW} MB"
-echo "  wal_buffers                 = ${WB} MB"
-echo "  random_page_cost            = ${RANDOM_PAGE_COST} (${DISK_TYPE})"
-echo "  effective_io_concurrency    = ${EFFECTIVE_IO_CONCURRENCY}"
-echo "  autovacuum_naptime          = ${AV_NAPTIME}"
-echo "  → ${PG_TUNED}"
+  echo ""
+  echo "── PostgreSQL ──────────────────────────────────────────────"
+  echo "  max_connections             = ${MAX_CONN}"
+  echo "  shared_buffers              = ${SB} MB"
+  echo "  effective_cache_size        = ${EC} MB"
+  echo "  work_mem                    = ${WM} MB"
+  echo "  maintenance_work_mem        = ${MMW} MB"
+  echo "  wal_buffers                 = ${WB} MB"
+  echo "  random_page_cost            = ${RANDOM_PAGE_COST} (${DISK_TYPE})"
+  echo "  effective_io_concurrency    = ${EFFECTIVE_IO_CONCURRENCY}"
+  echo "  autovacuum_naptime          = ${AV_NAPTIME}"
+  echo "  → ${PG_TUNED}"
 
-if systemctl is-active --quiet "$PG_UNIT" 2>/dev/null; then
-  systemctl restart "$PG_UNIT"
-  echo "  ✓ PostgreSQL yeniden başlatıldı"
+  if systemctl is-active --quiet "$PG_UNIT" 2>/dev/null; then
+    systemctl restart "$PG_UNIT"
+    echo "  ✓ PostgreSQL yeniden başlatıldı"
+  else
+    echo "  · PostgreSQL çalışmıyor — ayarlar bir sonraki başlatmada geçerli olur"
+  fi
 else
-  echo "  · PostgreSQL çalışmıyor — ayarlar bir sonraki başlatmada geçerli olur"
+  echo ""
+  echo "── PostgreSQL ──────────────────────────────────────────────"
+  echo "  · local PostgreSQL tuning atlandı (Managed PostgreSQL varsayıldı)."
+  echo "  · Local tuning zorlamak için: UPPOINT_ENABLE_LOCAL_PG_TUNING=1"
 fi
 
 # ── 2. Node.js heap boyutu ──────────────────────────────────────────────────

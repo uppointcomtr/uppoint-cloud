@@ -10,17 +10,16 @@ ENV_FILE="/opt/uppoint-cloud/.env"
 KEEP_DAYS=14
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-if [ -z "${DATABASE_URL:-}" ] && [ -f "$ENV_FILE" ]; then
-  DATABASE_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | tail -n1 | cut -d '=' -f2-)"
-fi
+load_env_file() {
+  if [ -f "$ENV_FILE" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$ENV_FILE"
+    set +a
+  fi
+}
 
-# Optional quote cleanup: DATABASE_URL="..." or DATABASE_URL='...'
-if [ -n "${DATABASE_URL:-}" ]; then
-  DATABASE_URL="${DATABASE_URL%\"}"
-  DATABASE_URL="${DATABASE_URL#\"}"
-  DATABASE_URL="${DATABASE_URL%\'}"
-  DATABASE_URL="${DATABASE_URL#\'}"
-fi
+load_env_file
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "[backup] HATA: DATABASE_URL tanımlı değil." >&2
