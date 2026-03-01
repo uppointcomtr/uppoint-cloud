@@ -8,13 +8,16 @@ npm ci
 npx prisma generate
 npx prisma migrate deploy
 npm run build
+sudo systemctl restart uppoint-cloud.service
 ```
 
-`npm run build` automatically restarts `uppoint-cloud.service` when available.
+`npm run build` only builds the app.
+Use `npm run build:deploy` if you want build + service restart in one command.
+
 If you need to keep the service stopped during a maintenance sequence, run:
 
 ```bash
-NEXT_SKIP_SERVICE_RESTART=1 npm run build
+npm run build
 ```
 
 Install the systemd service:
@@ -47,7 +50,7 @@ Use this sequence for every production deploy to avoid stale build/hash mismatch
 cd /opt/uppoint-cloud
 sudo systemctl stop uppoint-cloud.service
 mv .next ".next_backup_$(date +%s)" 2>/dev/null || true
-NEXT_SKIP_SERVICE_RESTART=1 npm run build
+npm run build
 sudo chown -R www-data:www-data .next
 sudo systemctl daemon-reload
 sudo systemctl start uppoint-cloud.service
@@ -244,6 +247,7 @@ Operational notes:
 - Generated reports are written to:
   - `/var/log/uppoint-cloud/auth-rate-limit/auth-rate-limit-latest.md`
   - `/var/log/uppoint-cloud/auth-rate-limit/auth-rate-limit-latest.json`
+- Cron task `ops/cron/uppoint-auth-rate-limit-tune` is report-only by default (no `--apply`).
 
 ## 11. Log rotation for ops jobs
 
@@ -306,3 +310,31 @@ Install periodic local probe:
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-health-probe /etc/cron.d/uppoint-health-probe
 sudo chmod 644 /etc/cron.d/uppoint-health-probe
 ```
+
+## 13. Restore procedures (manual, guarded)
+
+PostgreSQL restore (requires explicit confirmation):
+
+```bash
+sudo /opt/uppoint-cloud/scripts/restore-db.sh /opt/backups/postgres/backup-file.sql.gz --confirm
+```
+
+Redis restore (requires explicit confirmation):
+
+```bash
+sudo /opt/uppoint-cloud/scripts/restore-redis.sh /opt/backups/redis/backup-file.tar.gz --confirm
+```
+
+Both restore scripts create a pre-restore backup snapshot before modifying live data.
+
+## 14. Nginx config drift check
+
+Verify deployed Nginx config files match repository templates:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/check-nginx-config-drift.sh
+```
+
+Site config is accepted if it matches either:
+- `ops/nginx/cloud.uppoint.com.tr.bootstrap.conf` (pre-certificate)
+- `ops/nginx/cloud.uppoint.com.tr.conf` (TLS)

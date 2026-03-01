@@ -1,3 +1,3 @@
 # Uppoint Cloud auth rate-limit tune (every 30 min)
 # Report + safe apply mode (only if enough sample is available)
-*/30 * * * * root /opt/uppoint-cloud/scripts/tune-auth-rate-limit.sh --apply --tail-lines 30000 --min-sample 150 >> /var/log/uppoint-auth-rate-limit-tune.log 2>&1
+*/30 * * * * root /usr/bin/flock -n /var/lock/uppoint-auth-rate-limit-tune.lock /opt/uppoint-cloud/scripts/tune-auth-rate-limit.sh --tail-lines 30000 --min-sample 300 >> /var/log/uppoint-auth-rate-limit-tune.log 2>&1

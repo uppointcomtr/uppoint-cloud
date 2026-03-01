@@ -23,16 +23,44 @@ interface VerifyEmailStatusDictionary {
 
 interface VerifyEmailStatusProps {
   locale: Locale;
-  token: string | null;
+  tokenFromQuery: string | null;
   dictionary: VerifyEmailStatusDictionary;
 }
 
 type VerificationState = "idle" | "success" | "error";
 type ErrorKey = keyof VerifyEmailStatusDictionary["errors"];
 
-export function VerifyEmailStatus({ locale, token, dictionary }: VerifyEmailStatusProps) {
-  const [state, setState] = useState<VerificationState>(token ? "idle" : "error");
-  const [errorKey, setErrorKey] = useState<ErrorKey>(token ? "generic" : "missingToken");
+export function VerifyEmailStatus({ locale, tokenFromQuery, dictionary }: VerifyEmailStatusProps) {
+  const [token, setToken] = useState<string | null>(tokenFromQuery);
+  const [state, setState] = useState<VerificationState>(tokenFromQuery ? "idle" : "error");
+  const [errorKey, setErrorKey] = useState<ErrorKey>(tokenFromQuery ? "generic" : "missingToken");
+
+  useEffect(() => {
+    if (tokenFromQuery) {
+      return;
+    }
+
+    const hash = window.location.hash.startsWith("#")
+      ? window.location.hash.slice(1)
+      : window.location.hash;
+    const candidateToken = new URLSearchParams(hash).get("token");
+
+    if (!candidateToken) {
+      setState("error");
+      setErrorKey("missingToken");
+      return;
+    }
+
+    // Remove token fragment from URL after extraction to reduce accidental exposure.
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}`,
+    );
+    setToken(candidateToken);
+    setState("idle");
+    setErrorKey("generic");
+  }, [tokenFromQuery]);
 
   useEffect(() => {
     if (!token) {

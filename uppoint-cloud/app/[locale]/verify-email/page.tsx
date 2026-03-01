@@ -29,7 +29,7 @@ export default async function VerifyEmailPage({
     <AuthSplitShell locale={locale} header={dictionary.header}>
       <VerifyEmailStatus
         locale={locale}
-        token={token ?? null}
+        tokenFromQuery={token ?? null}
         dictionary={dictionary.emailVerification}
       />
     </AuthSplitShell>

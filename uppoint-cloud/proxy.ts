@@ -12,6 +12,22 @@ import {
 
 const PUBLIC_FILE_PATTERN = /\.[^/]+$/;
 
+function getOrCreateRequestId(request: NextRequest): string {
+  const incoming = request.headers.get("x-request-id")?.trim();
+  return incoming && incoming.length > 0 ? incoming : crypto.randomUUID();
+}
+
+function buildForwardHeaders(request: NextRequest, requestId: string): Headers {
+  const headers = new Headers(request.headers);
+  headers.set("x-request-id", requestId);
+  return headers;
+}
+
+function withRequestId(response: NextResponse, requestId: string): NextResponse {
+  response.headers.set("x-request-id", requestId);
+  return response;
+}
+
 function shouldBypassProxy(pathname: string): boolean {
   return (
     pathname.startsWith("/api")
@@ -33,9 +49,18 @@ function usesSecureSessionCookie(request: NextRequest): boolean {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const requestId = getOrCreateRequestId(request);
+  const forwardHeaders = buildForwardHeaders(request, requestId);
 
   if (shouldBypassProxy(pathname)) {
-    return NextResponse.next();
+    return withRequestId(
+      NextResponse.next({
+        request: {
+          headers: forwardHeaders,
+        },
+      }),
+      requestId,
+    );
   }
 
   const locale = extractLocaleFromPath(pathname);
@@ -43,7 +68,7 @@ export async function proxy(request: NextRequest) {
   if (!locale) {
     const destination = request.nextUrl.clone();
     destination.pathname = withLocale(pathname === "/" ? "/login" : pathname, defaultLocale);
-    return NextResponse.redirect(destination);
+    return withRequestId(NextResponse.redirect(destination), requestId);
   }
 
   const useSecureCookie = usesSecureSessionCookie(request);
@@ -61,7 +86,14 @@ export async function proxy(request: NextRequest) {
   const redirectPath = resolveAuthRedirect(pathname, Boolean(token));
 
   if (!redirectPath) {
-    return NextResponse.next();
+    return withRequestId(
+      NextResponse.next({
+        request: {
+          headers: forwardHeaders,
+        },
+      }),
+      requestId,
+    );
   }
 
   const destination = request.nextUrl.clone();
@@ -71,7 +103,7 @@ export async function proxy(request: NextRequest) {
     destination.searchParams.set("callbackUrl", pathname);
   }
 
-  return NextResponse.redirect(destination);
+  return withRequestId(NextResponse.redirect(destination), requestId);
 }
 
 export const config = {

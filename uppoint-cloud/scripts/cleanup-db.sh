@@ -6,9 +6,17 @@
 set -euo pipefail
 
 ENV_FILE="/opt/uppoint-cloud/.env"
+AUDIT_LOG_RETENTION_DAYS="${AUDIT_LOG_RETENTION_DAYS:-180}"
 
 if [ -z "${DATABASE_URL:-}" ] && [ -f "$ENV_FILE" ]; then
   DATABASE_URL="$(grep -E '^DATABASE_URL=' "$ENV_FILE" | tail -n1 | cut -d '=' -f2-)"
+fi
+
+if [ -f "$ENV_FILE" ]; then
+  parsed_retention="$(grep -E '^AUDIT_LOG_RETENTION_DAYS=' "$ENV_FILE" | tail -n1 | cut -d '=' -f2- || true)"
+  if [ -n "$parsed_retention" ]; then
+    AUDIT_LOG_RETENTION_DAYS="$parsed_retention"
+  fi
 fi
 
 # Optional quote cleanup: DATABASE_URL="..." or DATABASE_URL='...'
@@ -21,6 +29,11 @@ fi
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "[cleanup] HATA: DATABASE_URL tanımlı değil." >&2
+  exit 1
+fi
+
+if ! [[ "$AUDIT_LOG_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$AUDIT_LOG_RETENTION_DAYS" -lt 30 ]; then
+  echo "[cleanup] HATA: AUDIT_LOG_RETENTION_DAYS geçersiz (>=30 olmalı)." >&2
   exit 1
 fi
 
@@ -50,9 +63,9 @@ echo "[cleanup] PasswordResetChallenge: ${PRC_DELETED} satır silindi"
 VT_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"VerificationToken\" WHERE \"expires\" < NOW() RETURNING token) SELECT count(*) FROM d;")
 echo "[cleanup] VerificationToken: ${VT_DELETED} satır silindi"
 
-# 6. AuditLog — 90 günden eski kayıtlar
-AL_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"AuditLog\" WHERE \"createdAt\" < NOW() - INTERVAL '90 days' RETURNING id) SELECT count(*) FROM d;")
-echo "[cleanup] AuditLog (>90 gün): ${AL_DELETED} satır silindi"
+# 6. AuditLog — retention süresinden eski kayıtlar
+AL_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"AuditLog\" WHERE \"createdAt\" < NOW() - INTERVAL '${AUDIT_LOG_RETENTION_DAYS} days' RETURNING id) SELECT count(*) FROM d;")
+echo "[cleanup] AuditLog (>${AUDIT_LOG_RETENTION_DAYS} gün): ${AL_DELETED} satır silindi"
 
 # 7. RegistrationVerificationChallenge — süresi dolmuş kayıtlar
 RVC_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"RegistrationVerificationChallenge\" WHERE \"emailCodeExpiresAt\" < NOW() - INTERVAL '1 hour' RETURNING id) SELECT count(*) FROM d;")

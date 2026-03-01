@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
+import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/modules/auth/server/login-challenge";
 
 export async function POST(request: Request) {
+  return withIdempotency("auth:login-email-start", async () => {
   // Rate limit: 10 attempts per 15 minutes per IP
   const rateLimitResponse = await withRateLimit("login-email-start", 10, 900);
   if (rateLimitResponse) {
@@ -99,4 +101,17 @@ export async function POST(request: Request) {
       status: 500,
     });
   }
+  });
+}
+
+export async function GET() {
+  return NextResponse.json(
+    fail("METHOD_NOT_ALLOWED"),
+    {
+      status: 405,
+      headers: {
+        Allow: "POST",
+      },
+    },
+  );
 }

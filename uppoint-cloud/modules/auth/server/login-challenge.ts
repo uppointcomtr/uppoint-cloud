@@ -71,6 +71,23 @@ function expiresAtFrom(now: Date, minutes: number): Date {
   return new Date(now.getTime() + minutes * 60 * 1000);
 }
 
+async function registerFailedPasswordAttemptAtomic(input: { userId: string; now: Date }): Promise<void> {
+  const lockUntil = expiresAtFrom(input.now, LOGIN_PASSWORD_LOCK_MINUTES);
+
+  // Security-sensitive: single SQL update avoids read-modify-write races under concurrent failures.
+  await prisma.$executeRaw`
+    UPDATE "User"
+    SET
+      "failedLoginAttempts" = "failedLoginAttempts" + 1,
+      "lockedUntil" = CASE
+        WHEN ("failedLoginAttempts" + 1) >= ${LOGIN_PASSWORD_MAX_ATTEMPTS} THEN ${lockUntil}
+        ELSE "lockedUntil"
+      END
+    WHERE "id" = ${input.userId}
+      AND "deletedAt" IS NULL
+  `;
+}
+
 function buildEmailOtpMessage(options: {
   locale: Locale;
   name: string | null;
@@ -153,8 +170,8 @@ interface StartEmailLoginDependencies {
 
 const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
   findUserByEmail: async (email) =>
-    prisma.user.findUnique({
-      where: { email },
+    prisma.user.findFirst({
+      where: { email, deletedAt: null },
       select: {
         id: true,
         email: true,
@@ -166,33 +183,7 @@ const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
       },
     }),
   verifyPassword,
-  registerFailedPasswordAttempt: async (input) => {
-    await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: input.userId },
-        select: {
-          failedLoginAttempts: true,
-        },
-      });
-
-      if (!user) {
-        return;
-      }
-
-      const nextFailedAttempts = user.failedLoginAttempts + 1;
-      const shouldLock = nextFailedAttempts >= LOGIN_PASSWORD_MAX_ATTEMPTS;
-
-      await tx.user.update({
-        where: { id: input.userId },
-        data: {
-          failedLoginAttempts: nextFailedAttempts,
-          lockedUntil: shouldLock
-            ? expiresAtFrom(input.now, LOGIN_PASSWORD_LOCK_MINUTES)
-            : undefined,
-        },
-      });
-    });
-  },
+  registerFailedPasswordAttempt: registerFailedPasswordAttemptAtomic,
   clearFailedPasswordAttempts: async (userId) => {
     await prisma.user.update({
       where: { id: userId },
@@ -321,9 +312,8 @@ interface StartPhoneLoginDependencies {
 
 const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
   findUserByPhone: async (phone) => {
-    // phone has @unique constraint — findUnique is more efficient than findFirst
-    const user = await prisma.user.findUnique({
-      where: { phone },
+    const user = await prisma.user.findFirst({
+      where: { phone, deletedAt: null },
       select: {
         id: true,
         phone: true,
@@ -348,33 +338,7 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
     };
   },
   verifyPassword,
-  registerFailedPasswordAttempt: async (input) => {
-    await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
-        where: { id: input.userId },
-        select: {
-          failedLoginAttempts: true,
-        },
-      });
-
-      if (!user) {
-        return;
-      }
-
-      const nextFailedAttempts = user.failedLoginAttempts + 1;
-      const shouldLock = nextFailedAttempts >= LOGIN_PASSWORD_MAX_ATTEMPTS;
-
-      await tx.user.update({
-        where: { id: input.userId },
-        data: {
-          failedLoginAttempts: nextFailedAttempts,
-          lockedUntil: shouldLock
-            ? expiresAtFrom(input.now, LOGIN_PASSWORD_LOCK_MINUTES)
-            : undefined,
-        },
-      });
-    });
-  },
+  registerFailedPasswordAttempt: registerFailedPasswordAttemptAtomic,
   clearFailedPasswordAttempts: async (userId) => {
     await prisma.user.update({
       where: { id: userId },
@@ -628,6 +592,7 @@ interface ConsumeLoginTokenDependencies {
       email: string;
       name: string | null;
       tokenVersion: number;
+      deletedAt: Date | null;
     };
   } | null>;
   consumeTokenAndCleanupChallenges: (input: {
@@ -658,6 +623,7 @@ const defaultConsumeLoginTokenDependencies: ConsumeLoginTokenDependencies = {
             email: true,
             name: true,
             tokenVersion: true,
+            deletedAt: true,
           },
         },
       },
@@ -726,7 +692,8 @@ export async function consumeLoginToken(
     !challenge.verifiedAt ||
     !challenge.loginTokenExpiresAt ||
     challenge.loginTokenUsedAt ||
-    challenge.loginTokenExpiresAt <= now
+    challenge.loginTokenExpiresAt <= now ||
+    challenge.user.deletedAt
   ) {
     return null;
   }

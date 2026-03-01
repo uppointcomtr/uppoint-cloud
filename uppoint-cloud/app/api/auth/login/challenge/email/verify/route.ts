@@ -77,3 +77,15 @@ export async function POST(request: Request) {
     });
   }
 }
+
+export async function GET() {
+  return NextResponse.json(
+    fail("METHOD_NOT_ALLOWED"),
+    {
+      status: 405,
+      headers: {
+        Allow: "POST",
+      },
+    },
+  );
+}

@@ -21,6 +21,7 @@ const serverEnvSchema = z.object({
   AUTH_TRUST_HOST: booleanFromString.default(false),
   AUTH_BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
+  AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().min(30).max(3650).default(180),
   HEALTHCHECK_TOKEN: z.string().min(16).optional(),
   RATE_LIMIT_REDIS_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
@@ -54,6 +55,17 @@ const serverEnvSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["UPSTASH_REDIS_REST_URL"],
       message: "UPSTASH_REDIS_REST_URL is required when UPSTASH_REDIS_REST_TOKEN is set",
+    });
+  }
+
+  const hasLocalRateLimitRedis = Boolean(input.RATE_LIMIT_REDIS_URL);
+  const hasUpstashRateLimitRedis = Boolean(input.UPSTASH_REDIS_REST_URL && input.UPSTASH_REDIS_REST_TOKEN);
+
+  if (input.NODE_ENV === "production" && !hasLocalRateLimitRedis && !hasUpstashRateLimitRedis) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["RATE_LIMIT_REDIS_URL"],
+      message: "Production requires Redis-backed auth rate limiting (RATE_LIMIT_REDIS_URL or Upstash credentials)",
     });
   }
 
@@ -114,6 +126,7 @@ const parsedEnv = serverEnvSchema.safeParse({
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
   AUTH_BCRYPT_ROUNDS: process.env.AUTH_BCRYPT_ROUNDS,
   AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES: process.env.AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES,
+  AUDIT_LOG_RETENTION_DAYS: process.env.AUDIT_LOG_RETENTION_DAYS,
   HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
   RATE_LIMIT_REDIS_URL: process.env.RATE_LIMIT_REDIS_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,

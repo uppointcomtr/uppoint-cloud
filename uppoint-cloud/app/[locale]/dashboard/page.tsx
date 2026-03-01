@@ -14,11 +14,13 @@ import { SessionTimeoutWarning } from "@/modules/auth/components/session-timeout
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 import { getLocaleFromParams } from "@/modules/i18n/server";
+import { resolveUserTenantContext } from "@/modules/tenant/server/user-tenant";
 
 export const dynamic = "force-dynamic";
 
 interface DashboardPageProps {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tenantId?: string }>;
 }
 
 export async function generateMetadata({ params }: DashboardPageProps): Promise<Metadata> {
@@ -27,7 +29,7 @@ export async function generateMetadata({ params }: DashboardPageProps): Promise<
   return { title: metadata.dashboard.title, description: metadata.dashboard.description };
 }
 
-export default async function DashboardPage({ params }: DashboardPageProps) {
+export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
   const locale = await getLocaleFromParams(params);
   const dictionary = getDictionary(locale);
   const session = await auth();
@@ -35,6 +37,12 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
   if (!session?.user) {
     redirect(`${withLocale("/login", locale)}?callbackUrl=${encodeURIComponent(withLocale("/dashboard", locale))}`);
   }
+
+  const { tenantId } = await searchParams;
+  const tenantContext = await resolveUserTenantContext({
+    userId: session.user.id,
+    tenantId,
+  });
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl flex-col gap-6 px-6 py-16">
@@ -58,7 +66,15 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
             {dictionary.dashboard.cardDescriptionPrefix} {session.user.email}.
           </CardDescription>
         </CardHeader>
-        <CardContent>{dictionary.dashboard.cardContent}</CardContent>
+        <CardContent className="space-y-2">
+          <p>{dictionary.dashboard.cardContent}</p>
+          <p className="text-sm text-muted-foreground">
+            {dictionary.dashboard.tenantLabel}: {tenantContext.tenantId}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {dictionary.dashboard.roleLabel}: {tenantContext.role}
+          </p>
+        </CardContent>
       </Card>
     </main>
   );

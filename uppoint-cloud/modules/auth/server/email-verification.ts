@@ -44,7 +44,8 @@ export async function createAndSendEmailVerificationToken(
   if (env.UPPOINT_EMAIL_BACKEND !== "disabled") {
     const resolvedLocale = isLocale(locale) ? locale : defaultLocale;
     const verifyUrl = new URL(withLocale("/verify-email", resolvedLocale), env.NEXT_PUBLIC_APP_URL);
-    verifyUrl.searchParams.set("token", rawToken);
+    // Security-sensitive: use URL fragment so raw token is not sent in server/access logs.
+    verifyUrl.hash = new URLSearchParams({ token: rawToken }).toString();
 
     await sendAuthEmail({
       to: email,

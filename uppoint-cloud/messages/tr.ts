@@ -264,6 +264,8 @@ export const trMessages = {
     cardDescriptionPrefix: "Şu hesapla giriş yaptın:",
     cardContent:
       "Bu sayfa, kimlik doğrulama MVP kilometre taşı için bilerek minimal tutulmuştur.",
+    tenantLabel: "Tenant",
+    roleLabel: "Rol",
   },
   sessionTimeout: {
     warning: "Oturumunuz yakında sona eriyor.",

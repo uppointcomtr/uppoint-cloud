@@ -63,6 +63,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
+- `AUDIT_LOG_RETENTION_DAYS` (optional, default `90`, min `7`)
 - `HEALTHCHECK_TOKEN` (optional but recommended in production; required as `x-health-token` when set)
 - `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
 - `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
@@ -117,10 +118,12 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Login credential verification: [modules/auth/server/authenticate-user.ts](/opt/uppoint-cloud/modules/auth/server/authenticate-user.ts)
 - Login OTP challenge service: [modules/auth/server/login-challenge.ts](/opt/uppoint-cloud/modules/auth/server/login-challenge.ts)
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
-- Password reset service: [modules/auth/server/password-reset.ts](/opt/uppoint-cloud/modules/auth/server/password-reset.ts)
 - Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)
+- User soft-delete lifecycle service: [modules/auth/server/user-lifecycle.ts](/opt/uppoint-cloud/modules/auth/server/user-lifecycle.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
+- Tenant context resolver: [modules/tenant/server/user-tenant.ts](/opt/uppoint-cloud/modules/tenant/server/user-tenant.ts)
+- Idempotent API helper: [lib/http/idempotency.ts](/opt/uppoint-cloud/lib/http/idempotency.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
 - Logout audit endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
 - Locale configuration: [modules/i18n/config.ts](/opt/uppoint-cloud/modules/i18n/config.ts)
@@ -149,8 +152,8 @@ npm run test:e2e
 npm run build
 ```
 
-Note: `npm run build` now automatically restarts `uppoint-cloud.service` when systemd and the service are available.
-Use `NEXT_SKIP_SERVICE_RESTART=1 npm run build` when you explicitly need to skip auto-restart.
+Note: `npm run build` performs only `next build`.
+Use `npm run build:deploy` for build + service restart.
 
 ## E2E smoke tests
 

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env/server";
-import { ok } from "@/lib/http/response";
+import { fail, ok } from "@/lib/http/response";
 import { getClientIp, withRateLimit } from "@/lib/rate-limit";
 import { revokeSessionJti } from "@/lib/session-revocation";
 
@@ -16,6 +16,18 @@ function usesSecureSessionCookie(request: NextRequest): boolean {
   }
 
   return request.nextUrl.protocol === "https:";
+}
+
+export async function GET() {
+  return NextResponse.json(
+    fail("METHOD_NOT_ALLOWED"),
+    {
+      status: 405,
+      headers: {
+        Allow: "POST",
+      },
+    },
+  );
 }
 
 export async function POST(request: NextRequest) {

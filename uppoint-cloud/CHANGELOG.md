@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-03-01 (Security closure batch: soft-delete enforcement, tenant bootstrap, idempotency, ops hardening)
+
+### Changed
+- Auth queries now consistently enforce active users only (`deletedAt: null`) in:
+  - `modules/auth/server/authenticate-user.ts`
+  - `modules/auth/server/login-challenge.ts`
+  - `modules/auth/server/password-reset-challenge.ts`
+  - `modules/auth/server/register-verification-challenge.ts`
+  - `auth.ts` JWT refresh path
+- Failed password attempt updates switched to atomic SQL increment in `login-challenge.ts` to reduce race-condition risk.
+- Login token consumption rejects soft-deleted users before issuing sessions.
+- Register verification completion now bootstraps tenant + owner membership when missing.
+- Dashboard now resolves server-side tenant context via `modules/tenant/server/user-tenant.ts`.
+- Added idempotency persistence (`IdempotencyRecord`) and wrapped auth challenge/start/verify routes with `withIdempotency(...)`.
+- Added unified `GET` 405 handlers for POST-only auth routes with explicit `Allow: POST`.
+- Verify-email link now places token in URL fragment (`#token=...`) to reduce token leakage via logs/referrer.
+- Proxy/Nginx now propagate `X-Request-Id` end-to-end for correlation.
+- `next.config.ts` now disables `X-Powered-By` header.
+- Ops cron jobs now use `flock` lock files to avoid concurrent run overlap.
+- `scripts/health-probe.sh` now targets `/api/health` directly and supports `.env` token loading.
+- Build scripts split:
+  - `build` => `next build`
+  - `build:deploy` => `next build && npm run service:restart`
+
+### Added
+- `modules/auth/server/user-lifecycle.ts`: transactional soft-delete lifecycle with session/token/challenge invalidation.
+- `tests/auth/user-lifecycle.test.ts`: soft-delete lifecycle coverage.
+- `modules/tenant/server/user-tenant.ts`: tenant context resolver + bootstrap fallback.
+- `tests/tenant/user-tenant.test.ts`: tenant context and access-denied coverage.
+- `lib/http/idempotency.ts`: request header based idempotency cache/replay helper.
+- `prisma/migrations/20260301193000_add_idempotency_records/`: DB migration for idempotency table.
+- `scripts/restore-db.sh` and `scripts/restore-redis.sh`: guarded restore with pre-restore snapshots.
+- `scripts/check-nginx-config-drift.sh`: deployed-vs-repo config drift detection.
+
+### Docs
+- `README.md` and `ops/README.md` updated to:
+  - remove deleted `password-reset.ts` reference
+  - reflect `build` vs `build:deploy` behavior
+  - document restore/drift-check operations
+  - include `AUDIT_LOG_RETENTION_DAYS` env variable
+
 ## 2026-03-01 (Security: callbackUrl redirect fix + RevokedSessionToken cleanup + audit)
 
 ### Security

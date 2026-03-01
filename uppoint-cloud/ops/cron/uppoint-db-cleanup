@@ -1,4 +1,4 @@
 # Uppoint Cloud database cleanup (daily at 03:00)
 SHELL=/bin/bash
 
-0 3 * * * root /opt/uppoint-cloud/scripts/cleanup-db.sh >> /var/log/uppoint-db-cleanup.log 2>&1
+0 3 * * * root /usr/bin/flock -n /var/lock/uppoint-db-cleanup.lock /opt/uppoint-cloud/scripts/cleanup-db.sh >> /var/log/uppoint-db-cleanup.log 2>&1

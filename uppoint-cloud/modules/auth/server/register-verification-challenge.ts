@@ -1,6 +1,7 @@
 import "server-only";
 
 import crypto from "crypto";
+import { TenantRole } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "@/db/client";
@@ -141,8 +142,8 @@ interface StartRegisterVerificationDependencies {
 
 const defaultStartRegisterVerificationDependencies: StartRegisterVerificationDependencies = {
   findUserById: async (userId) =>
-    prisma.user.findUnique({
-      where: { id: userId },
+    prisma.user.findFirst({
+      where: { id: userId, deletedAt: null },
       select: { id: true, email: true, name: true, phone: true },
     }),
   deleteChallengesForUser: async (userId) => {
@@ -469,6 +470,39 @@ const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencie
           phoneVerifiedAt: input.now,
         },
       });
+
+      const existingMembership = await tx.tenantMembership.findFirst({
+        where: {
+          userId: input.userId,
+          tenant: {
+            deletedAt: null,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existingMembership) {
+        // Security-sensitive: every verified account is provisioned into an isolated tenant boundary by default.
+        const tenant = await tx.tenant.create({
+          data: {
+            slug: `usr-${input.userId}`,
+            name: `Workspace ${input.userId.slice(-6)}`,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        await tx.tenantMembership.create({
+          data: {
+            tenantId: tenant.id,
+            userId: input.userId,
+            role: TenantRole.OWNER,
+          },
+        });
+      }
 
       await tx.registrationVerificationChallenge.deleteMany({
         where: { id: input.challengeId },

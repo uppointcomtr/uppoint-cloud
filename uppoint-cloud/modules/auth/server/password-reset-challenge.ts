@@ -141,8 +141,8 @@ interface StartChallengeDependencies {
 
 const defaultStartDependencies: StartChallengeDependencies = {
   findUserByEmail: async (email) =>
-    prisma.user.findUnique({
-      where: { email },
+    prisma.user.findFirst({
+      where: { email, deletedAt: null },
       select: { id: true, email: true, phone: true, name: true },
     }),
   deleteChallengesForUser: async (userId) => {

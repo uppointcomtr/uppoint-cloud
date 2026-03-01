@@ -4,7 +4,6 @@
 
 set -euo pipefail
 umask 077
-umask 077
 
 BACKUP_DIR="/opt/backups/redis"
 KEEP_DAYS=14
@@ -17,7 +16,6 @@ RDB_FILE="${REDIS_DATA_DIR}/dump.rdb"
 AOF_DIR="${REDIS_DATA_DIR}/appendonlydir"
 
 mkdir -p "$BACKUP_DIR"
-chmod 700 "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 
 if ! redis-cli ping >/dev/null 2>&1; then
@@ -60,7 +58,6 @@ if ! tar -tzf "$TMP_FILE" >/dev/null 2>&1; then
 fi
 
 mv "$TMP_FILE" "$BACKUP_FILE"
-chmod 600 "$BACKUP_FILE"
 chmod 600 "$BACKUP_FILE"
 
 echo "[redis-backup] Tamamlandı: $BACKUP_FILE ($(du -sh "$BACKUP_FILE" | cut -f1))"

@@ -3,16 +3,33 @@ set -euo pipefail
 
 DOMAIN="${UPPOINT_HEALTHCHECK_DOMAIN:-cloud.uppoint.com.tr}"
 CONNECT_IP="${UPPOINT_HEALTHCHECK_CONNECT_IP:-127.0.0.1}"
-PROBE_URL="https://${DOMAIN}/healthz"
+PROBE_URL="https://${DOMAIN}/api/health"
 TIMEOUT_SECONDS="${UPPOINT_HEALTHCHECK_TIMEOUT_SECONDS:-10}"
+ENV_FILE="/opt/uppoint-cloud/.env"
+
+HEALTHCHECK_TOKEN="${HEALTHCHECK_TOKEN:-}"
+if [ -z "$HEALTHCHECK_TOKEN" ] && [ -f "$ENV_FILE" ]; then
+  HEALTHCHECK_TOKEN="$(grep -E '^HEALTHCHECK_TOKEN=' "$ENV_FILE" | tail -n1 | cut -d '=' -f2-)"
+  HEALTHCHECK_TOKEN="${HEALTHCHECK_TOKEN%\"}"
+  HEALTHCHECK_TOKEN="${HEALTHCHECK_TOKEN#\"}"
+  HEALTHCHECK_TOKEN="${HEALTHCHECK_TOKEN%\'}"
+  HEALTHCHECK_TOKEN="${HEALTHCHECK_TOKEN#\'}"
+fi
+
+curl_args=(
+  -sS
+  --max-time "$TIMEOUT_SECONDS"
+  --resolve "${DOMAIN}:443:${CONNECT_IP}"
+  -o /tmp/uppoint-health-probe-body.json
+  -w "%{http_code}"
+)
+
+if [ -n "$HEALTHCHECK_TOKEN" ]; then
+  curl_args+=(-H "x-health-token: ${HEALTHCHECK_TOKEN}")
+fi
 
 HTTP_CODE="$(
-  curl -sS \
-    --max-time "$TIMEOUT_SECONDS" \
-    --resolve "${DOMAIN}:443:${CONNECT_IP}" \
-    -o /tmp/uppoint-health-probe-body.json \
-    -w "%{http_code}" \
-    "$PROBE_URL"
+  curl "${curl_args[@]}" "$PROBE_URL"
 )"
 
 if [ "$HTTP_CODE" != "200" ]; then

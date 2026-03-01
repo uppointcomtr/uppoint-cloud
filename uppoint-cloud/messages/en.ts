@@ -263,6 +263,8 @@ export const enMessages = {
     cardTitle: "Authenticated session active",
     cardDescriptionPrefix: "You are logged in as",
     cardContent: "This page is intentionally minimal for the authentication MVP milestone.",
+    tenantLabel: "Tenant",
+    roleLabel: "Role",
   },
   sessionTimeout: {
     warning: "Your session is expiring soon.",

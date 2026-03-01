@@ -19,8 +19,8 @@ interface AuthenticateDependencies {
 
 const defaultDependencies: AuthenticateDependencies = {
   findUserByEmail: async (email) =>
-    prisma.user.findUnique({
-      where: { email },
+    prisma.user.findFirst({
+      where: { email, deletedAt: null },
       select: {
         id: true,
         email: true,

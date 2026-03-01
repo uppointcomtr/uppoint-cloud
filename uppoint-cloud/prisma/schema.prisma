@@ -226,3 +226,17 @@ model RegistrationVerificationChallenge {
   @@index([emailCodeExpiresAt])
   @@index([smsCodeExpiresAt])
 }
+
+model IdempotencyRecord {
+  id          String   @id @default(cuid())
+  action      String
+  key         String
+  statusCode  Int
+  contentType String?
+  body        String
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@unique([action, key])
+  @@index([expiresAt])
+}

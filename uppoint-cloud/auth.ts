@@ -62,8 +62,8 @@ export const authOptions: NextAuthOptions = {
         return token;
       }
 
-      const currentUser = await prisma.user.findUnique({
-        where: { id: token.sub },
+      const currentUser = await prisma.user.findFirst({
+        where: { id: token.sub, deletedAt: null },
         select: {
           tokenVersion: true,
           email: true,
