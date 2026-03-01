@@ -327,7 +327,8 @@ export async function verifyPasswordResetEmailCode(
 
   const providedCodeHash = dependencies.hashValue(input.emailCode);
 
-  if (providedCodeHash !== challenge.emailCodeHash) {
+  // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
+  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.emailCodeHash, "hex"))) {
     await dependencies.incrementEmailAttempts(challenge.id);
     throw new PasswordResetChallengeError("INVALID_EMAIL_CODE", "Email code is invalid");
   }
@@ -489,7 +490,8 @@ export async function verifyPasswordResetSmsCode(
 
   const providedCodeHash = dependencies.hashValue(input.smsCode);
 
-  if (providedCodeHash !== challenge.smsCodeHash) {
+  // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
+  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.smsCodeHash!, "hex"))) {
     await dependencies.incrementSmsAttempts(challenge.id);
     throw new PasswordResetChallengeError("INVALID_SMS_CODE", "SMS code is invalid");
   }
@@ -631,7 +633,9 @@ export async function completePasswordResetChallenge(
     );
   }
 
-  if (dependencies.hashValue(input.resetToken) !== challenge.resetTokenHash) {
+  // Constant-time comparison prevents timing side-channel attacks on the reset token hash.
+  const providedResetHash = dependencies.hashValue(input.resetToken);
+  if (!crypto.timingSafeEqual(Buffer.from(providedResetHash, "hex"), Buffer.from(challenge.resetTokenHash!, "hex"))) {
     throw new PasswordResetChallengeError(
       "INVALID_OR_EXPIRED_RESET_TOKEN",
       "Reset token is invalid or expired",

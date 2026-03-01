@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-03-01 (Security audit kapsamı: timing attack, plaintext token, enumeration, infra hardening)
+
+### Added
+- `middleware.ts` kaldırıldı — Next.js 16'da yerini `proxy.ts` aldığı için artık geçersizdi; `proxy.ts` zaten edge auth koruması sağlıyor.
+- `ops/postgresql/98-uppoint-static.conf` oluşturuldu:
+  - `statement_timeout=30s`, `idle_in_transaction_session_timeout=30s`, `lock_timeout=10s`.
+  - Live: `/etc/postgresql/17/main/conf.d/98-uppoint-static.conf` olarak deploy edildi, `systemctl reload postgresql` ile uygulandı.
+- `prisma/migrations/20260301160000_add_user_security_fields/migration.sql`:
+  - `User` modeline `failedLoginAttempts`, `lockedUntil`, `lastLoginAt`, `deletedAt` alanları eklendi.
+
+### Changed
+- `modules/auth/server/email-verification.ts`:
+  - **[Critical Fix]** Email doğrulama token'ı artık DB'ye plaintext değil SHA-256 hash olarak yazılıyor; URL'de raw token gönderilip doğrulama sırasında hashlenip eşleştiriliyor. DB sızıntısında aktif token'lar artık kullanılamaz.
+- `modules/auth/server/login-challenge.ts`, `password-reset-challenge.ts`, `register-verification-challenge.ts`:
+  - **[Critical Fix]** OTP/token hash karşılaştırmalarında `!==` yerine `crypto.timingSafeEqual()` kullanılıyor (6 lokasyon). Timing side-channel saldırıları engelleniyor.
+- `lib/audit-log.ts`:
+  - `forwardedFor` IP extraction düzeltildi: `split(",")[0]` (leftmost/saldırgan kontrolünde) yerine `X-Real-IP` öncelikli, rightmost XFF fallback.
+  - Metadata redaction genişletildi: key bazlı kontrol yanında değer bazlı tarama eklendi (bearer token, JWT prefix, `password=` pattern'ları redact).
+  - `password_changed` ve `session_revoked` action type'ları eklendi.
+- `app/api/auth/login/challenge/phone/start/route.ts`:
+  - **[High Fix]** `EMAIL_NOT_VERIFIED` durumunda artık 403 yerine 200 + `{ hasChallenge: false }` dönüyor. Hesap varlığı enumeration'ı önleniyor.
+- `ops/systemd/uppoint-cloud.service` + `/etc/systemd/system/uppoint-cloud.service`:
+  - `LimitNOFILE=65536`, `CPUQuota=400%`, `TasksMax=512` eklendi. `systemctl daemon-reload` uygulandı.
+- `ops/nginx/uppoint-rate-limit.conf`:
+  - `rate=30r/m` → `rate=20r/m` (live config ile senkronize edildi).
+- `ops/nginx/cloud.uppoint.com.tr.conf`:
+  - `burst=20` → `burst=17` (live config ile senkronize edildi).
+- `prisma/schema.prisma`:
+  - `User` modeline `failedLoginAttempts Int @default(0)`, `lockedUntil DateTime?`, `lastLoginAt DateTime?`, `deletedAt DateTime?` alanları eklendi.
+- `tests/auth/password-reset-challenge.test.ts`, `tests/auth/register-verification-challenge.test.ts`:
+  - `timingSafeEqual` için mock hash'ler geçerli 64-char hex string'e güncellendi (`"a".repeat(64)` / `"b".repeat(64)`).
+
 ## 2026-03-01 (Auth security hardening: token revocation, atomic challenge consumption, limiter trust fixes)
 
 ### Added

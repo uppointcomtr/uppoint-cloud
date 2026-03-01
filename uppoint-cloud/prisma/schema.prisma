@@ -15,8 +15,12 @@ model User {
   emailVerified DateTime?
   phoneVerifiedAt DateTime?
   image         String?
-  passwordHash  String
-  tokenVersion  Int       @default(0)
+  passwordHash         String
+  tokenVersion         Int       @default(0)
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+  lastLoginAt          DateTime?
+  deletedAt            DateTime?
   accounts      Account[]
   sessions      Session[]
   passwordResetTokens PasswordResetToken[]

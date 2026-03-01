@@ -23,6 +23,12 @@ TimeoutStartSec=30
 TimeoutStopSec=15
 # RAM'in %20'si — donanım yükseltilirse otomatik olarak ölçeklenir.
 MemoryMax=20%
+# Dosya tanımlayıcı üst sınırı — her bağlantı + statik dosya için gerekli.
+LimitNOFILE=65536
+# CPU kullanımını 4 çekirdekle sınırla (8 çekirdekli sunucu); ani CPU spike'larını engeller.
+CPUQuota=400%
+# Süreç/iş parçacığı limiti — fork bomb koruması.
+TasksMax=512
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

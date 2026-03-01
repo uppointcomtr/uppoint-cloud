@@ -26,6 +26,9 @@ export async function createAndSendEmailVerificationToken(
   locale: string,
 ): Promise<void> {
   const rawToken = crypto.randomBytes(32).toString("hex");
+  // Hash before storing so a DB breach cannot be used to verify arbitrary accounts.
+  // The raw token is sent in the email URL; only its SHA-256 hash lives in the DB.
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_TTL_HOURS * 60 * 60 * 1_000);
 
   // Replace any existing verification token for this email
@@ -33,7 +36,7 @@ export async function createAndSendEmailVerificationToken(
   await prisma.verificationToken.create({
     data: {
       identifier: email,
-      token: rawToken,
+      token: tokenHash,
       expires: expiresAt,
     },
   });
@@ -58,8 +61,11 @@ export async function createAndSendEmailVerificationToken(
 }
 
 export async function verifyEmailToken(rawToken: string): Promise<void> {
+  // Hash the incoming raw token to match the stored hash.
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+
   const tokenRecord = await prisma.verificationToken.findUnique({
-    where: { token: rawToken },
+    where: { token: tokenHash },
   });
 
   if (!tokenRecord || tokenRecord.expires < new Date()) {
@@ -84,7 +90,7 @@ export async function verifyEmailToken(rawToken: string): Promise<void> {
       data: { emailVerified: new Date() },
     }),
     prisma.verificationToken.delete({
-      where: { token: rawToken },
+      where: { token: tokenHash },
     }),
   ]);
 }

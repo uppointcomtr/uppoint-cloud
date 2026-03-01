@@ -61,6 +61,10 @@ describe("startPasswordResetChallenge", () => {
 
 describe("verifyPasswordResetEmailCode", () => {
   it("fails when email code is invalid", async () => {
+    // Use valid 64-char hex strings so crypto.timingSafeEqual receives same-length buffers.
+    const providedHash = "a".repeat(64);
+    const storedHash = "b".repeat(64);
+
     await expect(
       verifyPasswordResetEmailCode(
         {
@@ -72,7 +76,7 @@ describe("verifyPasswordResetEmailCode", () => {
           findChallengeById: vi.fn().mockResolvedValue({
             id: "challenge-1",
             userId: "u1",
-            emailCodeHash: "hash-other",
+            emailCodeHash: storedHash,
             emailCodeExpiresAt: new Date("2026-02-28T12:03:00.000Z"),
             emailCodeAttempts: 0,
             emailCodeVerifiedAt: null,
@@ -85,7 +89,7 @@ describe("verifyPasswordResetEmailCode", () => {
           sendSmsCode: vi.fn(),
           now: vi.fn(() => new Date("2026-02-28T12:00:00.000Z")),
           generateCode: vi.fn(() => "654321"),
-          hashValue: vi.fn(() => "hash-input"),
+          hashValue: vi.fn(() => providedHash),
         },
       ),
     ).rejects.toMatchObject({

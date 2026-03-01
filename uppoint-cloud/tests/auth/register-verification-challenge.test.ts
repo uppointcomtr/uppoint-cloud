@@ -47,6 +47,10 @@ describe("startRegisterVerificationChallenge", () => {
 
 describe("verifyRegisterEmailCode", () => {
   it("fails when email code is invalid", async () => {
+    // Use valid 64-char hex strings so crypto.timingSafeEqual receives same-length buffers.
+    const providedHash = "a".repeat(64);
+    const storedHash = "b".repeat(64);
+
     await expect(
       verifyRegisterEmailCode(
         {
@@ -58,7 +62,7 @@ describe("verifyRegisterEmailCode", () => {
           findChallengeById: vi.fn().mockResolvedValue({
             id: "challenge-1",
             userId: "u1",
-            emailCodeHash: "different-hash",
+            emailCodeHash: storedHash,
             emailCodeExpiresAt: new Date("2026-03-01T10:03:00.000Z"),
             emailCodeAttempts: 0,
             emailCodeVerifiedAt: null,
@@ -71,7 +75,7 @@ describe("verifyRegisterEmailCode", () => {
           sendSmsCode: vi.fn(),
           now: vi.fn(() => new Date("2026-03-01T10:01:00.000Z")),
           generateCode: vi.fn(() => "654321"),
-          hashValue: vi.fn(() => "email-hash"),
+          hashValue: vi.fn(() => providedHash),
           isSmsEnabled: vi.fn(() => true),
         },
       ),

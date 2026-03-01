@@ -482,7 +482,8 @@ export async function verifyLoginChallengeCode(
 
   const providedHash = dependencies.hashValue(input.code);
 
-  if (providedHash !== challenge.codeHash) {
+  // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
+  if (!crypto.timingSafeEqual(Buffer.from(providedHash, "hex"), Buffer.from(challenge.codeHash, "hex"))) {
     await dependencies.incrementCodeAttempts(challenge.id);
     throw new LoginChallengeError("INVALID_CODE", "Login code is invalid");
   }

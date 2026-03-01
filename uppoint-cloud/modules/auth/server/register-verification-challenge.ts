@@ -325,7 +325,8 @@ export async function verifyRegisterEmailCode(
 
   const providedCodeHash = dependencies.hashValue(input.emailCode);
 
-  if (providedCodeHash !== challenge.emailCodeHash) {
+  // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
+  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.emailCodeHash, "hex"))) {
     await dependencies.incrementEmailAttempts(challenge.id);
     throw new RegisterVerificationChallengeError("INVALID_EMAIL_CODE", "Email code is invalid");
   }
@@ -510,7 +511,8 @@ export async function verifyRegisterSmsCode(
 
   const providedCodeHash = dependencies.hashValue(input.smsCode);
 
-  if (providedCodeHash !== challenge.smsCodeHash) {
+  // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
+  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.smsCodeHash!, "hex"))) {
     await dependencies.incrementSmsAttempts(challenge.id);
     throw new RegisterVerificationChallengeError("INVALID_SMS_CODE", "SMS code is invalid");
   }
