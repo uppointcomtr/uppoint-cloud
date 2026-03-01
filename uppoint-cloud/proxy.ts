@@ -12,7 +12,7 @@ import {
 
 const PUBLIC_FILE_PATTERN = /\.[^/]+$/;
 
-function shouldBypassMiddleware(pathname: string): boolean {
+function shouldBypassProxy(pathname: string): boolean {
   return (
     pathname.startsWith("/api")
     || pathname.startsWith("/_next")
@@ -31,10 +31,10 @@ function usesSecureSessionCookie(request: NextRequest): boolean {
   return request.nextUrl.protocol === "https:";
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (shouldBypassMiddleware(pathname)) {
+  if (shouldBypassProxy(pathname)) {
     return NextResponse.next();
   }
 

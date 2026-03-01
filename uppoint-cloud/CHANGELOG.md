@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-03-01 (Proxy geri dönüşü + backup tracking temizliği + auth E2E smoke)
+
+### Changed
+- **Next.js konvansiyonu uyumu**:
+  - `middleware.ts` yerine tekrar `proxy.ts` kullanıldı.
+  - Edge route guard mantığı korunarak file naming Next.js 16 önerisine geri alındı.
+- **Repo hygiene (backup artifacts)**:
+  - `/opt/backups` repo takibinden çıkarıldı (`git rm --cached`), dosyalar sunucuda tutulmaya devam ediyor.
+  - Kök depoya `.gitignore` eklendi ve `backups/` ignore edildi.
+- **Dokümantasyon güncellemesi**:
+  - `README.md` route protection referansı tekrar `proxy.ts` olarak güncellendi.
+  - Upstash rate limit aktivasyon/doğrulama notları eklendi.
+
+### Added
+- **Auth HTTP E2E smoke test suite**:
+  - `tests/e2e/auth-http-smoke.test.ts`
+  - Canlı endpoint smoke kapsamı:
+    - `/tr/login` ve `/tr/register` erişilebilirlik
+    - Unverified kullanıcı için `EMAIL_NOT_VERIFIED` (403) davranışı
+    - Register route IP rate-limit (429)
+    - Forgot-password challenge validation contract (400/`VALIDATION_FAILED`)
+- `package.json` script:
+  - `npm run test:e2e` (`RUN_E2E=1 vitest run tests/e2e --testTimeout=30000`)
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run test:e2e` -> ✓
+- `npm run build` -> ✓ (`uppoint-cloud.service` restarted)
+
 ## 2026-03-01 (Middleware standardizasyonu — proxy.ts -> middleware.ts)
 
 ### Changed

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "test": "vitest run",
+    "test:e2e": "RUN_E2E=1 vitest run tests/e2e --testTimeout=30000",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:migrate:status": "prisma migrate status",
     "service:restart": "if [ \"${NEXT_SKIP_SERVICE_RESTART:-0}\" = \"1\" ]; then echo \"Skipping service restart (NEXT_SKIP_SERVICE_RESTART=1)\"; elif command -v systemctl >/dev/null 2>&1 && systemctl cat uppoint-cloud.service >/dev/null 2>&1; then systemctl restart uppoint-cloud.service && systemctl is-active --quiet uppoint-cloud.service && echo \"uppoint-cloud.service restarted\"; else echo \"Skipping service restart (systemd or uppoint-cloud.service unavailable)\"; fi"

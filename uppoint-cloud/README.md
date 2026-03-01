@@ -75,6 +75,18 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_DATACODING`
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 
+## Upstash rate limit activation
+
+When both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set in `.env`, auth rate limiting uses Upstash Redis sliding window.
+If these variables are not set (or Upstash is temporarily unreachable), the system safely falls back to Prisma-backed rate limiting.
+
+Operational check:
+
+```bash
+cd /opt/uppoint-cloud
+awk -F= '/^(UPSTASH_REDIS_REST_URL|UPSTASH_REDIS_REST_TOKEN)=/{print $1"=<set>"}' .env
+```
+
 ## Brand assets
 
 Store logo assets in `public/logo/` with these exact names for theme-aware header rendering:
@@ -94,7 +106,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
-- Route protection and locale redirects: [middleware.ts](/opt/uppoint-cloud/middleware.ts)
+- Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
 - Locale configuration: [modules/i18n/config.ts](/opt/uppoint-cloud/modules/i18n/config.ts)
 - Locale path helpers: [modules/i18n/paths.ts](/opt/uppoint-cloud/modules/i18n/paths.ts)
 - Dictionaries: [messages/tr.ts](/opt/uppoint-cloud/messages/tr.ts), [messages/en.ts](/opt/uppoint-cloud/messages/en.ts)
@@ -117,11 +129,27 @@ npm run prisma:migrate:deploy
 npm run lint
 npm run typecheck
 npm run test
+npm run test:e2e
 npm run build
 ```
 
 Note: `npm run build` now automatically restarts `uppoint-cloud.service` when systemd and the service are available.
 Use `NEXT_SKIP_SERVICE_RESTART=1 npm run build` when you explicitly need to skip auto-restart.
+
+## E2E smoke tests
+
+Auth E2E smoke suite lives under `tests/e2e/` and validates live HTTP behavior for:
+- login/register page reachability
+- register route rate limit behavior
+- unverified account rejection (`EMAIL_NOT_VERIFIED`)
+- forgot-password challenge contract baseline
+
+Run:
+
+```bash
+cd /opt/uppoint-cloud
+npm run test:e2e
+```
 
 ## Visual smoke checklist (light/dark, TR/EN auth)
 
