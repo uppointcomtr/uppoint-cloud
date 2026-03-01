@@ -54,7 +54,7 @@ export default async function VerifyEmailPage({
   }
 
   return (
-    <AuthSplitShell locale={locale} header={dictionary.header} panel={dictionary.authShell}>
+    <AuthSplitShell locale={locale} header={dictionary.header}>
       <div className="flex flex-col items-center py-4 text-center">
         {success ? (
           <>

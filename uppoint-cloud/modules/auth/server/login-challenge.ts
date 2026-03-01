@@ -340,6 +340,7 @@ export async function startPhoneLoginChallenge(
 interface VerifyLoginCodeDependencies {
   findChallengeById: (id: string) => Promise<{
     id: string;
+    userId: string;
     mode: string;
     codeHash: string;
     codeExpiresAt: Date;
@@ -364,6 +365,7 @@ const defaultVerifyLoginCodeDependencies: VerifyLoginCodeDependencies = {
       where: { id },
       select: {
         id: true,
+        userId: true,
         mode: true,
         codeHash: true,
         codeExpiresAt: true,
@@ -401,7 +403,7 @@ export async function verifyLoginChallengeCode(
   rawInput: unknown,
   mode: LoginChallengeMode,
   dependencies: VerifyLoginCodeDependencies = defaultVerifyLoginCodeDependencies,
-): Promise<{ loginToken: string }> {
+): Promise<{ loginToken: string; userId: string }> {
   const input = verifyLoginCodeSchema.parse(rawInput);
   const now = dependencies.now();
   const challenge = await dependencies.findChallengeById(input.challengeId);
@@ -445,6 +447,7 @@ export async function verifyLoginChallengeCode(
 
   return {
     loginToken,
+    userId: challenge.userId,
   };
 }
 

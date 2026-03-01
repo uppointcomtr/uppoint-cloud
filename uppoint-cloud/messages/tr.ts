@@ -14,6 +14,10 @@ export const trMessages = {
       title: "E-posta Doğrulama — Uppoint Cloud",
       description: "Uppoint Cloud hesabınızın e-posta adresini doğrulayın.",
     },
+    dashboard: {
+      title: "Panel — Uppoint Cloud",
+      description: "Uppoint Cloud hesabınızı ve bulut operasyonlarınızı yönetin.",
+    },
   },
   header: {
     brand: "Uppoint Cloud",

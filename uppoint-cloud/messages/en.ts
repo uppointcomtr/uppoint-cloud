@@ -14,6 +14,10 @@ export const enMessages = {
       title: "Verify Email — Uppoint Cloud",
       description: "Verify your Uppoint Cloud account email address.",
     },
+    dashboard: {
+      title: "Dashboard — Uppoint Cloud",
+      description: "Manage your Uppoint Cloud account and cloud operations.",
+    },
   },
   header: {
     brand: "Uppoint Cloud",

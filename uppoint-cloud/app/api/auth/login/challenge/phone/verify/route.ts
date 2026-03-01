@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   try {
     const result = await verifyLoginChallengeCode(payload, "phone");
 
-    logAudit("login_success", ip, undefined, { mode: "phone" });
+    logAudit("login_success", ip, result.userId, { mode: "phone" });
 
     return NextResponse.json(ok({ loginToken: result.loginToken }), { status: 200 });
   } catch (error) {

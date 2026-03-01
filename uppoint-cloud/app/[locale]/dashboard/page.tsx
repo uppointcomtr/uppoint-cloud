@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -18,6 +19,12 @@ export const dynamic = "force-dynamic";
 
 interface DashboardPageProps {
   params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata({ params }: DashboardPageProps): Promise<Metadata> {
+  const locale = await getLocaleFromParams(params);
+  const { metadata } = getDictionary(locale);
+  return { title: metadata.dashboard.title, description: metadata.dashboard.description };
 }
 
 export default async function DashboardPage({ params }: DashboardPageProps) {

@@ -9,7 +9,6 @@ import type { Dictionary } from "@/modules/i18n/dictionaries";
 interface AuthSplitShellProps {
   locale: Locale;
   header: Dictionary["header"];
-  panel: Dictionary["authShell"];
   children: ReactNode;
 }
 
