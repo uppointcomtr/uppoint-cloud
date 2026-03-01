@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-03-01 (docs: update AGENTS.md — add agent behavior, tool discipline, startup validation, testing strategy, ask-vs-proceed rules)
+
+### Changed
+- `AGENTS.md` updated: added agent behavior rules, tool/change discipline, startup validation rules, testing strategy rules, and when-to-ask-vs-proceed guidance; existing sections refined.
+
 ## 2026-03-01 (Security categories 17 & 18: config/env guardrails + background job hardening)
 
 ### Changed
