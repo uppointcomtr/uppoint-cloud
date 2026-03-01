@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-01 (docs: align AGENTS.md with latest user-provided canonical policy text)
+
+### Changed
+- `AGENTS.md` updated to the exact latest policy wording provided by the project owner, including:
+  - expanded Non-Negotiables and agent behavior rules,
+  - tenant/isolation/startup validation requirements,
+  - API/Server Action evolution and contract rules,
+  - security/auth/logging/audit mandates,
+  - background jobs, idempotency, backup/recovery, and Git discipline sections.
+
 ## 2026-03-01 (docs: AGENTS.md — restore comprehensive plain-text format with full Git discipline)
 
 ### Changed
