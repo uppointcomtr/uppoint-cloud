@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-01 (Ops kurulumu: backup · monitoring · security)
+
+### Added
+- **PostgreSQL 17 yerel kurulum**: Prisma Accelerate (db.prisma.io) yerine self-hosted PostgreSQL 17 (`localhost:5432/uppoint_cloud`). Tüm 7 migration uygulandı.
+- **fail2ban** (brute-force koruması): SSH, nginx-http-auth, nginx-limit-req, nginx-botsearch jail'leri aktif. 5 deneme / 10dk → 1 saat ban.
+- **ufw güvenlik duvarı**: 22/tcp (SSH), 80/tcp, 443/tcp açık; 5432/tcp (PostgreSQL) dışarıya kapalı.
+- **Netdata v2.0.3 izleme**: 127.0.0.1:19999 üzerinde çalışıyor, dışarıya kapalı. CPU, bellek, disk, ağ metrikleri.
+- **PostgreSQL otomatik yedek**: `scripts/backup-db.sh` — gzip sıkıştırmalı pg_dump, her gece 02:00 cron ile çalışır, 14 gün saklar (`/opt/backups/postgres/`).
+- **Logrotate kuralları**: `/etc/logrotate.d/uppoint-cloud` — backup logu (30 gün) ve PostgreSQL logları (14 gün) döndürülüyor.
+
 ## 2026-02-28 (Auth audit: UX/security batch — findings #4-#10, #13-#14)
 
 ### Added
