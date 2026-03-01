@@ -9,7 +9,8 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Login (`/:locale/login`)
   - Login supports two flows on a segmented tab:
     - Email login: email -> password -> email OTP (3-minute countdown) -> sign in
-    - Phone login: phone -> SMS OTP (3-minute countdown) -> sign in
+    - Phone login: phone -> password -> SMS OTP (3-minute countdown) -> sign in
+  - Email verification is required before successful sign-in
   - Modal-based forgot-password flow inside login:
     - email verification code (3 min countdown)
     - SMS verification code (3 min countdown)
@@ -56,6 +57,8 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
+- `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
+- `UPSTASH_REDIS_REST_TOKEN` (optional, required with `UPSTASH_REDIS_REST_URL`)
 - `UPPOINT_DEFAULT_FROM_EMAIL`
 - `UPPOINT_EMAIL_BACKEND`
 - `UPPOINT_EMAIL_HOST`
@@ -70,6 +73,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_SOURCE_ADDR`
 - `UPPOINT_SMS_VALID_FOR`
 - `UPPOINT_SMS_DATACODING`
+- `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 
 ## Brand assets
 

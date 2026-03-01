@@ -1,8 +1,55 @@
 import "server-only";
 
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { headers } from "next/headers";
 
 import { prisma } from "@/db/client";
+import { env } from "@/lib/env/server";
+
+const upstashConfig = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
+  ? {
+      url: env.UPSTASH_REDIS_REST_URL,
+      token: env.UPSTASH_REDIS_REST_TOKEN,
+    }
+  : null;
+
+const upstashRedis = upstashConfig
+  ? new Redis({
+      url: upstashConfig.url,
+      token: upstashConfig.token,
+    })
+  : null;
+
+const limiterCache = new Map<string, Ratelimit>();
+
+function getUpstashLimiter(max: number, windowSeconds: number): Ratelimit | null {
+  if (!upstashRedis) {
+    return null;
+  }
+
+  const key = `${max}:${windowSeconds}`;
+  const existing = limiterCache.get(key);
+
+  if (existing) {
+    return existing;
+  }
+
+  const limiter = new Ratelimit({
+    redis: upstashRedis,
+    limiter: Ratelimit.slidingWindow(max, `${windowSeconds} s`),
+    analytics: false,
+    prefix: "uppoint:auth:ratelimit",
+  });
+
+  limiterCache.set(key, limiter);
+  return limiter;
+}
+
+interface RateLimitCheckResult {
+  allowed: boolean;
+  retryAfterSeconds?: number;
+}
 
 /**
  * Extracts the real client IP from request headers.
@@ -34,7 +81,23 @@ export async function checkRateLimit(
   ip: string,
   max: number,
   windowSeconds: number,
-): Promise<boolean> {
+): Promise<RateLimitCheckResult> {
+  const upstashLimiter = getUpstashLimiter(max, windowSeconds);
+
+  if (upstashLimiter) {
+    try {
+      const result = await upstashLimiter.limit(`${action}:${ip}`);
+      const retryAfterSeconds = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+
+      return {
+        allowed: result.success,
+        retryAfterSeconds,
+      };
+    } catch (error) {
+      console.error("[rate-limit] Upstash error, falling back to Prisma:", action, error);
+    }
+  }
+
   const key = `${action}:${ip}`;
   const windowStart = new Date(Date.now() - windowSeconds * 1000);
 
@@ -44,7 +107,7 @@ export async function checkRateLimit(
     });
 
     if (count >= max) {
-      return false;
+      return { allowed: false, retryAfterSeconds: windowSeconds };
     }
 
     await prisma.rateLimitAttempt.create({ data: { key } });
@@ -59,13 +122,13 @@ export async function checkRateLimit(
         });
     }
 
-    return true;
+    return { allowed: true };
   } catch (error) {
     // Fail open: if the database is unreachable, allow the request rather
     // than blocking all users. The application's own error handling will
     // surface any downstream DB failures.
     console.error("[rate-limit] Database error — failing open for action:", action, error);
-    return true;
+    return { allowed: true };
   }
 }
 
@@ -79,12 +142,21 @@ export async function withRateLimit(
   windowSeconds: number,
 ): Promise<Response | null> {
   const ip = await getClientIp();
-  const allowed = await checkRateLimit(action, ip, max, windowSeconds);
+  const result = await checkRateLimit(action, ip, max, windowSeconds);
 
-  if (!allowed) {
+  if (!result.allowed) {
+    const retryAfter = result.retryAfterSeconds ?? windowSeconds;
+
     return Response.json(
       { success: false, error: "TOO_MANY_REQUESTS" },
-      { status: 429 },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfter),
+          "X-RateLimit-Limit": String(max),
+          "X-RateLimit-Window-Seconds": String(windowSeconds),
+        },
+      },
     );
   }
 

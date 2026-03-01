@@ -21,6 +21,7 @@ describe("startEmailLoginChallenge", () => {
           email: "user@example.com",
           name: "User",
           passwordHash: "hash",
+          emailVerified: new Date("2026-02-28T16:00:00.000Z"),
         }),
         verifyPassword: vi.fn().mockResolvedValue(false),
         deleteChallengesForUserAndMode: vi.fn(),
@@ -33,6 +34,34 @@ describe("startEmailLoginChallenge", () => {
     );
 
     expect(result).toEqual({ challengeId: null, codeExpiresAt: null });
+  });
+
+  it("rejects login when email is not verified", async () => {
+    await expect(
+      startEmailLoginChallenge(
+        {
+          email: "user@example.com",
+          password: "StrongPass!123",
+          locale: "tr",
+        },
+        {
+          findUserByEmail: vi.fn().mockResolvedValue({
+            id: "u1",
+            email: "user@example.com",
+            name: "User",
+            passwordHash: "hash",
+            emailVerified: null,
+          }),
+          verifyPassword: vi.fn().mockResolvedValue(true),
+          deleteChallengesForUserAndMode: vi.fn(),
+          createChallenge: vi.fn(),
+          sendEmailOtp: vi.fn(),
+          now: vi.fn(() => new Date("2026-02-28T17:00:00.000Z")),
+          generateCode: vi.fn(() => "123456"),
+          hashValue: vi.fn(() => "hash"),
+        },
+      ),
+    ).rejects.toMatchObject({ code: "EMAIL_NOT_VERIFIED" });
   });
 });
 
@@ -50,7 +79,12 @@ describe("startPhoneLoginChallenge", () => {
       {
         findUserByPhone: vi
           .fn()
-          .mockResolvedValue({ id: "u1", phone: "+905551112233", passwordHash: "hash" }),
+          .mockResolvedValue({
+            id: "u1",
+            phone: "+905551112233",
+            passwordHash: "hash",
+            emailVerified: new Date("2026-02-28T16:00:00.000Z"),
+          }),
         verifyPassword: vi.fn().mockResolvedValue(true),
         deleteChallengesForUserAndMode: vi.fn().mockResolvedValue(undefined),
         createChallenge,
@@ -84,6 +118,7 @@ describe("verifyLoginChallengeCode", () => {
       {
         findChallengeById: vi.fn().mockResolvedValue({
           id: "c1",
+          userId: "u1",
           mode: "email",
           codeHash: "code-hash",
           codeExpiresAt: new Date("2026-02-28T17:03:00.000Z"),
@@ -98,7 +133,7 @@ describe("verifyLoginChallengeCode", () => {
       },
     );
 
-    expect(result).toEqual({ loginToken: "raw-login-token" });
+    expect(result).toEqual({ loginToken: "raw-login-token", userId: "u1" });
   });
 });
 

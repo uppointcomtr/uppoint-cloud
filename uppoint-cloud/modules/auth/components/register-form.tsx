@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn } from "next-auth/react";
 import { useForm, useWatch, Controller, type Resolver } from "react-hook-form";
 
 import { Check, CheckCircle, X } from "lucide-react";
@@ -124,30 +123,10 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
       return;
     }
 
-    let signInResult: Awaited<ReturnType<typeof signIn>> | undefined;
-
-    try {
-      signInResult = await signIn("credentials", {
-        email: values.email,
-        password: values.password,
-        redirect: false,
-        callbackUrl: withLocale("/dashboard", locale),
-      });
-    } catch {
-      setIsSubmitting(false);
-      setSuccessRedirectUrl(withLocale("/login", locale));
-      setStep("success");
-      return;
-    }
-
     setIsSubmitting(false);
-
-    const redirectUrl =
-      signInResult && !signInResult.error
-        ? (signInResult.url ?? withLocale("/dashboard", locale))
-        : withLocale("/login", locale);
-
-    setSuccessRedirectUrl(redirectUrl);
+    const loginUrl = new URL(withLocale("/login", locale), window.location.origin);
+    loginUrl.searchParams.set("email", values.email);
+    setSuccessRedirectUrl(`${loginUrl.pathname}${loginUrl.search}`);
     setStep("success");
     router.refresh();
   });

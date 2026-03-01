@@ -32,16 +32,21 @@ function getTransporter() {
   }
 
   const smtpConfig = getRequiredSmtpConfig();
+  const enforceTls = env.NODE_ENV === "production" ? true : env.UPPOINT_EMAIL_USE_TLS;
+  const useImplicitTls = enforceTls && smtpConfig.port === 465;
 
   transporter = nodemailer.createTransport({
     host: smtpConfig.host,
     port: smtpConfig.port,
-    secure: false,
+    secure: useImplicitTls,
     auth: {
       user: smtpConfig.user,
       pass: smtpConfig.password,
     },
-    requireTLS: env.UPPOINT_EMAIL_USE_TLS,
+    requireTLS: enforceTls,
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 30_000,
   });
 
   return transporter;

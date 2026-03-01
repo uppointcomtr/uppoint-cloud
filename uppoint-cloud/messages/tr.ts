@@ -98,6 +98,7 @@ export const trMessages = {
     errors: {
       unavailable: "Şu anda giriş yapılamıyor",
       invalidCredentials: "E-posta veya şifre hatalı",
+      emailNotVerified: "E-posta adresiniz henüz doğrulanmamış. Gelen kutunuzu kontrol edin.",
       invalidCode: "Doğrulama kodu hatalı",
       expiredCode: "Kod geçersiz veya süresi dolmuş",
       maxAttempts: "Çok fazla hatalı deneme yapıldı. Yeniden deneyin.",
@@ -210,7 +211,7 @@ export const trMessages = {
     submitLoading: "Hesap oluşturuluyor...",
     successTitle: "Hesabınız oluşturuldu",
     successDescription: "E-postanıza bir doğrulama bağlantısı gönderdik. Hesabınıza tam erişim için e-postanızı doğrulayın.",
-    goToDashboard: "Panele git",
+    goToDashboard: "Giriş sayfasına git",
     errors: {
       serverUnavailable: "Sunucuya bağlanılamıyor",
       generic: "Hesap oluşturulamadı",

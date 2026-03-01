@@ -32,6 +32,10 @@ export async function POST(request: Request) {
     return NextResponse.json(ok({ reset: true }), { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      logAudit("password_reset_failed", ip, undefined, {
+        step: "complete",
+        reason: "VALIDATION_FAILED",
+      });
       return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
     }
 
@@ -43,9 +47,17 @@ export async function POST(request: Request) {
           ? 400
           : 500;
 
+      logAudit("password_reset_failed", ip, undefined, {
+        step: "complete",
+        reason: error.code,
+      });
       return NextResponse.json(fail(error.code), { status });
     }
 
+    logAudit("password_reset_failed", ip, undefined, {
+      step: "complete",
+      reason: "FORGOT_PASSWORD_COMPLETE_FAILED",
+    });
     console.error("Failed to complete forgot-password challenge", error);
     return NextResponse.json(fail("FORGOT_PASSWORD_COMPLETE_FAILED"), {
       status: 500,

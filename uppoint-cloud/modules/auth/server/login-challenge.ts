@@ -112,6 +112,7 @@ export class LoginChallengeError extends Error {
       | "INVALID_CODE"
       | "MAX_ATTEMPTS_REACHED"
       | "SMS_NOT_ENABLED"
+      | "EMAIL_NOT_VERIFIED"
       | "INVALID_OR_EXPIRED_LOGIN_TOKEN"
       | "UNKNOWN",
     message: string,
@@ -122,7 +123,13 @@ export class LoginChallengeError extends Error {
 }
 
 interface StartEmailLoginDependencies {
-  findUserByEmail: (email: string) => Promise<{ id: string; email: string; name: string | null; passwordHash: string } | null>;
+  findUserByEmail: (email: string) => Promise<{
+    id: string;
+    email: string;
+    name: string | null;
+    passwordHash: string;
+    emailVerified: Date | null;
+  } | null>;
   verifyPassword: (password: string, hash: string) => Promise<boolean>;
   deleteChallengesForUserAndMode: (userId: string, mode: LoginChallengeMode) => Promise<void>;
   createChallenge: (input: {
@@ -146,6 +153,7 @@ const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
         email: true,
         name: true,
         passwordHash: true,
+        emailVerified: true,
       },
     }),
   verifyPassword,
@@ -194,6 +202,13 @@ export async function startEmailLoginChallenge(
     return { challengeId: null, codeExpiresAt: null };
   }
 
+  if (!user.emailVerified) {
+    throw new LoginChallengeError(
+      "EMAIL_NOT_VERIFIED",
+      "Email address must be verified before sign-in",
+    );
+  }
+
   const now = dependencies.now();
   const codeExpiresAt = expiresAtFrom(now, LOGIN_OTP_TTL_MINUTES);
   const otpCode = dependencies.generateCode();
@@ -228,7 +243,12 @@ export async function startEmailLoginChallenge(
 }
 
 interface StartPhoneLoginDependencies {
-  findUserByPhone: (phone: string) => Promise<{ id: string; phone: string; passwordHash: string } | null>;
+  findUserByPhone: (phone: string) => Promise<{
+    id: string;
+    phone: string;
+    passwordHash: string;
+    emailVerified: Date | null;
+  } | null>;
   verifyPassword: (password: string, hash: string) => Promise<boolean>;
   deleteChallengesForUserAndMode: (userId: string, mode: LoginChallengeMode) => Promise<void>;
   createChallenge: (input: {
@@ -253,6 +273,7 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
         id: true,
         phone: true,
         passwordHash: true,
+        emailVerified: true,
       },
     });
 
@@ -260,7 +281,12 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
       return null;
     }
 
-    return { id: user.id, phone: user.phone, passwordHash: user.passwordHash };
+    return {
+      id: user.id,
+      phone: user.phone,
+      passwordHash: user.passwordHash,
+      emailVerified: user.emailVerified,
+    };
   },
   verifyPassword,
   deleteChallengesForUserAndMode: async (userId, mode) => {
@@ -305,6 +331,13 @@ export async function startPhoneLoginChallenge(
 
   if (!isPasswordValid) {
     return { challengeId: null, codeExpiresAt: null };
+  }
+
+  if (!user.emailVerified) {
+    throw new LoginChallengeError(
+      "EMAIL_NOT_VERIFIED",
+      "Email address must be verified before sign-in",
+    );
   }
 
   const now = dependencies.now();

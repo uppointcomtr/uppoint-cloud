@@ -20,6 +20,8 @@ const serverEnvSchema = z.object({
   AUTH_TRUST_HOST: booleanFromString.default(false),
   AUTH_BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   UPPOINT_DEFAULT_FROM_EMAIL: z.string().min(3).optional(),
   UPPOINT_EMAIL_BACKEND: emailBackendSchema.default("disabled"),
   UPPOINT_EMAIL_HOST: z.string().min(1).optional(),
@@ -34,7 +36,24 @@ const serverEnvSchema = z.object({
   UPPOINT_SMS_SOURCE_ADDR: z.string().trim().min(1).max(16).optional(),
   UPPOINT_SMS_VALID_FOR: z.string().regex(/^\d{1,2}:\d{2}$/).default("48:00"),
   UPPOINT_SMS_DATACODING: z.coerce.number().int().min(0).max(2).default(2),
+  UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS: booleanFromString.default(false),
 }).superRefine((input, context) => {
+  if (input.UPSTASH_REDIS_REST_URL && !input.UPSTASH_REDIS_REST_TOKEN) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["UPSTASH_REDIS_REST_TOKEN"],
+      message: "UPSTASH_REDIS_REST_TOKEN is required when UPSTASH_REDIS_REST_URL is set",
+    });
+  }
+
+  if (input.UPSTASH_REDIS_REST_TOKEN && !input.UPSTASH_REDIS_REST_URL) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["UPSTASH_REDIS_REST_URL"],
+      message: "UPSTASH_REDIS_REST_URL is required when UPSTASH_REDIS_REST_TOKEN is set",
+    });
+  }
+
   if (input.UPPOINT_EMAIL_BACKEND === "smtp") {
     const requiredSmtpFields = [
       "UPPOINT_DEFAULT_FROM_EMAIL",
@@ -52,6 +71,14 @@ const serverEnvSchema = z.object({
           message: `${field} is required when UPPOINT_EMAIL_BACKEND=smtp`,
         });
       }
+    }
+
+    if (input.NODE_ENV === "production" && !input.UPPOINT_EMAIL_USE_TLS) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["UPPOINT_EMAIL_USE_TLS"],
+        message: "UPPOINT_EMAIL_USE_TLS must be true in production when SMTP is enabled",
+      });
     }
   }
 
@@ -83,6 +110,8 @@ const parsedEnv = serverEnvSchema.safeParse({
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
   AUTH_BCRYPT_ROUNDS: process.env.AUTH_BCRYPT_ROUNDS,
   AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES: process.env.AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES,
+  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
   UPPOINT_DEFAULT_FROM_EMAIL: process.env.UPPOINT_DEFAULT_FROM_EMAIL,
   UPPOINT_EMAIL_BACKEND: process.env.UPPOINT_EMAIL_BACKEND,
   UPPOINT_EMAIL_HOST: process.env.UPPOINT_EMAIL_HOST,
@@ -97,6 +126,7 @@ const parsedEnv = serverEnvSchema.safeParse({
   UPPOINT_SMS_SOURCE_ADDR: process.env.UPPOINT_SMS_SOURCE_ADDR,
   UPPOINT_SMS_VALID_FOR: process.env.UPPOINT_SMS_VALID_FOR,
   UPPOINT_SMS_DATACODING: process.env.UPPOINT_SMS_DATACODING,
+  UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS: process.env.UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS,
 });
 
 if (!parsedEnv.success) {

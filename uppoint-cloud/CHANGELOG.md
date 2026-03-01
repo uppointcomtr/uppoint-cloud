@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-03-01 (Auth hardening batch — remaining security findings closure)
+
+### Changed
+- **Rate limiting backend hardened**:
+  - `lib/rate-limit.ts` now supports Upstash Redis (`@upstash/redis` + `@upstash/ratelimit`) sliding-window IP limits.
+  - Automatic fallback to existing Prisma-backed limiter preserved for continuity when Upstash env vars are absent.
+  - 429 responses now include `Retry-After`, `X-RateLimit-Limit`, and `X-RateLimit-Window-Seconds`.
+- **Environment validation tightened**:
+  - Added optional `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` pair validation.
+  - Added `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (default `false`) for explicit legacy SMS compatibility.
+  - Enforced `UPPOINT_EMAIL_USE_TLS=true` in production when SMTP backend is enabled.
+- **Email verification enforced on sign-in**:
+  - `modules/auth/server/login-challenge.ts` now rejects login challenge start when `emailVerified` is null.
+  - New auth error code: `EMAIL_NOT_VERIFIED`.
+  - Login API routes return `403` for this case and add audit trail entries.
+- **Audit logging coverage expanded**:
+  - Added failure logging for login challenge start failures (email/phone start).
+  - Added failure logging for forgot-password challenge steps (`start`, `verify_email`, `verify_sms`, `complete`).
+- **Transport security improvements**:
+  - `modules/auth/server/sms-service.ts` now uses `Authorization: Basic ...` header for provider credentials (body credentials disabled by default).
+  - SMS requests now include a 15s timeout.
+  - `modules/auth/server/email-service.ts` now enforces TLS by environment policy and adds SMTP connection/greeting/socket timeouts.
+- **Register flow clarity**:
+  - Removed invalid auto sign-in attempt from register success flow.
+  - Success action now redirects users to login with prefilled email query.
+  - TR/EN register success CTA text updated to match actual flow.
+
+### Added
+- `tests/auth/login-challenge.test.ts`: explicit test for unverified email login rejection (`EMAIL_NOT_VERIFIED`).
+
+### Verification
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> 30/30 ✓
+- `npm run build` -> ✓ (`uppoint-cloud.service` restarted)
+
 ## 2026-03-01 (Sistem geneli optimizasyon — swappiness, nginx gzip/tcp, PG autovacuum)
 
 ### Changed

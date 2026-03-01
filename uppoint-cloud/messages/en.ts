@@ -98,6 +98,7 @@ export const enMessages = {
     errors: {
       unavailable: "Unable to sign in right now",
       invalidCredentials: "Invalid email or password",
+      emailNotVerified: "Your email address is not verified yet. Please check your inbox.",
       invalidCode: "Verification code is invalid",
       expiredCode: "Code is invalid or expired",
       maxAttempts: "Too many invalid attempts. Please try again.",
@@ -210,7 +211,7 @@ export const enMessages = {
     submitLoading: "Creating account...",
     successTitle: "Account created",
     successDescription: "We've sent a verification link to your email. Please verify your email to access all features.",
-    goToDashboard: "Go to dashboard",
+    goToDashboard: "Go to sign in",
     errors: {
       serverUnavailable: "Unable to contact the server",
       generic: "Unable to create account",

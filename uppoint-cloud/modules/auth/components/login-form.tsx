@@ -72,6 +72,8 @@ function mapLoginChallengeError(
       return dictionary.errors.expiredCode;
     case "MAX_ATTEMPTS_REACHED":
       return dictionary.errors.maxAttempts;
+    case "EMAIL_NOT_VERIFIED":
+      return dictionary.errors.emailNotVerified;
     case "SMS_NOT_ENABLED":
       return dictionary.errors.smsDisabled;
     case "EMAIL_DELIVERY_FAILED":
@@ -93,12 +95,13 @@ export function LoginForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? withLocale("/dashboard", locale);
+  const prefilledEmail = searchParams.get("email") ?? "";
 
   const [mode, setMode] = useState<LoginMode>("email");
   const [emailStep, setEmailStep] = useState<EmailStep>("identifier");
   const [phoneStep, setPhoneStep] = useState<PhoneStep>("identifier");
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefilledEmail);
   const [emailPassword, setEmailPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [phonePassword, setPhonePassword] = useState("");
