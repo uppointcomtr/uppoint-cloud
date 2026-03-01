@@ -405,10 +405,11 @@ If a different structure is chosen, explain the reason and keep it equally disci
 
 After every meaningful change:
 
-* run lint
-* run type checks
-* run tests
-* run production build
+* run lint: `npm run lint`
+* run type checks: `npx tsc --noEmit`
+* run tests: `npm test`
+* run production build **and restart service**: `npm run build:deploy`
+  — `npm run build` only builds; it does NOT restart the service. Always use `npm run build:deploy` when deploying to production so the running service picks up the new build.
 
 Rules:
 
@@ -438,10 +439,10 @@ For every update intended to be committed, pushed, or submitted as a pull reques
 
 Always do the following first:
 
-* run lint
-* run type checks
-* run tests
-* run production build
+* run lint: `npm run lint`
+* run type checks: `npx tsc --noEmit`
+* run tests: `npm test`
+* run production build and restart service: `npm run build:deploy`
 
 If any required verification fails:
 
