@@ -1,0 +1,44 @@
+name: Remote Auth Smoke
+
+on:
+  schedule:
+    # Nightly run at 00:15 UTC (03:15 Europe/Istanbul)
+    - cron: "15 0 * * *"
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Remote base URL (e.g. https://cloud.uppoint.com.tr)"
+        required: false
+        default: "https://cloud.uppoint.com.tr"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: remote-auth-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Remote auth smoke (nightly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
+      E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run remote smoke suite
+        run: npm run test:e2e:remote
+

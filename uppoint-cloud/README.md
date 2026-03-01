@@ -185,6 +185,16 @@ cd /opt/uppoint-cloud
 E2E_BASE_URL=https://cloud.uppoint.com.tr npm run test:e2e:remote
 ```
 
+GitHub Actions nightly/ondemand remote smoke:
+
+- Workflow file: [remote-auth-smoke.yml](/opt/uppoint-cloud/.github/workflows/remote-auth-smoke.yml)
+- Schedule: every night at `00:15 UTC` (`03:15 Europe/Istanbul`)
+- Manual run: `Actions -> Remote Auth Smoke -> Run workflow`
+- Optional secret:
+  - `E2E_HEALTHCHECK_TOKEN` (only needed if remote `/api/health` requires token)
+- Optional repository variable:
+  - `E2E_BASE_URL` (default is `https://cloud.uppoint.com.tr`)
+
 ## Visual smoke checklist (light/dark, TR/EN auth)
 
 Run this checklist after deployment or UI-affecting changes:

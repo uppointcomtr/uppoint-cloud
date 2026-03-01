@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-03-01 (ci: nightly remote auth smoke workflow)
+
+### Added
+- Added GitHub Actions workflow:
+  - `.github/workflows/remote-auth-smoke.yml`
+- Workflow behavior:
+  - nightly scheduled run (`00:15 UTC`)
+  - manual `workflow_dispatch` support
+  - executes `npm run test:e2e:remote` against remote base URL
+  - supports optional `E2E_HEALTHCHECK_TOKEN` secret for protected health checks
+
+### Documentation
+- Updated `README.md` with workflow usage, schedule, and required optional CI settings.
+
 ## 2026-03-01 (remote smoke verification: cloud.uppoint.com.tr)
 
 ### Verification
