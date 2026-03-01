@@ -82,7 +82,14 @@ export function ForgotPasswordRequestForm({
       return;
     }
 
-    const payload = (await response.json()) as ForgotPasswordRequestResponse;
+    let payload: ForgotPasswordRequestResponse;
+    try {
+      payload = (await response.json()) as ForgotPasswordRequestResponse;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success) {
       setSubmitError(mapError(payload.error, dictionary));

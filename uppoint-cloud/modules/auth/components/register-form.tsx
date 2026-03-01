@@ -109,7 +109,14 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
       return;
     }
 
-    const payload: RegisterResponse = await response.json();
+    let payload: RegisterResponse;
+    try {
+      payload = await response.json();
+    } catch {
+      setSubmitError(dictionary.errors.serverUnavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success) {
       setSubmitError(mapApiErrorCode(payload.error, dictionary, apiErrors));

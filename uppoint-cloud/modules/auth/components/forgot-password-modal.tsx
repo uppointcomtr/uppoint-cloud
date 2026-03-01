@@ -220,11 +220,14 @@ export function ForgotPasswordModal({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{
-      hasChallenge: boolean;
-      challengeId: string | null;
-      emailCodeExpiresAt: string | null;
-    }>;
+    let payload: ApiResponse<{ hasChallenge: boolean; challengeId: string | null; emailCodeExpiresAt: string | null }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(resolveErrorMessage(payload.error, dictionary));
@@ -270,10 +273,14 @@ export function ForgotPasswordModal({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{
-      smsCodeExpiresAt: string;
-      maskedPhone: string;
-    }>;
+    let payload: ApiResponse<{ smsCodeExpiresAt: string; maskedPhone: string }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(resolveErrorMessage(payload.error, dictionary));
@@ -312,7 +319,15 @@ export function ForgotPasswordModal({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{ resetToken: string }>;
+    let payload: ApiResponse<{ resetToken: string }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(resolveErrorMessage(payload.error, dictionary));
       setIsSubmitting(false);
@@ -364,7 +379,15 @@ export function ForgotPasswordModal({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{ reset: boolean }>;
+    let payload: ApiResponse<{ reset: boolean }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!response.ok || !payload.success) {
       setSubmitError(resolveErrorMessage(payload.error, dictionary));
       setIsSubmitting(false);

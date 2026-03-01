@@ -106,7 +106,14 @@ export function ResetPasswordForm({ locale, dictionary }: ResetPasswordFormProps
       return;
     }
 
-    const payload = (await response.json()) as ResetPasswordResponse;
+    let payload: ResetPasswordResponse;
+    try {
+      payload = (await response.json()) as ResetPasswordResponse;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success) {
       setSubmitError(mapError(payload.error, dictionary));

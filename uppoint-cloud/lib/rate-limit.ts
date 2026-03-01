@@ -38,27 +38,35 @@ export async function checkRateLimit(
   const key = `${action}:${ip}`;
   const windowStart = new Date(Date.now() - windowSeconds * 1000);
 
-  const count = await prisma.rateLimitAttempt.count({
-    where: { key, createdAt: { gte: windowStart } },
-  });
+  try {
+    const count = await prisma.rateLimitAttempt.count({
+      where: { key, createdAt: { gte: windowStart } },
+    });
 
-  if (count >= max) {
-    return false;
+    if (count >= max) {
+      return false;
+    }
+
+    await prisma.rateLimitAttempt.create({ data: { key } });
+
+    // Probabilistic cleanup (1% chance) to avoid unbounded table growth
+    if (Math.random() < 0.01) {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      prisma.rateLimitAttempt
+        .deleteMany({ where: { createdAt: { lt: cutoff } } })
+        .catch(() => {
+          // fire-and-forget: table cleanup is best-effort
+        });
+    }
+
+    return true;
+  } catch (error) {
+    // Fail open: if the database is unreachable, allow the request rather
+    // than blocking all users. The application's own error handling will
+    // surface any downstream DB failures.
+    console.error("[rate-limit] Database error — failing open for action:", action, error);
+    return true;
   }
-
-  await prisma.rateLimitAttempt.create({ data: { key } });
-
-  // Probabilistic cleanup (1% chance) to avoid unbounded table growth
-  if (Math.random() < 0.01) {
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    prisma.rateLimitAttempt
-      .deleteMany({ where: { createdAt: { lt: cutoff } } })
-      .catch(() => {
-        // fire-and-forget: table cleanup is best-effort
-      });
-  }
-
-  return true;
 }
 
 /**

@@ -215,11 +215,14 @@ export function LoginForm({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{
-      hasChallenge: boolean;
-      challengeId: string | null;
-      codeExpiresAt: string | null;
-    }>;
+    let payload: ApiResponse<{ hasChallenge: boolean; challengeId: string | null; codeExpiresAt: string | null }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(mapLoginChallengeError(payload.error, dictionary));
@@ -281,7 +284,14 @@ export function LoginForm({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{ loginToken: string }>;
+    let payload: ApiResponse<{ loginToken: string }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(mapLoginChallengeError(payload.error, dictionary));
@@ -330,11 +340,14 @@ export function LoginForm({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{
-      hasChallenge: boolean;
-      challengeId: string | null;
-      codeExpiresAt: string | null;
-    }>;
+    let payload: ApiResponse<{ hasChallenge: boolean; challengeId: string | null; codeExpiresAt: string | null }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(mapLoginChallengeError(payload.error, dictionary));
@@ -397,7 +410,14 @@ export function LoginForm({
       return;
     }
 
-    const payload = (await response.json()) as ApiResponse<{ loginToken: string }>;
+    let payload: ApiResponse<{ loginToken: string }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setSubmitError(dictionary.errors.unavailable);
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(mapLoginChallengeError(payload.error, dictionary));
