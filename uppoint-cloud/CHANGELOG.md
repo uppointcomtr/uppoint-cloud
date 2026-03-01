@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-01 (Veritabanı güvenilirlik iyileştirmeleri)
+
+### Fixed
+- **`scripts/backup-db.sh`**: Sessiz başarısız olma riski giderildi. pg_dump çıktısı önce geçici dosyaya yazılıyor, ardından `gzip -t` bütünlük kontrolü yapılıyor, son olarak atomic `mv` ile kalıcı konuma taşınıyor. Boş dosya ve bozuk arşiv durumunda script hata kodu ile çıkıyor.
+- **`db/client.ts`**: Production ortamında Prisma `errorFormat: "minimal"` olarak ayarlandı — internal SQL detayları artık loglara sızamaz. `log: ["error"]` ile sadece hatalar loglanıyor.
+
+### Added
+- **`scripts/cleanup-db.sh`**: Veritabanı temizlik scripti. Her gece 03:00 cron ile çalışır. `RateLimitAttempt` (>24 saat), tamamlanmış `LoginChallenge` (>1 saat), `AuditLog` (>90 gün) kayıtlarını siler. Log: `/var/log/uppoint-cleanup.log`.
+
 ## 2026-03-01 (Env yapısı düzenleme + ops kurulumu)
 
 ### Changed

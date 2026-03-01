@@ -12,6 +12,9 @@ export const prisma =
     datasources: {
       db: { url: env.DATABASE_URL },
     },
+    // production: minimal format avoids leaking internal SQL details in logs
+    errorFormat: env.NODE_ENV === "production" ? "minimal" : "pretty",
+    log: env.NODE_ENV === "production" ? ["error"] : ["error", "warn"],
   });
 
 if (env.NODE_ENV !== "production") {
