@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-03-01 (docs: rewrite AGENTS.md — production-grade instruction set)
+
+### Changed
+- `AGENTS.md` fully rewritten: condensed structure, added multi-tenant/authorization rules, background jobs, idempotency/concurrency, performance, backup/recovery, and architecture decision sections; integrated all prior security rules.
+
 ## 2026-03-01 (CSP nonce hardening + restore drill validation)
 
 ### Changed
