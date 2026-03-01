@@ -57,6 +57,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
+- `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
 - `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
 - `UPSTASH_REDIS_REST_TOKEN` (optional, required with `UPSTASH_REDIS_REST_URL`)
 - `UPPOINT_DEFAULT_FROM_EMAIL`
@@ -77,14 +78,19 @@ Create and maintain `.env` with real values (do not commit it):
 
 ## Upstash rate limit activation
 
-When both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set in `.env`, auth rate limiting uses Upstash Redis sliding window.
-If these variables are not set (or Upstash is temporarily unreachable), the system safely falls back to Prisma-backed rate limiting.
+Rate-limit backend priority:
+1. `RATE_LIMIT_REDIS_URL` (local Redis)
+2. Upstash (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`)
+3. Prisma fallback
+
+When `RATE_LIMIT_REDIS_URL` is set, auth rate limiting uses local Redis sliding window.
+If local Redis is not configured/reachable, system tries Upstash; if that is unavailable too, it safely falls back to Prisma-backed rate limiting.
 
 Operational check:
 
 ```bash
 cd /opt/uppoint-cloud
-awk -F= '/^(UPSTASH_REDIS_REST_URL|UPSTASH_REDIS_REST_TOKEN)=/{print $1"=<set>"}' .env
+awk -F= '/^(RATE_LIMIT_REDIS_URL|UPSTASH_REDIS_REST_URL|UPSTASH_REDIS_REST_TOKEN)=/{print $1"=<set>"}' .env
 ```
 
 ## Brand assets

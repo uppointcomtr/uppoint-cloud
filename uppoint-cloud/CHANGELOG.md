@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-03-01 (Local Redis rate-limit backend activation)
+
+### Added
+- Sunucuya `redis-server` (v7.0.15) + `redis-tools` kuruldu, systemd altında etkinleştirildi (`redis-server.service`).
+- `lib/env/server.ts`: `RATE_LIMIT_REDIS_URL` environment variable eklendi (opsiyonel).
+- `package.json`: `redis` npm dependency eklendi.
+
+### Changed
+- `lib/rate-limit.ts` backend önceliği güncellendi:
+  1. Local Redis (`RATE_LIMIT_REDIS_URL`)
+  2. Upstash (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`)
+  3. Prisma fallback
+- Local Redis için atomic sliding-window algoritması (Lua + sorted set) eklendi.
+- `.env` yerel çalışma için `RATE_LIMIT_REDIS_URL=redis://127.0.0.1:6379` ile güncellendi (repo dışı operasyonel dosya).
+- `README.md` rate-limit backend önceliği ve env dokümantasyonu güncellendi.
+
+### Verification
+- `redis-cli ping` -> `PONG`
+- `systemctl is-active redis-server` -> `active`
+- `npm run lint` -> ✓
+- `npm run typecheck` -> ✓
+- `npm run test` -> ✓
+- `npm run test:e2e` -> ✓
+- `npm run build` -> ✓ (`uppoint-cloud.service` restarted)
+- Runtime check: aynı IP ile 6. register isteğinde `429 TOO_MANY_REQUESTS`
+
 ## 2026-03-01 (Proxy geri dönüşü + backup tracking temizliği + auth E2E smoke)
 
 ### Changed
