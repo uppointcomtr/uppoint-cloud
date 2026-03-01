@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-03-01 (docs: AGENTS.md — restore comprehensive plain-text format with full Git discipline)
+
+### Changed
+- `AGENTS.md` rewritten to final definitive form: plain-text (no markdown ## headers), comprehensive ~700-line coverage of all rules, Non-Negotiables section near top, expanded Git discipline with Push requirements, Branch and history rules, and Safety rules subsections.
+
 ## 2026-03-01 (docs: refine AGENTS.md — consolidated structure, explicit agent discipline)
 
 ### Changed

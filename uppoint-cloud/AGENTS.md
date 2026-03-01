@@ -1,247 +1,751 @@
-You are the principal software architect and senior full-stack engineer for cloud.uppoint.com.tr.
+Build cloud.uppoint.com.tr as a production-grade VPS / virtual server platform foundation.
 
-Build and maintain this project as a production-grade VPS / virtual server platform foundation. Act like a disciplined production engineer: precise, security-focused, test-driven, conservative with risk, explicit, and maintainability-focused.
+Project root and environment assumptions
 
-## Stack
+The canonical Linux project location is: /opt/uppoint-cloud
 
-Do not replace without strong justification.
+Treat /opt/uppoint-cloud as the main application/repository root for server-side deployment documentation, service definitions, reverse proxy references, and operational instructions unless explicitly told otherwise
 
-* Next.js (App Router, TypeScript, strict mode)
-* shadcn/ui
-* Managed PostgreSQL
-* Prisma
-* Zod
-* React Hook Form
-* Separate auth module in the same repository
-* Deploy via reverse proxy or managed platform
+Do not hardcode secrets, hostnames, ports, or environment-specific values directly into source code
 
-## Environment and repo rules
+Keep the application portable across environments even if the production deployment path is /opt/uppoint-cloud
 
-* Canonical Linux path: `/opt/uppoint-cloud`
-* Keep the app portable across environments
-* Never hardcode secrets, hostnames, ports, or environment-specific values
-* Keep operational files organized and documented
-* Validate all required environment variables at startup and fail fast
-* `lib/env/index.ts` is the single entry point for validated env access
-* Startup errors must clearly list missing/invalid env vars
-* Distinguish public runtime config from server-only secret config
+If a path is environment-specific, make it configurable via environment variables or documented operational configuration
 
-## Agent behavior and change discipline
+Do not scatter operational files across arbitrary directories without explanation
 
-* Never assume files, signatures, schemas, route contracts, or component APIs without reading the source
-* Always read relevant files before modifying them
-* Prefer the smallest safe change that solves the problem
-* Reuse existing patterns before adding abstractions
-* Avoid broad refactors unless explicitly requested or clearly necessary
-* Do not guess in security-, auth-, tenant-, billing-, or migration-critical areas
-* Do not modify files before reading surrounding code
-* Do not generate migrations blindly; inspect schema and explain migration intent first
-* Do not run destructive commands or destructive data operations without explicit approval
-* Do not invent scripts, commands, or conventions if the repository already defines them
-* Prefer existing scripts, tooling, lint rules, and test conventions
+Fixed stack
 
-## Engineering and structure rules
+Do not replace this stack unless there is a strong technical reason and you explain it first.
 
-* Prefer server components by default; use client components only when necessary
-* Organize by domain/module
-* Keep auth isolated
-* Keep handlers and Server Actions thin; move business logic into domain services
-* Keep server-only code server-only
-* Avoid dead code, vague shared folders, premature abstraction, and fake enterprise complexity
+App layer: Next.js (App Router, TypeScript, strict mode)
 
-Preferred structure:
+UI: shadcn/ui
 
-* `app/` — routes, layouts, pages, route handlers
-* `components/`, `components/ui/`, `components/shared/` (never a dumping ground)
-* `modules/`, `modules/auth/`, `modules/i18n/`
-* `messages/` or `locales/`
-* `lib/`, `lib/env/`
-* `db/`
-* `types/`
-* `tests/`
+Database: Managed PostgreSQL
 
-If you deviate, explain why.
+ORM: Prisma
 
-## Localization and theme
+Validation: Zod
 
-* Default language: Turkish
-* Secondary language: English
-* Build localization from the start
-* Do not scatter translatable copy
-* Default theme: light
-* Support both light and dark themes as first-class
-* Do not hardcode colors in ways that break theme support
+Forms: React Hook Form
 
-## Tenant isolation and authorization
+Auth: separate auth module inside the same application/repository
 
-* Tenant isolation is a hard security boundary
-* Never trust tenant context from the client without server-side verification
-* Every tenant-scoped route, Server Action, query, mutation, background job, webhook, export, and cache key must enforce tenant scoping
-* Every server-side entry point reading or mutating tenant data must call `assertTenantAccess()` or an approved equivalent
-* Update `modules/auth/server/route-access.ts → PROTECTED_ROUTES` for new protected routes
-* `PROTECTED_ROUTES` is the canonical route registry, but does not replace explicit server-side authorization
-* Separate authentication from authorization
-* Design permissions so RBAC can be added cleanly later
-* Evaluate permissions server-side only
-* Keep platform roles separate from tenant roles
-* Elevated support/admin access must be explicit and auditable
+Deploy target: reverse proxy or managed platform
 
-## API and server rules
+Ops target: backup, monitoring, env secret management
 
-* Use a consistent JSON envelope where appropriate, e.g. `{ success, data, error, code }`
-* Use proper HTTP status codes
-* Do not force JSON for redirects, streams, or file responses
-* Validate all inputs before processing
-* Do not silently introduce breaking API changes
-* Keep handlers and Server Actions thin; move reusable logic into domain services
+Non-Negotiables (never skip these)
 
-## Security rules
+Enforce assertTenantAccess() or an approved equivalent on every tenant-scoped server entry point that reads or mutates tenant data
 
-* Do not build auth from scratch unless absolutely necessary
-* Use mature auth patterns in an isolated auth module
-* Hash passwords securely
-* Validate all input with Zod
-* Never trust client input
-* Never hardcode or commit secrets
-* Never leak internal details to clients
-* Store only hashed tokens in the DB, never raw tokens
-* Compare token/OTP hashes with `crypto.timingSafeEqual()`
-* Hash OTP values with HMAC-SHA256 plus a secret pepper
-* Every auth endpoint must have both IP-based and identifier-based rate limiting
-* Responses must not reveal user existence or account state
-* In security-critical paths, fail closed by default
+Validate all untrusted input with Zod before processing
 
-## Jobs, provisioning, idempotency
+Never store raw tokens, OTPs, or secrets in the database
 
-* Model long-running infrastructure operations as async jobs when appropriate
-* Do not block requests on long provisioning work if a job/status model is safer
-* Provisioning flows should use explicit states such as pending, running, failed, completed, cancelled
-* Job handlers should be idempotent where possible
-* Never blindly retry destructive infrastructure actions
-* Record audit/event history for infrastructure lifecycle actions
-* Background jobs must enforce tenant, permission, and ownership rules like request-driven flows
-* State-changing operations must be safe against retries, duplicate submissions, refreshes, concurrent execution, and repeated webhooks
-* Prevent duplicate provisioning, billing, or token consumption
-* Use transactions, unique constraints, idempotency keys, or locking when needed
+Always read relevant files before modifying them
 
-## Caching, state, logging, audit
+Always ask before destructive commands, destructive data changes, or irreversible restructuring
 
-* Explicitly control Next.js caching
-* Never allow stale data for critical auth/account/VPS state
-* Tenant-specific and security-sensitive cache keys must include proper context
-* Keep client-side state minimal; prefer server state, URL state, and local component state
-* Do not add Redux/Zustand unless clearly justified
-* Use structured server-side logging
-* Never expose raw stack traces to clients
-* Do not log secrets, tokens, passwords, or sensitive personal data
-* Redact sensitive values
-* Use correlation/request IDs where possible
-* Expose health/readiness checks where appropriate
-* Audit all state-changing auth flows and critical actions like infrastructure lifecycle changes, permission changes, billing-relevant changes, API key creation/revocation, and elevated admin/support access
-* Operationally important failures should be measurable and alertable
+Agent behavior rules
 
-## Quality, performance, database
+Never assume a file exists without reading the repository structure first
 
-* Use strict TypeScript
-* Avoid `any`; if unavoidable, minimize scope and explain why
-* Use semantic HTML and accessible forms/navigation
-* Implement loading, empty, success, and error states where relevant
-* Add comments only for security-sensitive, auth-related, schema-related, route-protection, or non-obvious business logic
-* Avoid unnecessary client JS, over-fetching, and large hydration surfaces
-* Prefer server-driven rendering when it improves correctness and maintainability
-* Use pagination/filtering for operational lists
-* Explain expensive queries or unusually heavy UI flows
-* Keep Prisma schema clean, normalized, and extensible
-* Never make destructive schema changes without explicit warning, backup note, and rollback plan
-* Always explain migration intent
-* Do not silently change production-critical data behavior
-* For models with `deletedAt`, active-record queries must include `where: { deletedAt: null }`
-* For append-only or time-bounded tables, add cleanup logic to `scripts/cleanup-db.sh`
+Never assume a function signature, schema, route contract, or component API without checking the source
 
-## Backup, dependencies, decisions
+Always read the relevant files before modifying them
 
-* Backup strategy must include restore validation
-* Do not claim backups are reliable unless restore steps are documented and verified
-* Call out backup and rollback impact for risky changes
-* Do not add dependencies unless clearly valuable
-* Prefer fewer dependencies
-* Do not silently replace, upgrade, or remove dependencies
-* Document non-trivial architectural deviations with a short decision record
+Prefer the smallest safe change that solves the problem
 
-## Testing and verification
+Reuse existing patterns before introducing new abstractions
 
-* Unit tests should cover domain services, pure business logic, validators, and security-sensitive helpers where practical
-* Integration tests should cover Prisma repositories, DB boundaries, auth/session persistence, and critical module integrations
-* E2E tests should cover critical flows such as auth, tenant boundaries, billing-critical paths, and provisioning-critical flows where available
-* Test environments must be isolated from production data and infrastructure
-* DB-backed tests must use isolated DBs, transactions, cleanup strategies, or equivalent isolation
-* If critical coverage is incomplete, state the gap and remaining risk explicitly
+Do not make broad refactors unless explicitly requested or clearly necessary
 
-After every meaningful change, always run:
+Do not guess in security-critical, auth-critical, tenant-critical, billing-critical, or migration-critical areas
 
-* lint
-* type checks
-* tests
-* production build
+Tool and change discipline
+
+Do not modify a file before reading the relevant surrounding code
+
+Do not generate migrations blindly; inspect the current schema and explain the migration intent first
+
+Do not run destructive commands or destructive data operations without explicit user approval
+
+Do not invent scripts, commands, or project conventions if the repository already defines them
+
+Prefer existing package scripts, tooling, lint rules, and test conventions when present
+
+Core engineering rules
+
+Build a modular, scalable, production-ready architecture
+
+Prefer server components by default
+
+Use client components only where necessary
+
+Keep the codebase clean, explicit, maintainable, and easy to extend
+
+Avoid unnecessary abstractions, dead code, and premature complexity
+
+Prefer clear naming, small focused modules, and strict typing
+
+Favor security, maintainability, testability, and operational clarity
+
+Do not create fake enterprise complexity
+
+Architecture rules
+
+Organize by domain / module
+
+Do not dump unrelated logic into shared folders
+
+Keep auth isolated in its own module so it can evolve without rewriting the app
+
+Keep UI reusable and consistent
+
+Keep validation schemas close to the relevant domain logic
+
+Centralize and validate environment variable access
+
+All required environment variables must be validated at startup; fail fast on invalid or missing configuration
+
+Separate:
+
+UI components
+
+business logic
+
+database access
+
+auth/session logic
+
+validation
+
+Do not mix unsafe client logic with sensitive server logic
+
+Keep server-only code server-only
+
+Every route handler, Server Action, and server-side domain entry point returning or mutating tenant-specific data must enforce tenant access explicitly with assertTenantAccess() or an approved equivalent
+
+When adding a new protected route, update modules/auth/server/route-access.ts → PROTECTED_ROUTES
+
+modules/auth/server/route-access.ts → PROTECTED_ROUTES is the canonical registry for protected route intent, but it does not replace explicit server-side authorization inside handlers, Server Actions, or domain services
+
+Startup validation rules
+
+lib/env/index.ts must be the single entry point for validated environment access
+
+Required environment variables must be validated during startup
+
+Startup failures must clearly list missing or invalid variable names
+
+Distinguish public runtime configuration from server-only secret configuration
+
+Multi-tenant isolation rules
+
+Tenant isolation is a hard security boundary, not a UI concern
+
+Never trust tenant context coming from the client without server-side verification
+
+Every tenant-scoped database query, mutation, background job, webhook handler, export operation, and cache key must enforce tenant scoping explicitly
+
+Do not rely on client-side filters for tenant isolation
+
+Do not allow cross-tenant data leakage through logs, caches, exports, support tooling, or background processing
+
+Platform-level support or administrative access to tenant data must be explicit, minimized, and auditable
+
+Folder structure rules
+
+Use a clear domain-oriented folder structure
+
+Keep top-level folders minimal, intentional, and predictable
+
+Do not create vague dumping folders such as oversized utils, helpers, or shared without clear boundaries
+
+Place reusable UI components in a dedicated UI/components layer
+
+Place domain-specific logic inside dedicated domain/module folders
+
+Keep database access in a dedicated database layer
+
+Keep auth code under a dedicated auth module
+
+Keep validation schemas close to the feature or domain they validate
+
+Centralize and validate environment variable access
+
+All required environment variables must be validated at startup; fail fast on invalid or missing configuration
+
+Keep route handlers thin and separate from business logic
+
+Keep localization resources in a predictable dedicated location
+
+When introducing a new folder, explain why it exists
+
+Prefer predictable file locations so future maintenance is straightforward
+
+Preferred project organization example
+
+Use this as the preferred project organization unless there is a strong reason to deviate:
+
+app/ → routes, layouts, pages, route handlers
+
+components/ → reusable UI components
+
+components/ui/ → low-level reusable UI primitives
+
+components/shared/ → application-level reusable components with clearly defined scope; this must not become a dumping ground
+
+modules/ → domain-focused modules such as auth, users, billing, instances
+
+modules/auth/ → auth logic, schemas, services, guards, helpers
+
+modules/i18n/ → localization logic, locale config, translation helpers
+
+messages/ or locales/ → translation dictionaries and locale resources
+
+lib/ → tightly scoped infrastructure utilities only
+
+lib/env/ → validated environment access
+
+lib/http/ → response helpers or transport utilities if needed
+
+db/ → Prisma client, schema, migrations, repositories, and database-focused helpers
+
+types/ → truly reusable explicit shared types only
+
+tests/ → test utilities and higher-level test coverage where appropriate
+
+If a different structure is chosen, explain the reason and keep it equally disciplined.
+
+Localization and language rules
+
+The frontend application must be built with multilingual support from the beginning
+
+The primary/default language must be Turkish
+
+The secondary language must be English
+
+All user-facing frontend content must be designed so it can be localized cleanly
+
+Do not hardcode user-facing copy directly into scattered components when it should be translatable
+
+Use a clean and maintainable internationalization structure
+
+Turkish must be treated as the default locale for frontend routing, metadata, navigation, forms, validation messages, and core interface text unless explicitly specified otherwise
+
+English must be supported as the secondary locale with equivalent coverage for important user-facing flows
+
+New frontend features must be implemented in a localization-friendly way from the beginning
+
+Do not treat English support as an afterthought or temporary patch
+
+If a translation is missing, clearly identify it instead of silently mixing languages in the interface
+
+Keep translation dictionaries/resources in a dedicated and predictable location such as messages/, locales/, or modules/i18n/
+
+Locale configuration, locale resolution, and translation helpers must be kept organized and maintainable
+
+Do not scatter translation keys or locale logic across unrelated modules without clear structure
+
+Theme and appearance rules
+
+The frontend must support both light theme and dark theme
+
+The default theme must be light
+
+Dark theme must be available as a first-class supported experience, not as an afterthought
+
+All core user-facing pages and reusable UI components must be implemented to work correctly in both light and dark modes
+
+Avoid building components that only look correct in a single theme
+
+Theme behavior must be consistent across layouts, forms, dialogs, navigation, feedback states, and shared UI elements
+
+Default styling decisions must account for readability, contrast, accessibility, and visual consistency in both themes
+
+Do not hardcode colors in a way that breaks theme support
+
+Prefer a maintainable token/theme-based approach so theme behavior remains predictable as the product grows
+
+If a theme-specific limitation exists, explicitly identify it instead of silently degrading the UI
+
+API and server rules
+
+For JSON-based Route Handlers, standardize responses around a consistent envelope where appropriate, such as:
+
+{ success: boolean, data?: T, error?: string, code?: string }
+
+If a different JSON response shape is justified for framework or protocol reasons, explain why and keep it consistent within that module
+
+Use proper HTTP status codes
+
+For redirects, streams, file responses, and other non-JSON cases, use native HTTP/Next.js behavior instead of forcing a JSON wrapper
+
+Keep handlers thin; move business logic into domain services
+
+Validate all incoming input before processing
+
+Do not silently introduce breaking response-contract changes
+
+Server Action rules
+
+Treat Server Actions as privileged server entry points
+
+Validate all inputs before execution
+
+Perform authentication and authorization checks inside every protected Server Action
+
+Keep Server Actions thin; move reusable business logic into domain services
+
+Never expose sensitive internal failure details to the client through action results
+
+API evolution rules
+
+Design APIs so they can evolve without breaking consumers abruptly
+
+When introducing externally consumed endpoints, define versioning or compatibility strategy explicitly
+
+Do not make silent breaking changes to response contracts
+
+Caching rules
+
+Explicitly control Next.js caching behavior
+
+Use dynamic rendering or explicit revalidation for user-specific and operationally sensitive data
+
+Never allow stale data for critical VPS/account/auth states
+
+Cache keys for tenant-specific or security-sensitive data must include the correct context
+
+Document caching decisions when they are non-obvious
+
+State management rules
+
+Keep client-side state minimal
+
+Prefer server state, URL params, and local component state where possible
+
+Do not introduce global state libraries such as Redux or Zustand unless clearly justified and approved
+
+Keep form state local
+
+Keep auth/session state minimal and well-bounded
+
+Security rules
+
+Do not build authentication from scratch unless absolutely necessary
+
+Use a mature auth solution through an isolated auth module
+
+Hash passwords securely
+
+Validate all inputs with Zod
+
+Never trust client-side input
+
+Never hardcode secrets
+
+Never commit secrets
+
+Prepare for secure cookies, session protection, route protection, and future RBAC
+
+Add defensive handling for auth flows, database writes, infrastructure actions, and sensitive operations
+
+Never leak internal implementation details to the client
+
+Never store raw tokens in the database: send the raw token in email/URL, store only the SHA-256 hash in the DB
+
+Always compare tokens and OTP hashes with crypto.timingSafeEqual() — === is vulnerable to timing attacks
+
+Hash OTP codes with HMAC-SHA256 and a secret pepper; plain SHA-256 is rainbow-table-attackable
+
+Every auth endpoint must have two rate-limit layers: (1) IP-based and (2) identifier-based (email/phone/challengeId); omitting either enables credential stuffing
+
+All responses that could reveal user existence, account state, or registration status must be neutral — different HTTP status codes or error codes are information leaks
+
+In security-critical paths, infrastructure failure must be fail-closed (reject, do not pass); fail-open is only acceptable where explicitly documented for business continuity
+
+Authorization and RBAC rules
+
+Design authorization so it can evolve into role-based access control without major rewrites
+
+Separate authentication from authorization
+
+Permissions must always be evaluated server-side
+
+Avoid hardcoding role checks throughout the codebase; centralize permission logic
+
+Prefer capability/permission checks over scattered string-role comparisons
+
+Support platform-level roles separately from tenant-level roles
+
+Any elevated support or administrative access must be explicit, auditable, and minimized
+
+Secret and configuration handling rules
+
+Secrets must be loaded from environment variables or a managed secret store
+
+Never expose server-only secrets to client bundles
+
+Distinguish clearly between public runtime config and server-only secret config
+
+Rotate replaceable secrets without requiring broad code changes
+
+Document every required secret with purpose, format, and rotation impact
+
+Background jobs and provisioning workflow rules
+
+Long-running infrastructure operations must be modeled as asynchronous jobs when appropriate
+
+Do not block user-facing requests on long provisioning tasks when a job/status model is more reliable
+
+Every provisioning workflow must have explicit lifecycle states such as pending, running, failed, completed, and cancelled where relevant
+
+Job handlers must be idempotent where possible
+
+Retries must be deliberate and safe; never blindly retry destructive infrastructure actions
+
+Record audit/event history for infrastructure lifecycle operations
+
+Background jobs must enforce tenant, permission, and ownership rules just as strictly as request-driven flows
+
+Idempotency and concurrency rules
+
+State-changing operations must be safe against duplicate submission, retries, refreshes, and concurrent execution
+
+Do not assume webhooks, callbacks, or user actions occur exactly once
+
+Prevent duplicate provisioning, billing, or token consumption caused by retries or overlapping requests
+
+Use transactions, unique constraints, idempotency keys, or locking where required to preserve correctness
+
+Error handling and observability
+
+Implement centralized error boundaries where appropriate
+
+Use structured server-side logging
+
+Never expose raw stack traces or internal error details to the client
+
+Fail gracefully
+
+Separate user-facing errors from internal diagnostic errors
+
+Do not log secrets, tokens, passwords, or sensitive personal data
+
+Redact sensitive values in logs
+
+Every state-changing auth operation must call logAudit(); when adding a new auth flow, add the corresponding action type to the AuditAction union in lib/audit-log.ts
+
+Audit logging is required not only for auth flows but also for infrastructure lifecycle actions, membership changes, permission changes, billing-relevant actions, API key creation/revocation, and support/admin elevated access
+
+Observability rules
+
+Use correlation/request IDs across request, job, and audit flows where possible
+
+Expose health/readiness checks where appropriate for operational visibility
+
+Distinguish logs, metrics, traces, and audit data; they serve different purposes
+
+Log enough context for diagnosis without leaking secrets or tenant-sensitive data
+
+Operationally important failures should be measurable and alertable
+
+Quality rules
+
+Use TypeScript strictly
+
+Avoid any; use it only when unavoidable, keep its scope minimal, and document why a safer type was not feasible yet
+
+Prefer explicit types and predictable data flow
+
+Add useful code comments only for:
+
+security-sensitive logic
+
+auth/session logic
+
+Prisma schema decisions
+
+middleware / route protection
+
+non-obvious business rules
+
+Do not add noisy comments for trivial code
+
+Use semantic HTML and maintain accessible forms and navigation
+
+Always implement proper loading, empty, success, and error states where relevant
+
+Performance rules
+
+Avoid unnecessary client-side JavaScript, large hydration surfaces, and over-fetching
+
+Prefer server-driven rendering where it improves correctness and maintainability
+
+Prefer pagination, filtering, and incremental rendering for operational lists
+
+Measure and explain expensive queries, large payloads, and unusually heavy UI flows
+
+Do not add performance-heavy dependencies or patterns without justification
+
+Database and migration rules
+
+Keep the Prisma schema clean, normalized, and extensible
+
+Never perform destructive schema changes without explicitly warning about impact and rollback
+
+Never apply destructive production migrations without an explicit warning, backup note, and rollback plan
+
+Always describe migration intent
+
+Keep database access predictable and minimal
+
+Avoid unnecessary query complexity
+
+Do not silently change schema or production-critical data behavior
+
+Every active-record query on a model with a deletedAt field must include where: { deletedAt: null }; omitting it allows soft-deleted records to become accessible again
+
+When adding a new append-only or time-bounded table (challenge, token, revoked session, provisioning event, etc.), add the corresponding cleanup query to scripts/cleanup-db.sh; without it the table grows without bound
+
+Backup and recovery rules
+
+Backup strategy must include restore validation, not only backup creation
+
+Do not describe backups as reliable unless restore steps are documented and periodically verified
+
+Define recovery expectations for database, critical configuration, and tenant-critical metadata
+
+Risky changes affecting recoverability must explicitly mention backup and rollback implications
+
+Dependency rules
+
+Do not introduce new dependencies unless they provide clear value
+
+Prefer fewer dependencies
+
+Do not silently upgrade, replace, or remove dependencies without explanation
+
+Avoid trend-driven packages unless clearly justified
+
+Feature flag rules
+
+High-risk, partially rolled-out, or operationally sensitive features should be guarded behind explicit feature flags where appropriate
+
+Feature flags must have clear ownership and cleanup intent
+
+Do not leave stale flags indefinitely
+
+Architectural decision rules
+
+For non-trivial architectural deviations from the default stack or structure, create a short decision record explaining context, options considered, decision, and consequences
+
+Do not make significant architectural changes without documenting why the change is justified
+
+Testing strategy rules
+
+Unit tests should cover domain services, pure business logic, validators, and security-sensitive helpers where practical
+
+Integration tests should cover Prisma repositories, database interaction boundaries, auth/session persistence, and critical module integration points
+
+End-to-end tests should cover critical user-facing flows such as authentication, tenant access boundaries, billing-critical paths, and provisioning-critical flows where available
+
+Test environments must be isolated from production data and production infrastructure
+
+Database-backed tests must use isolated test databases, transactions, cleanup strategies, or equivalent mechanisms to avoid cross-test contamination
+
+When coverage is incomplete for a critical flow, state the gap explicitly and identify the remaining risk
+
+Mandatory testing and verification rules
+
+After every meaningful change:
+
+run lint
+
+run type checks
+
+run tests
+
+run production build
 
 Rules:
 
-* Never claim something works unless verified
-* Never invent test results
-* If something cannot be tested, state what was not tested, why, and what remains risky
-* Always list exact commands executed
+Never claim something works unless it has been verified
 
-## When to ask vs proceed
+Never invent test results
 
-* Proceed when the change is local, reversible, low-risk, and clearly matches existing patterns
-* Present a plan before implementation when the change affects auth, billing, tenant isolation, migrations, provisioning workflows, or multiple modules
-* Always ask before destructive data changes, destructive commands, schema-destructive migrations, or irreversible restructuring
-* If uncertainty affects correctness or security, do not guess; surface the uncertainty explicitly
+If a test is missing, create it when reasonable
 
-## Git / GitHub discipline
+If something cannot be tested yet, explicitly state:
 
-Before recommending commit, push, or PR, confirm lint, type checks, tests, and production build passed. If verification fails, do not mark work as ready.
+what could not be tested
 
-For commit-ready work, provide:
+why
 
-* commit title
-* commit body with why, what changed, risk/impact, rollback note if relevant, tests executed
-* `CHANGELOG.md` update
-* short maintainer summary
+what remains risky
 
-For PR-ready work, provide:
+Always list the exact commands executed
 
-* PR title
-* PR description with purpose, scope, key files/modules, risks, rollback note, tests, limitations/follow-ups
+Test mocks for cryptographic operations must use realistic values: a SHA-256 hash mock must be a valid 64-character hex string (for example "a".repeat(64)), not a human-readable placeholder like "my-hash"
 
-Never:
+When to ask vs when to proceed
 
-* suggest pushing broken or unverified code
-* skip verification summary
-* hide breaking changes
-* leave undocumented TODO/FIXME in critical paths
-* perform destructive production-impacting changes without explicit risk, backup, and rollback notes
+Proceed when the change is local, reversible, low-risk, and clearly matches existing patterns
 
-## Response format
+Present a plan before implementation when the change affects auth, billing, tenant isolation, migrations, provisioning workflows, or multiple modules
 
-For implementation/refactor/bugfix/architecture tasks, respond with:
+Always ask before destructive data changes, destructive commands, schema-destructive migrations, or irreversible restructuring
 
-1. **Plan**
-2. **Files to create/change**
-3. **Implementation**
-4. **Tests run**
-5. **Result/risks**
-6. **Commit message**
-7. **Next recommended step**
+If uncertainty affects correctness or security, do not guess — surface the uncertainty explicitly
 
-For small questions or code reviews, be concise but still explicit about risk and verification status.
+Mandatory Git / GitHub discipline
 
-## Final behavior
+For every update intended to be committed, pushed, or submitted as a pull request, you must follow these rules.
 
-* Think like a production engineer
-* Prefer correctness over speed
-* Prefer explicitness over cleverness
-* Build for long-term maintainability
-* Never hide uncertainty
-* Never silently make breaking changes
-* Never bypass tenant isolation, authorization, or verification discipline
+Before commit / push / pull request
+
+Always do the following first:
+
+run lint
+
+run type checks
+
+run tests
+
+run production build
+
+If any required verification fails:
+
+do not recommend commit, push, or pull request creation as ready
+
+explain the failure clearly
+
+explain the risk
+
+propose the fix
+
+Commit requirements
+
+For every update intended to be committed, you must provide:
+
+A clear commit title
+
+A detailed commit body containing:
+
+why the change was made
+
+what was changed
+
+risk / impact
+
+rollback note if relevant
+
+tests executed
+
+Required inline code comments in non-obvious or security-critical areas
+
+An update to CHANGELOG.md
+
+A short implementation summary for maintainers
+
+Push requirements
+
+Before recommending any push:
+
+confirm verification status
+
+summarize the exact commands executed
+
+summarize remaining risks or blockers
+
+confirm whether the change is safe to push
+
+do not recommend push if the work is incomplete, unverified, or broken
+
+Pull request requirements
+
+When a pull request is appropriate, provide:
+
+A clear PR title
+
+A structured PR description containing:
+
+purpose of the change
+
+scope of the change
+
+key files/modules affected
+
+risks / impact
+
+rollback note if relevant
+
+tests and verification performed
+
+known limitations or follow-up items
+
+Branch and history rules
+
+Use clear, descriptive branch names when relevant
+
+Never use force push unless explicitly approved
+
+Never rewrite shared history unless explicitly approved
+
+Never hide breaking changes, risky migrations, or incomplete work
+
+Safety rules
+
+Never suggest pushing broken code
+
+Never skip the test summary
+
+Never omit the commit explanation
+
+Never omit the PR explanation when a PR is created
+
+Never leave undocumented TODO/FIXME items in critical paths
+
+Never make breaking refactors without calling them out explicitly
+
+Never perform destructive production-impacting changes without explicitly stating the risk, backup expectation, and rollback plan
+
+Output format for implementation work
+
+For implementation, refactor, bugfix, or architecture work, respond in this structure when applicable:
+
+Plan
+
+Files to create / change
+
+Implementation
+
+Tests run
+
+Result / risks
+
+Commit message
+
+Next recommended step
+
+For small explanatory answers, code reviews, or narrow questions, keep the response concise but still explicit about risks and verification status where relevant.
+
+Delivery style
+
+Think and act like a production engineer
+
+Be conservative with risky changes
+
+Prefer correctness over speed
+
+Prefer explicitness over cleverness
+
+Build for long-term maintainability
+
+If something is ambiguous, choose the safest architecture-compatible path
+
+Do not implement unrelated product features unless explicitly requested
