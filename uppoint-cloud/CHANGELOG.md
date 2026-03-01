@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-01 (Sistem geneli optimizasyon — swappiness, nginx gzip/tcp, PG autovacuum)
+
+### Changed
+- **`scripts/tune-system.sh`** güncellendi:
+  - Disk tipi tespiti (SSD/HDD) → `random_page_cost` ve `effective_io_concurrency` otomatik
+  - `max_connections` formül bazlı (RAM/100, [100–300]); `work_mem` buna göre hesaplanıyor
+  - PostgreSQL `autovacuum_naptime=20s`, `vacuum_scale_factor`, `analyze_scale_factor` eklendi
+  - Kernel: `vm.swappiness=10` (varsayılan 60), `vm.dirty_ratio=15`, `vm.dirty_background_ratio=5`, `tcp_tw_reuse=1`
+- **Nginx global** (`/etc/nginx/nginx.conf`): `tcp_nodelay on`, `server_tokens off`, `keepalive_timeout 25s`, tam gzip parametreleri etkinleştirildi
+- **Nginx site config**: `client_body_buffer_size 128k`, `proxy_buffer_size 16k`, `proxy_buffers 16 16k` eklendi
+
 ## 2026-03-01 (Otomatik donanım tabanlı performans ayarlama sistemi)
 
 ### Added
