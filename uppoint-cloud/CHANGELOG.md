@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-03-01 (remote smoke verification: cloud.uppoint.com.tr)
+
+### Verification
+- Remote auth smoke suite executed against deployed domain:
+  - `E2E_BASE_URL=https://cloud.uppoint.com.tr npm run test:e2e:remote`
+- Result:
+  - `tests/e2e/auth-http-smoke.test.ts` passed (`4/4`)
+  - localized login/register reachability passed
+  - neutral unverified-email login behavior passed
+  - register rate-limit behavior passed
+  - forgot-password validation contract passed
+
 ## 2026-03-01 (test hardening: reduce audit fallback log noise)
 
 ### Changed
