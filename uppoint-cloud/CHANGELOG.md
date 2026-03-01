@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-03-01 (Production hazırlık — hata sayfaları, sağlık endpoint, nginx & systemd sertleştirme)
+
+### Added
+- **`app/global-error.tsx`**: Root layout hataları için global error boundary (kendi `<html>/<body>` içeriyor).
+- **`app/[locale]/error.tsx`**: Locale sayfalarındaki runtime hatalar için error boundary — "Tekrar dene" + ana sayfa linki.
+- **`app/not-found.tsx`**: Global 404 sayfası — türkçe mesaj + ana sayfa yönlendirme.
+- **`app/[locale]/dashboard/loading.tsx`**: Dashboard RSC streaming için loading skeleton (spinner).
+- **`app/api/health/route.ts`**: Sağlık kontrol endpoint'i — DB erişilebilirse `200 { status: "ok" }`, değilse `503` döner. Monitoring ve load balancer probe'ları için.
+- **`ops/nginx/cloud.uppoint.com.tr.conf`**: Gzip sıkıştırma (`gzip on; comp_level 6`) — JSON, JS, CSS, SVG dahil.
+- **`ops/nginx/cloud.uppoint.com.tr.conf`**: `Content-Security-Policy` header eklendi (`default-src 'self'`, inline script/style, frame-ancestors 'self').
+- **`ops/nginx/cloud.uppoint.com.tr.conf`**: `Permissions-Policy` header eklendi (camera, microphone, geolocation, payment, usb kapatıldı).
+- **`ops/systemd/uppoint-cloud.service`**: `TimeoutStopSec=15` — graceful shutdown için 15 saniye süre.
+- **`ops/systemd/uppoint-cloud.service`**: `MemoryMax=2G` — bellek sızdırma senaryolarında OOM killer için üst sınır.
+
+### Fixed
+- **Logo `Image` bileşenleri**: `unoptimized` prop kaldırıldı (`auth-split-shell.tsx`, `app-header.tsx`, `forgot-password-request-form.tsx`, `reset-password-form.tsx`) — Next.js image optimizer artık logo resimlerini de optimize eder.
+- **`add_header` nginx direktifleri**: Tüm `add_header` satırlarına `always` eklendi — hata yanıtlarında da (4xx/5xx) header'lar iletilir.
+
 ## 2026-03-01 (Veritabanı index optimizasyonu + PostgreSQL bellek tuning)
 
 ### Fixed

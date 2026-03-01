@@ -31,7 +31,6 @@ export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps
               alt="Uppoint Cloud"
               width={416}
               height={127}
-              unoptimized
               className="block w-[180px] h-auto dark:hidden"
             />
             <Image
@@ -39,7 +38,6 @@ export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps
               alt="Uppoint Cloud"
               width={416}
               height={127}
-              unoptimized
               className="hidden w-[180px] h-auto dark:block"
             />
             <div className="flex items-center gap-2">
