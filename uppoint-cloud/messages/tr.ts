@@ -86,7 +86,7 @@ export const trMessages = {
       otp: "Doğrulama kodu",
     },
     countdownPrefix: "Kalan süre:",
-    acceptanceInfo: "Hesap bilgileri doğrulanırsa tek kullanımlık kod gönderildi.",
+    acceptanceInfo: "Hesap bilgileriniz geçerliyse tek kullanımlık kod gönderilmiştir.",
     nextIdle: "Sonraki",
     backIdle: "Geri",
     sendCodeIdle: "Kodu gönder",

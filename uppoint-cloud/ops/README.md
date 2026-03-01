@@ -249,4 +249,39 @@ Covered logs:
 - `/var/log/uppoint-backup.log`
 - `/var/log/uppoint-redis-backup.log`
 - `/var/log/uppoint-auth-rate-limit-tune.log`
+- `/var/log/uppoint-health-probe.log`
 - `/var/log/postgresql/*.log`
+
+## 11. Tokenized health probe (Nginx + local monitoring)
+
+Sync app `HEALTHCHECK_TOKEN` from `.env` into an Nginx snippet and reload:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/sync-healthcheck-token-to-nginx.sh
+```
+
+The script writes:
+
+- `/etc/nginx/snippets/uppoint-health-token.conf`
+
+Nginx serves a local-only endpoint:
+
+- `https://cloud.uppoint.com.tr/healthz`
+
+Behavior:
+
+- only loopback clients are allowed (`127.0.0.1`, `::1`)
+- Nginx injects `x-health-token` to upstream `/api/health`
+
+Manual probe test:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/health-probe.sh
+```
+
+Install periodic local probe:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-health-probe /etc/cron.d/uppoint-health-probe
+sudo chmod 644 /etc/cron.d/uppoint-health-probe
+```

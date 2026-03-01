@@ -71,8 +71,12 @@ export function VerificationCodeInput({
             <div
               key={`${id}-slot-${index}`}
               className={cn(
-                "flex h-14 items-end justify-center border-b-2 pb-2 font-mono text-2xl font-semibold tabular-nums transition-colors",
-                isActive ? "border-primary" : "border-border/70",
+                "flex h-14 items-center justify-center rounded-xl border-2 font-mono text-2xl font-semibold tabular-nums transition-all",
+                isActive
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : digit
+                    ? "border-border bg-background"
+                    : "border-border/50 bg-muted/40",
                 digit ? "text-foreground" : "text-transparent",
               )}
             >

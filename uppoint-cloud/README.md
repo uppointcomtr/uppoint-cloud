@@ -190,6 +190,7 @@ Run this checklist after deployment or UI-affecting changes:
 - Health endpoint exposure is minimized:
   - `/api/health` returns minimal status payload only
   - in production, if `HEALTHCHECK_TOKEN` is set, callers must send `x-health-token`
+  - local Nginx probe endpoint `/healthz` is loopback-only and injects token via snippet (`/etc/nginx/snippets/uppoint-health-token.conf`)
 - Backup scripts now enforce restrictive filesystem permissions (`umask 077`, directories `700`, files `600`).
 
 ## Production run on `/opt/uppoint-cloud`

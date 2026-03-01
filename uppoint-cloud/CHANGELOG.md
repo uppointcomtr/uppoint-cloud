@@ -37,6 +37,10 @@
   - health response sadeleştirildi, production’da opsiyonel `HEALTHCHECK_TOKEN` doğrulaması eklendi.
 - `scripts/backup-db.sh` ve `scripts/backup-redis.sh`:
   - `umask 077` + backup dizin/dosya izin sertleştirmesi eklendi.
+- Ops health monitoring:
+  - `scripts/sync-healthcheck-token-to-nginx.sh` eklendi (`.env` -> Nginx snippet senkronu ve reload).
+  - `scripts/health-probe.sh` eklendi (local tokenized `/healthz` probe).
+  - `ops/cron/uppoint-health-probe` ve logrotate kapsamı eklendi.
 - `lib/audit-log.ts`:
   - audit metadata’ya otomatik `requestId`, `userAgent`, `forwardedFor` bağlamı eklendi.
   - metadata anahtarlarında hassas alanlar (`password|token|secret|authorization|cookie`) redakte edilir hale getirildi.

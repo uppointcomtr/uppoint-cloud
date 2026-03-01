@@ -1,0 +1,1 @@
+* * * * * root /opt/uppoint-cloud/scripts/health-probe.sh >> /var/log/uppoint-health-probe.log 2>&1

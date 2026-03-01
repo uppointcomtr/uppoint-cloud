@@ -36,6 +36,16 @@ su root adm
     create 640 root adm
 }
 
+/var/log/uppoint-health-probe.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
 /var/log/postgresql/*.log {
     daily
     rotate 14
