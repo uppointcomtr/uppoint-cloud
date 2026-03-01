@@ -10,7 +10,7 @@ Group=www-data
 WorkingDirectory=/opt/uppoint-cloud
 Environment=NODE_ENV=production
 Environment=PORT=3000
-EnvironmentFile=-/etc/uppoint-cloud.env
+EnvironmentFile=/opt/uppoint-cloud/.env
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache/images

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-03-01 (Env yapısı düzenleme + ops kurulumu)
+
+### Changed
+- **Tek env kaynağı**: `/etc/uppoint-cloud.env` kaldırıldı. `/opt/uppoint-cloud/.env` tek ve gerçek env dosyası oldu (`root:www-data 640`). Systemd servisi artık `EnvironmentFile=/opt/uppoint-cloud/.env` okuyor. Tüm araçlar (Prisma CLI, Next.js runtime, systemd) aynı kaynaktan besleniyor.
+- **`ops/systemd/uppoint-cloud.service`**: `EnvironmentFile` yolu `/etc/uppoint-cloud.env` → `/opt/uppoint-cloud/.env` güncellendi.
+- **`AUTH_SECRET`**: Dev değeri üretim için güçlü rastgele değerle değiştirildi (`openssl rand -base64 48`).
+- **`modules/theme/config.ts`**: `defaultTheme` → `"light"` (AGENTS.md: varsayılan tema açık olmalı).
+
 ## 2026-03-01 (Ops kurulumu: backup · monitoring · security)
 
 ### Added
