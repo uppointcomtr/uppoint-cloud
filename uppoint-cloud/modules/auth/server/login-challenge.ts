@@ -246,10 +246,9 @@ interface StartPhoneLoginDependencies {
 
 const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
   findUserByPhone: async (phone) => {
-    const user = await prisma.user.findFirst({
-      where: {
-        phone,
-      },
+    // phone has @unique constraint — findUnique is more efficient than findFirst
+    const user = await prisma.user.findUnique({
+      where: { phone },
       select: {
         id: true,
         phone: true,

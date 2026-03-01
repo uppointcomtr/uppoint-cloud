@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-01 (Veritabanı büyüme ve temizlik iyileştirmeleri)
+
+### Fixed
+- **`scripts/cleanup-db.sh`**: LoginChallenge sorgusu düzeltildi — eski hali yalnızca `loginTokenUsedAt IS NOT NULL` (kullanılmış) olanları siliyordu; süresi dolmuş ama tamamlanmamış challenge'lar birikiyordu. Yeni hali `codeExpiresAt < NOW() - 1 saat` olan **tüm** challenge'ları temizliyor.
+- **`scripts/cleanup-db.sh`**: `ROW_COUNT()` (MySQL syntax) yerine PostgreSQL uyumlu `WITH d AS (DELETE ... RETURNING ...) SELECT count(*) FROM d` CTE pattern'ına geçildi — artık doğru sayım yapılıyor.
+- **`modules/auth/server/login-challenge.ts`**: `findUserByPhone` — `phone` alanında `@unique` constraint olmasına rağmen `findFirst` kullanılıyordu. `findUnique` ile değiştirildi (index kullanımı daha verimli).
+
+### Added
+- **`scripts/cleanup-db.sh`**: Eksik 3 tablo için cleanup eklendi:
+  - `PasswordResetToken` — `expiresAt < NOW()` olanlar siliniyor
+  - `PasswordResetChallenge` — `emailCodeExpiresAt < NOW() - 1 saat` olanlar siliniyor
+  - `VerificationToken` — `expires < NOW()` olanlar siliniyor
+
 ## 2026-03-01 (Veritabanı güvenilirlik iyileştirmeleri)
 
 ### Fixed
