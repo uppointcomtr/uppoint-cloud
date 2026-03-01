@@ -209,8 +209,8 @@ export const enMessages = {
     emailPrefix: "Email",
     submitIdle: "Create account",
     submitLoading: "Creating account...",
-    successTitle: "Account created",
-    successDescription: "We've sent a verification link to your email. Please verify your email to access all features.",
+    successTitle: "Email verification required",
+    successDescription: "Your account has been created. For security, you must approve the verification link sent to your email address before continuing.",
     goToDashboard: "Go to sign in",
     errors: {
       serverUnavailable: "Unable to contact the server",

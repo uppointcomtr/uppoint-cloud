@@ -190,3 +190,63 @@ Run a manual backup test:
 sudo /opt/uppoint-cloud/scripts/backup-redis.sh
 ls -lah /opt/backups/redis
 ```
+
+## 9. Auth rate-limit auto tuning + report
+
+Run analysis manually (report only):
+
+```bash
+sudo /opt/uppoint-cloud/scripts/tune-auth-rate-limit.sh
+cat /var/log/uppoint-cloud/auth-rate-limit/auth-rate-limit-latest.md
+```
+
+Run with apply mode (safe tuning + nginx reload):
+
+```bash
+sudo /opt/uppoint-cloud/scripts/tune-auth-rate-limit.sh --apply --tail-lines 30000 --min-sample 150
+sudo nginx -t
+```
+
+Install periodic tuning cron:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-rate-limit-tune /etc/cron.d/uppoint-auth-rate-limit-tune
+sudo chmod 644 /etc/cron.d/uppoint-auth-rate-limit-tune
+```
+
+Operational notes:
+
+- Script updates only:
+  - `/etc/nginx/conf.d/uppoint-rate-limit.conf` (`rate=...r/m`)
+  - `/etc/nginx/sites-available/cloud.uppoint.com.tr.conf` (`burst=...`)
+- Tuning is step-limited each run to avoid oscillation (`rate ±20`, `burst ±15`).
+- On config test failure, both files are rolled back from timestamped backups.
+- Generated reports are written to:
+  - `/var/log/uppoint-cloud/auth-rate-limit/auth-rate-limit-latest.md`
+  - `/var/log/uppoint-cloud/auth-rate-limit/auth-rate-limit-latest.json`
+
+## 10. Log rotation for ops jobs
+
+Install the managed logrotate template:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/logrotate/uppoint-cloud /etc/logrotate.d/uppoint-cloud
+sudo chmod 644 /etc/logrotate.d/uppoint-cloud
+```
+
+Validate syntax and behavior:
+
+```bash
+sudo logrotate -d /etc/logrotate.d/uppoint-cloud
+```
+
+Note:
+
+- Template includes `su root adm` to prevent insecure-permission skips on distributions where `/var/log` is group-writable.
+
+Covered logs:
+
+- `/var/log/uppoint-backup.log`
+- `/var/log/uppoint-redis-backup.log`
+- `/var/log/uppoint-auth-rate-limit-tune.log`
+- `/var/log/postgresql/*.log`

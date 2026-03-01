@@ -1,0 +1,47 @@
+# Uppoint Cloud logrotate template
+# Install:
+#   sudo cp /opt/uppoint-cloud/ops/logrotate/uppoint-cloud /etc/logrotate.d/uppoint-cloud
+#
+# Ubuntu /var/log parent perms can be group-writable (e.g. root:syslog 775),
+# so explicit su is required to avoid "insecure permissions" skips.
+su root adm
+
+/var/log/uppoint-backup.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
+/var/log/uppoint-redis-backup.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
+/var/log/uppoint-auth-rate-limit-tune.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
+/var/log/postgresql/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}

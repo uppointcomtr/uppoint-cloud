@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-03-01 (Register success notice copy update)
+
+### Changed
+- Kayıt sonrası başarı bildirimi metni TR/EN için kurumsal ve aksiyon odaklı hale getirildi:
+  - Başlık artık e-posta doğrulama gerekliliğini doğrudan ifade ediyor.
+  - Açıklama metni, devam etmeden önce doğrulama bağlantısının onaylanması gerektiğini netleştiriyor.
+
+## 2026-03-01 (Email verification URL canonical host fix)
+
+### Fixed
+- Register sonrası gönderilen e-posta doğrulama linki artık request origin yerine canonical `NEXT_PUBLIC_APP_URL` tabanından üretiliyor.
+- Böylece ters proxy / internal host senaryolarında `https://localhost:3000/...` link üretilmesi engellendi.
+- `modules/auth/server/email-verification.ts` locale’i `tr/en` whitelist ile normalize ediyor (`defaultLocale` fallback).
+
+## 2026-03-01 (Auth rate-limit auto tuning + traffic report)
+
+### Added
+- `scripts/tune-auth-rate-limit.sh` eklendi:
+  - Nginx access log üzerinden `/api/auth/*` trafik analizi yapar
+  - `p95 per-ip/per-minute` + `429 oranı` metriklerine göre önerilen `rate/burst` hesaplar
+  - Markdown + JSON raporu üretir (`/var/log/uppoint-cloud/auth-rate-limit/`)
+  - `--apply` modunda Nginx config güncellemesi yapar, `nginx -t` başarısız olursa otomatik rollback uygular
+- `ops/cron/uppoint-auth-rate-limit-tune` cron şablonu eklendi (30 dakikada bir güvenli tuning + rapor).
+- `ops/logrotate/uppoint-cloud` şablonu eklendi:
+  - `/var/log/uppoint-auth-rate-limit-tune.log` günlük rotate (30 gün saklama)
+  - backup ve PostgreSQL log kurallarıyla birlikte tek şablonda yönetim
+  - `su root adm` ile `/var/log` insecure-permission skip davranışı giderildi
+
+### Changed
+- `ops/README.md` içerisine auth rate-limit tuning runbook’u eklendi:
+  - manuel rapor üretimi
+  - apply modu
+  - cron kurulum adımları
+  - rollback davranışı ve rapor lokasyonları
+- `ops/README.md` logrotate kurulumu ve doğrulama adımlarıyla güncellendi.
+
 ## 2026-03-01 (Local Redis + Nginx/Fail2ban hardening bundle)
 
 ### Added

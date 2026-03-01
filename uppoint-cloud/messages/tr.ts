@@ -209,8 +209,8 @@ export const trMessages = {
     emailPrefix: "E-posta",
     submitIdle: "Hesap oluştur",
     submitLoading: "Hesap oluşturuluyor...",
-    successTitle: "Hesabınız oluşturuldu",
-    successDescription: "E-postanıza bir doğrulama bağlantısı gönderdik. Hesabınıza tam erişim için e-postanızı doğrulayın.",
+    successTitle: "E-posta doğrulaması gerekli",
+    successDescription: "Hesabınız oluşturuldu. Güvenlik gereği devam etmeden önce e-posta adresinize gönderilen doğrulama bağlantısını onaylamanız gerekmektedir.",
     goToDashboard: "Giriş sayfasına git",
     errors: {
       serverUnavailable: "Sunucuya bağlanılamıyor",

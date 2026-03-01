@@ -29,14 +29,13 @@ export async function POST(request: Request) {
 
   const rawPayload = payload as Record<string, unknown>;
   const locale = typeof rawPayload.locale === "string" ? rawPayload.locale : "tr";
-  const baseUrl = new URL(request.url).origin;
 
   try {
     const user = await registerUser(payload);
 
     // Security-sensitive: email delivery failures must not expose internals to clients.
     try {
-      await createAndSendEmailVerificationToken(user.email, locale, baseUrl);
+      await createAndSendEmailVerificationToken(user.email, locale);
     } catch (emailError) {
       console.error("Failed to send email verification", emailError);
     }
