@@ -1,5 +1,11 @@
 import { TenantRole } from "@prisma/client";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const logAuditMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock("@/lib/audit-log", () => ({
+  logAudit: logAuditMock,
+}));
 
 import { assertTenantAccess, hasRequiredTenantRole } from "@/modules/tenant/server/scope";
 

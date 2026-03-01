@@ -19,7 +19,6 @@ describe("resolveUserTenantContext", () => {
           tenantId: "t1",
           role: TenantRole.ADMIN,
         }),
-        createBootstrapTenant: vi.fn(),
         assertAccess: vi.fn(),
       },
     );
@@ -30,27 +29,19 @@ describe("resolveUserTenantContext", () => {
     });
   });
 
-  it("creates bootstrap tenant membership when user has none", async () => {
-    const createBootstrapTenant = vi.fn().mockResolvedValue({
-      tenantId: "new-tenant",
-      role: TenantRole.OWNER,
-    });
-
-    const context = await resolveUserTenantContext(
-      { userId: "u2" },
-      {
-        findFirstMembership: vi.fn().mockResolvedValue(null),
-        findMembershipByTenant: vi.fn(),
-        createBootstrapTenant,
-        assertAccess: vi.fn(),
-      },
-    );
-
-    expect(createBootstrapTenant).toHaveBeenCalledWith("u2");
-    expect(context).toEqual({
-      tenantId: "new-tenant",
-      role: TenantRole.OWNER,
-    });
+  it("throws TENANT_NOT_FOUND when user has no active tenant membership", async () => {
+    await expect(
+      resolveUserTenantContext(
+        { userId: "u2" },
+        {
+          findFirstMembership: vi.fn().mockResolvedValue(null),
+          findMembershipByTenant: vi.fn(),
+          assertAccess: vi.fn(),
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "TENANT_NOT_FOUND",
+    } satisfies Partial<UserTenantContextError>);
   });
 
   it("throws TENANT_ACCESS_DENIED when explicit tenant access fails", async () => {
@@ -64,7 +55,6 @@ describe("resolveUserTenantContext", () => {
         {
           findFirstMembership: vi.fn(),
           findMembershipByTenant: vi.fn(),
-          createBootstrapTenant: vi.fn(),
           assertAccess: vi.fn().mockRejectedValue(new Error("denied")),
         },
       ),

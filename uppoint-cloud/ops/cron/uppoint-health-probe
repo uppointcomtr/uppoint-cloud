@@ -1,1 +1,5 @@
-* * * * * root /usr/bin/flock -n /var/lock/uppoint-health-probe.lock /opt/uppoint-cloud/scripts/health-probe.sh >> /var/log/uppoint-health-probe.log 2>&1
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Runs probe command as www-data while keeping root-owned lock and log destination.
+* * * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-health-probe.lock /usr/sbin/runuser -u www-data -- /opt/uppoint-cloud/scripts/health-probe.sh >> /var/log/uppoint-health-probe.log 2>&1

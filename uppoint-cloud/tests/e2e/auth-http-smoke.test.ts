@@ -9,10 +9,17 @@ function uniqueSuffix(): string {
 async function fetchWithTimeout(path: string, init?: RequestInit, timeoutMs = 15_000): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const method = (init?.method ?? "GET").toUpperCase();
+  const headers = new Headers(init?.headers);
+
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && !headers.has("origin")) {
+    headers.set("origin", baseUrl);
+  }
 
   try {
     return await fetch(`${baseUrl}${path}`, {
       ...init,
+      headers,
       signal: controller.signal,
     });
   } finally {

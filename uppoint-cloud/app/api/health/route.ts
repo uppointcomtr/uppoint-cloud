@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
@@ -8,10 +9,17 @@ import { env } from "@/lib/env";
 export async function GET(request: Request) {
   if (env.NODE_ENV === "production" && env.HEALTHCHECK_TOKEN) {
     const token = request.headers.get("x-health-token");
+    const expectedToken = env.HEALTHCHECK_TOKEN;
+    const tokenBuffer = Buffer.from(token ?? "");
+    const expectedTokenBuffer = Buffer.from(expectedToken);
 
-    if (!token || token !== env.HEALTHCHECK_TOKEN) {
+    const tokenMatches =
+      tokenBuffer.length === expectedTokenBuffer.length
+      && timingSafeEqual(tokenBuffer, expectedTokenBuffer);
+
+    if (!tokenMatches) {
       return NextResponse.json(
-        { status: "unauthorized" },
+        { success: false, error: "UNAUTHORIZED", status: "unauthorized" },
         { status: 401, headers: { "Cache-Control": "no-store" } },
       );
     }
@@ -20,13 +28,13 @@ export async function GET(request: Request) {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json(
-      { status: "ok" },
+      { success: true, data: { status: "ok" }, status: "ok" },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   } catch (err) {
     console.error("[health] DB check failed:", err);
     return NextResponse.json(
-      { status: "error" },
+      { success: false, error: "HEALTHCHECK_FAILED", status: "error" },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }

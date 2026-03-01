@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   count: vi.fn(),
   create: vi.fn(),
   deleteMany: vi.fn(),
+  transaction: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
@@ -16,6 +17,7 @@ vi.mock("@/lib/env", () => ({
 
 vi.mock("@/db/client", () => ({
   prisma: {
+    $transaction: mocks.transaction,
     rateLimitAttempt: {
       count: mocks.count,
       create: mocks.create,
@@ -34,6 +36,18 @@ describe("checkRateLimit Prisma fallback", () => {
     mocks.count.mockReset();
     mocks.create.mockReset();
     mocks.deleteMany.mockReset();
+    mocks.transaction.mockReset();
+    mocks.transaction.mockImplementation(async (callback: (tx: {
+      rateLimitAttempt: {
+        count: typeof mocks.count;
+        create: typeof mocks.create;
+      };
+    }) => Promise<boolean>) => callback({
+      rateLimitAttempt: {
+        count: mocks.count,
+        create: mocks.create,
+      },
+    }));
   });
 
   it("allows requests under limit and schedules deterministic cleanup only once per interval", async () => {

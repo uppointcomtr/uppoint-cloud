@@ -66,7 +66,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUDIT_LOG_RETENTION_DAYS` (optional, default `180`, min `30`)
 - `HEALTHCHECK_TOKEN` (optional but recommended in production; required as `x-health-token` when set)
 - `UPPOINT_ALLOWED_HOSTS` (optional, comma-separated host allowlist for production request host validation)
-- `UPPOINT_ALLOWED_ORIGINS` (optional, comma-separated origin allowlist for production auth API origin validation)
+- `UPPOINT_ALLOWED_ORIGINS` (optional, comma-separated origin allowlist for production API mutation origin validation)
 - `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
 - `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
 - `UPSTASH_REDIS_REST_TOKEN` (optional, required with `UPSTASH_REDIS_REST_URL`)
@@ -115,7 +115,6 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 
 - Auth runtime config: [auth.ts](/opt/uppoint-cloud/auth.ts)
 - Credentials validation: [modules/auth/schemas/auth-schemas.ts](/opt/uppoint-cloud/modules/auth/schemas/auth-schemas.ts)
-- Registration service: [modules/auth/server/register-user.ts](/opt/uppoint-cloud/modules/auth/server/register-user.ts)
 - Registration verification challenge service: [modules/auth/server/register-verification-challenge.ts](/opt/uppoint-cloud/modules/auth/server/register-verification-challenge.ts)
 - Login credential verification: [modules/auth/server/authenticate-user.ts](/opt/uppoint-cloud/modules/auth/server/authenticate-user.ts)
 - Login OTP challenge service: [modules/auth/server/login-challenge.ts](/opt/uppoint-cloud/modules/auth/server/login-challenge.ts)
@@ -152,6 +151,13 @@ npm run typecheck
 npm run test
 npm run test:e2e
 npm run build
+npm run verify:nginx-drift
+```
+
+One-shot full gate:
+
+```bash
+npm run verify
 ```
 
 Note: `npm run build` performs only `next build`.
@@ -170,6 +176,13 @@ Run:
 ```bash
 cd /opt/uppoint-cloud
 npm run test:e2e
+```
+
+Remote environment smoke (already-deployed domain):
+
+```bash
+cd /opt/uppoint-cloud
+E2E_BASE_URL=https://cloud.uppoint.com.tr npm run test:e2e:remote
 ```
 
 ## Visual smoke checklist (light/dark, TR/EN auth)
@@ -192,9 +205,10 @@ Run this checklist after deployment or UI-affecting changes:
 - `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated (`410 ENDPOINT_DEPRECATED`) to keep only the dual-verification challenge flow active.
 - `POST /api/auth/verify-email` is the only mutation endpoint for email verification; `GET /api/auth/verify-email` returns `405`.
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
-- Production edge guard rejects invalid `Host/X-Forwarded-Host` values (`INVALID_HOST_HEADER`) and invalid cross-origin auth mutations (`ORIGIN_NOT_ALLOWED`).
-- CSP is nonce-based at Nginx layer: per-request `$request_id` is used as script nonce and injected into HTML script tags via `sub_filter`.
-- `script-src` no longer uses `unsafe-inline`; `style-src` keeps `unsafe-inline` for framework-generated inline styles.
+- `logAudit()` emits structured `[security-signal]` log lines for high-risk auth/tenant failures (`rate_limit_exceeded`, OTP failures, tenant access denials) to support alert pipelines.
+- Production edge guard rejects invalid `Host/X-Forwarded-Host` values (`INVALID_HOST_HEADER`) and invalid cross-origin API mutations (`ORIGIN_NOT_ALLOWED`).
+- CSP is nonce-based at Nginx layer: per-request `$request_id` is used as script/style nonce and injected into HTML tags via `sub_filter`.
+- Both `script-src` and `style-src` avoid `unsafe-inline`; nonce is enforced for inline script/style tags.
 - Health endpoint exposure is minimized:
   - `/api/health` returns minimal status payload only
   - in production, if `HEALTHCHECK_TOKEN` is set, callers must send `x-health-token`

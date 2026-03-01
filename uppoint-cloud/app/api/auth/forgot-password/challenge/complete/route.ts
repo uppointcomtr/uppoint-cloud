@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("forgot-password-complete", 5, 600);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "forgot-password-complete",
       scope: "ip",
     });
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   if (challengeId) {
     const identifierRateLimit = await withRateLimitByIdentifier("forgot-password-complete-challenge", challengeId, 6, 900);
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "forgot-password-complete",
         scope: "challenge",
       });
@@ -50,12 +50,12 @@ export async function POST(request: Request) {
   try {
     await completePasswordResetChallenge(payload);
 
-    logAudit("password_reset_success", ip);
+    await logAudit("password_reset_success", ip);
 
     return NextResponse.json(ok({ reset: true }), { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logAudit("password_reset_failed", ip, undefined, {
+      await logAudit("password_reset_failed", ip, undefined, {
         step: "complete",
         reason: "VALIDATION_FAILED",
       });
@@ -70,14 +70,14 @@ export async function POST(request: Request) {
           ? 400
           : 500;
 
-      logAudit("password_reset_failed", ip, undefined, {
+      await logAudit("password_reset_failed", ip, undefined, {
         step: "complete",
         reason: error.code,
       });
       return NextResponse.json(fail(error.code), { status });
     }
 
-    logAudit("password_reset_failed", ip, undefined, {
+    await logAudit("password_reset_failed", ip, undefined, {
       step: "complete",
       reason: "FORGOT_PASSWORD_COMPLETE_FAILED",
     });

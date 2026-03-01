@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("forgot-password-challenge-start", 5, 600);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "forgot-password-challenge-start",
       scope: "ip",
     });
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     );
 
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "forgot-password-challenge-start",
         scope: "email",
       });
@@ -52,12 +52,12 @@ export async function POST(request: Request) {
   try {
     const result = await startPasswordResetChallenge(payload);
 
-    logAudit("password_reset_requested", ip, undefined, {
+    await logAudit("password_reset_requested", ip, undefined, {
       hasChallenge: Boolean(result.challengeId),
     });
 
     if (!result.challengeId) {
-      logAudit("password_reset_failed", ip, undefined, {
+      await logAudit("password_reset_failed", ip, undefined, {
         step: "start",
         reason: "ACCOUNT_NOT_FOUND_OR_HIDDEN",
       });
@@ -73,14 +73,14 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logAudit("password_reset_failed", ip, undefined, {
+      await logAudit("password_reset_failed", ip, undefined, {
         step: "start",
         reason: "VALIDATION_FAILED",
       });
       return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
     }
 
-    logAudit("password_reset_failed", ip, undefined, {
+    await logAudit("password_reset_failed", ip, undefined, {
       step: "start",
       reason: "FORGOT_PASSWORD_CHALLENGE_START_FAILED",
     });

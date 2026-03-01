@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("login-phone-verify", 10, 900);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "login-phone-verify",
       scope: "ip",
     });
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   if (challengeId) {
     const identifierRateLimit = await withRateLimitByIdentifier("login-phone-verify-challenge", challengeId, 8, 900);
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "login-phone-verify",
         scope: "challenge",
       });
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   try {
     const result = await verifyLoginChallengeCode(payload, "phone");
 
-    logAudit("login_success", ip, result.userId, { mode: "phone" });
+    await logAudit("login_success", ip, result.userId, { mode: "phone" });
 
     return NextResponse.json(ok({ loginToken: result.loginToken }), { status: 200 });
   } catch (error) {
@@ -65,13 +65,13 @@ export async function POST(request: Request) {
           : 500;
 
       if (error.code === "INVALID_CODE" || error.code === "MAX_ATTEMPTS_REACHED") {
-        logAudit("login_otp_failed", ip, undefined, { mode: "phone", reason: error.code });
+        await logAudit("login_otp_failed", ip, undefined, { mode: "phone", reason: error.code });
       }
 
       return NextResponse.json(fail(error.code), { status });
     }
 
-    logAudit("login_otp_failed", ip, undefined, {
+    await logAudit("login_otp_failed", ip, undefined, {
       mode: "phone",
       reason: "LOGIN_CHALLENGE_VERIFY_FAILED",
     });

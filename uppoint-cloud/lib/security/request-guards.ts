@@ -104,9 +104,9 @@ export function isAllowedOrigin(originHeader: string | null, allowedOrigins: Set
     return true;
   }
 
-  // Non-browser clients (curl, probes) may omit Origin.
+  // Security-sensitive: mutating endpoints should fail closed when Origin is missing.
   if (!originHeader) {
-    return true;
+    return false;
   }
 
   const origin = normalizeOrigin(originHeader);

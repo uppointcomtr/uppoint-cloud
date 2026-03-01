@@ -47,6 +47,17 @@ check_site_file() {
   HAS_DRIFT=1
 }
 
+check_site_security_directives() {
+  if [ ! -f "$target_site_file" ]; then
+    return
+  fi
+
+  if grep -Eq "style-src[^;]*'unsafe-inline'" "$target_site_file"; then
+    echo "[drift] insecure CSP detected in $target_site_file: style-src contains 'unsafe-inline'" >&2
+    HAS_DRIFT=1
+  fi
+}
+
 check_rate_limit_file() {
   if [ ! -f "$target_rate_limit_file" ]; then
     echo "[drift] missing target file: $target_rate_limit_file" >&2
@@ -79,6 +90,7 @@ check_rate_limit_file() {
 }
 
 check_site_file
+check_site_security_directives
 check_rate_limit_file
 
 if [ "$HAS_DRIFT" -ne 0 ]; then

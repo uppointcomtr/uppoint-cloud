@@ -3,6 +3,7 @@ import "server-only";
 import { TenantRole } from "@prisma/client";
 
 import { prisma } from "@/db/client";
+import { logAudit } from "@/lib/audit-log";
 
 const roleRank: Record<TenantRole, number> = {
   MEMBER: 1,
@@ -57,12 +58,24 @@ export async function assertTenantAccess(
   });
 
   if (!membership || membership.tenant.deletedAt) {
+    await logAudit("tenant_access_denied", "unknown", input.userId, {
+      targetId: input.tenantId,
+      reason: "TENANT_ACCESS_DENIED",
+      result: "FAILURE",
+    });
     throw new Error("TENANT_ACCESS_DENIED");
   }
 
   const minimumRole = input.minimumRole ?? TenantRole.MEMBER;
 
   if (!hasRequiredTenantRole(membership.role, minimumRole)) {
+    await logAudit("tenant_role_insufficient", "unknown", input.userId, {
+      targetId: membership.tenantId,
+      reason: "TENANT_ROLE_INSUFFICIENT",
+      minimumRole,
+      role: membership.role,
+      result: "FAILURE",
+    });
     throw new Error("TENANT_ROLE_INSUFFICIENT");
   }
 

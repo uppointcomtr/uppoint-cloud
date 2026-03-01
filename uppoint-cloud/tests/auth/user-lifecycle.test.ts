@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
+const logAuditMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock("@/lib/audit-log", () => ({
+  logAudit: logAuditMock,
+}));
+
 import { softDeleteUser } from "@/modules/auth/server/user-lifecycle";
 
 describe("softDeleteUser", () => {

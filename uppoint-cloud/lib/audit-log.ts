@@ -22,11 +22,24 @@ export type AuditAction =
   | "password_changed"
   | "session_revoked"
   | "email_verified"
-  | "email_verification_failed";
+  | "email_verification_failed"
+  | "tenant_access_denied"
+  | "tenant_role_insufficient"
+  | "tenant_context_missing"
+  | "user_soft_deleted";
 
-const SENSITIVE_KEY_PATTERN = /(password|secret|token|authorization|cookie)/i;
+const SENSITIVE_KEY_PATTERN = /(password|secret|token|authorization|cookie|email|phone|name|fullName|firstName|lastName|address)/i;
 // Match plaintext secrets that may appear as values (bearer tokens, JWT prefix, raw passwords).
-const SENSITIVE_VALUE_PATTERN = /(password=|bearer\s|eyj[a-z0-9])/i;
+const SENSITIVE_VALUE_PATTERN = /(password=|bearer\s|eyj[a-z0-9]|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i;
+const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
+  "rate_limit_exceeded",
+  "login_otp_failed",
+  "login_challenge_start_failed",
+  "password_reset_failed",
+  "session_revoked",
+  "tenant_access_denied",
+  "tenant_role_insufficient",
+]);
 
 function redactSensitiveMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
   const output: Record<string, unknown> = {};
@@ -106,6 +119,15 @@ function pickString(input: unknown): string | undefined {
   return typeof input === "string" && input.trim().length > 0 ? input.trim() : undefined;
 }
 
+function resolveStoredIp(inputIp: string, requestContextIp: unknown): string | null {
+  const explicitIp = pickString(inputIp);
+  if (explicitIp && explicitIp !== "unknown") {
+    return explicitIp;
+  }
+
+  return pickString(requestContextIp) ?? null;
+}
+
 function resolveAuditResult(action: AuditAction, metadata?: Record<string, unknown>): string {
   const explicitResult = pickString(metadata?.result);
   if (explicitResult) {
@@ -122,35 +144,66 @@ function resolveAuditResult(action: AuditAction, metadata?: Record<string, unkno
   return "INFO";
 }
 
+function emitSecuritySignal(input: {
+  action: AuditAction;
+  result: string;
+  requestId?: string;
+  userId?: string;
+  targetId?: string;
+  reason?: string;
+}): void {
+  const shouldEmit =
+    SECURITY_SIGNAL_ACTIONS.has(input.action)
+    || input.result === "FAILURE";
+
+  if (!shouldEmit) {
+    return;
+  }
+
+  const signal = {
+    type: "security_signal",
+    action: input.action,
+    result: input.result,
+    requestId: input.requestId ?? null,
+    userId: input.userId ?? null,
+    targetId: input.targetId ?? null,
+    reason: input.reason ?? null,
+    at: new Date().toISOString(),
+  };
+
+  console.warn("[security-signal]", JSON.stringify(signal));
+}
+
 /**
  * Records a security-relevant event for forensic analysis.
- * Fire-and-forget: never throws, never blocks the main request.
+ * Never throws to callers; DB errors are captured via fallback sink.
  */
-export function logAudit(
+export async function logAudit(
   action: AuditAction,
   ip: string,
   userId?: string,
   metadata?: Record<string, unknown>,
-): void {
-  void (async () => {
-    const requestContext = await resolveRequestAuditContext();
-    const safeMetadata = metadata ? redactSensitiveMetadata(metadata) : {};
-    const result = resolveAuditResult(action, safeMetadata);
-    const reason = pickString(safeMetadata.reason);
-    const targetId = pickString(safeMetadata.targetId) ?? pickString(safeMetadata.targetUserId);
-    const requestId = pickString(requestContext.requestId);
-    const userAgent = pickString(requestContext.userAgent);
-    const forwardedFor = pickString(requestContext.forwardedFor);
+): Promise<void> {
+  const requestContext = await resolveRequestAuditContext();
+  const safeMetadata = metadata ? redactSensitiveMetadata(metadata) : {};
+  const result = resolveAuditResult(action, safeMetadata);
+  const reason = pickString(safeMetadata.reason);
+  const targetId = pickString(safeMetadata.targetId) ?? pickString(safeMetadata.targetUserId);
+  const requestId = pickString(requestContext.requestId);
+  const userAgent = pickString(requestContext.userAgent);
+  const forwardedFor = pickString(requestContext.forwardedFor);
+  const storedIp = resolveStoredIp(ip, requestContext.ip);
 
-    const composedMetadata = {
-      ...safeMetadata,
-      request: requestContext,
-    };
+  const composedMetadata = {
+    ...safeMetadata,
+    request: requestContext,
+  };
 
+  try {
     await prisma.auditLog.create({
       data: {
         action,
-        ip,
+        ip: storedIp,
         userId: userId ?? undefined,
         actorId: userId ?? undefined,
         targetId,
@@ -162,7 +215,25 @@ export function logAudit(
         metadata: composedMetadata as Prisma.InputJsonValue,
       },
     });
-  })().catch((error) => {
+
+    emitSecuritySignal({
+      action,
+      result,
+      requestId,
+      userId: userId ?? undefined,
+      targetId,
+      reason,
+    });
+  } catch (error) {
+    const fallbackPayload = {
+      type: "audit_fallback",
+      action,
+      userId: userId ?? null,
+      metadata: metadata ? redactSensitiveMetadata(metadata) : {},
+      error: error instanceof Error ? error.message : "unknown",
+      at: new Date().toISOString(),
+    };
+    console.error("[audit-fallback]", JSON.stringify(fallbackPayload));
     console.error("[audit] Failed to write audit log:", action, error);
-  });
+  }
 }

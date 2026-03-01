@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("register-verify-email", 10, 900);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "register-verify-email",
       scope: "ip",
     });
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   if (challengeId) {
     const identifierRateLimit = await withRateLimitByIdentifier("register-verify-email-challenge", challengeId, 8, 900);
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "register-verify-email",
         scope: "challenge",
       });
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }), { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logAudit("register_verification_failed", ip, undefined, {
+      await logAudit("register_verification_failed", ip, undefined, {
         step: "verify_email",
         reason: "VALIDATION_FAILED",
       });
@@ -64,9 +64,10 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof RegisterVerificationChallengeError) {
+      const neutralizedChallengeCode =
+        error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "INVALID_EMAIL_CODE";
       const status =
-        error.code === "INVALID_OR_EXPIRED_CHALLENGE" ||
-        error.code === "INVALID_EMAIL_CODE" ||
+        neutralizedChallengeCode ||
         error.code === "PHONE_NOT_AVAILABLE" ||
         error.code === "SMS_NOT_ENABLED" ||
         error.code === "SMS_DELIVERY_FAILED" ||
@@ -74,14 +75,17 @@ export async function POST(request: Request) {
           ? 400
           : 500;
 
-      logAudit("register_verification_failed", ip, undefined, {
+      await logAudit("register_verification_failed", ip, undefined, {
         step: "verify_email",
-        reason: error.code,
+        reason: neutralizedChallengeCode ? "VERIFICATION_CODE_REJECTED" : error.code,
       });
-      return NextResponse.json(fail(error.code), { status });
+      return NextResponse.json(
+        fail(neutralizedChallengeCode ? "INVALID_OR_EXPIRED_CHALLENGE" : error.code),
+        { status },
+      );
     }
 
-    logAudit("register_verification_failed", ip, undefined, {
+    await logAudit("register_verification_failed", ip, undefined, {
       step: "verify_email",
       reason: "REGISTER_VERIFY_EMAIL_FAILED",
     });

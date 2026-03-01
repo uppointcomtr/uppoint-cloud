@@ -1,4 +1,6 @@
 # Uppoint Cloud database cleanup (daily at 03:00)
 SHELL=/bin/bash
+PATH=/usr/bin:/bin
 
-0 3 * * * root /usr/bin/flock -n /var/lock/uppoint-db-cleanup.lock /opt/uppoint-cloud/scripts/cleanup-db.sh >> /var/log/uppoint-db-cleanup.log 2>&1
+# Runs as root because retention cleanup is operationally scoped and writes root-owned logs.
+0 3 * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-db-cleanup.lock /opt/uppoint-cloud/scripts/cleanup-db.sh >> /var/log/uppoint-db-cleanup.log 2>&1

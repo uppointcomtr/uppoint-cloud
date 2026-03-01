@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("login-email-start", 10, 900);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "login-email-start",
       scope: "ip",
     });
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   if (email) {
     const identifierRateLimit = await withRateLimitByIdentifier("login-email-start-account", email, 8, 900);
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "login-email-start",
         scope: "email",
       });
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const result = await startEmailLoginChallenge(payload);
 
     if (!result.challengeId) {
-      logAudit("login_challenge_start_failed", ip, undefined, {
+      await logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "email",
         reason: "INVALID_CREDENTIALS",
       });
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     if (error instanceof LoginChallengeError && error.code === "EMAIL_NOT_VERIFIED") {
       // Return the same shape as "no account found" to prevent email/account-state enumeration.
       // The real reason is logged internally for forensic purposes.
-      logAudit("login_challenge_start_failed", ip, undefined, {
+      await logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "email",
         reason: error.code,
       });
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       error instanceof Error &&
       /recipients were rejected|recipient address reserved/i.test(error.message)
     ) {
-      logAudit("login_challenge_start_failed", ip, undefined, {
+      await logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "email",
         reason: "EMAIL_DELIVERY_FAILED",
       });
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       });
     }
 
-    logAudit("login_challenge_start_failed", ip, undefined, {
+    await logAudit("login_challenge_start_failed", ip, undefined, {
       mode: "email",
       reason: "LOGIN_CHALLENGE_START_FAILED",
     });

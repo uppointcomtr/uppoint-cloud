@@ -266,6 +266,12 @@ export const trMessages = {
       "Bu sayfa, kimlik doğrulama MVP kilometre taşı için bilerek minimal tutulmuştur.",
     tenantLabel: "Tenant",
     roleLabel: "Rol",
+    tenantContextError: {
+      title: "Tenant erişim durumu doğrulanamadı",
+      description: "Hesabınız için aktif tenant üyeliği tespit edilemedi veya erişim izni doğrulanamadı.",
+      noMembership: "Aktif tenant üyeliği bulunamadı. Lütfen destek ekibiyle iletişime geçin.",
+      accessDenied: "Tenant erişim izni doğrulanamadı. Lütfen yetkili bir hesapla yeniden deneyin.",
+    },
   },
   sessionTimeout: {
     warning: "Oturumunuz yakında sona eriyor.",

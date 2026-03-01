@@ -19,10 +19,6 @@ vi.mock("@/db/client", () => ({
 
 import { logAudit } from "@/lib/audit-log";
 
-async function flushAsyncLogQueue(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-}
-
 describe("logAudit", () => {
   it("persists normalized audit columns and redacts sensitive metadata", async () => {
     headersMock.mockResolvedValueOnce(
@@ -34,12 +30,11 @@ describe("logAudit", () => {
       }),
     );
 
-    logAudit("password_reset_failed", "203.0.113.10", "user_1", {
+    await logAudit("password_reset_failed", "203.0.113.10", "user_1", {
       reason: "INVALID_CODE",
       targetUserId: "target_42",
       token: "plaintext-value",
     });
-    await flushAsyncLogQueue();
 
     expect(createAuditLog).toHaveBeenCalledTimes(1);
     expect(createAuditLog).toHaveBeenCalledWith({
@@ -64,8 +59,7 @@ describe("logAudit", () => {
   it("infers success result for *_success actions", async () => {
     headersMock.mockResolvedValueOnce(new Headers());
 
-    logAudit("login_success", "203.0.113.11");
-    await flushAsyncLogQueue();
+    await logAudit("login_success", "203.0.113.11");
 
     expect(createAuditLog).toHaveBeenLastCalledWith({
       data: expect.objectContaining({

@@ -4,6 +4,8 @@ Documentation=file:///opt/uppoint-cloud/scripts/tune-system.sh
 # local-fs bittikten sonra çalışır; uygulama servisinden önce olması tercih edilir.
 After=local-fs.target
 Before=uppoint-cloud.service
+# Operational safety: boot-time tuning is opt-in via a local marker file.
+ConditionPathExists=/etc/uppoint-cloud/enable-boot-tune
 
 [Service]
 Type=oneshot

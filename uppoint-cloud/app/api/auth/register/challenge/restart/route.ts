@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("register-verify-restart", 5, 600);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "register-verify-restart",
       scope: "ip",
     });
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     );
 
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "register-verify-restart",
         scope: "challengeId",
       });
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     }), { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logAudit("register_verification_failed", ip, undefined, {
+      await logAudit("register_verification_failed", ip, undefined, {
         step: "restart",
         reason: "VALIDATION_FAILED",
       });
@@ -72,21 +72,21 @@ export async function POST(request: Request) {
     if (error instanceof RegisterVerificationChallengeError) {
       if (error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "EMAIL_TAKEN") {
         // Security-sensitive: keep response shape/status neutral to avoid account existence disclosure.
-        logAudit("register_verification_failed", ip, undefined, {
+        await logAudit("register_verification_failed", ip, undefined, {
           step: "restart",
           reason: "ACCOUNT_HIDDEN",
         });
         return NextResponse.json(ok({ accepted: true }), { status: 200 });
       }
 
-      logAudit("register_verification_failed", ip, undefined, {
+      await logAudit("register_verification_failed", ip, undefined, {
         step: "restart",
         reason: error.code,
       });
       return NextResponse.json(fail(error.code), { status: 500 });
     }
 
-    logAudit("register_verification_failed", ip, undefined, {
+    await logAudit("register_verification_failed", ip, undefined, {
       step: "restart",
       reason: "REGISTER_VERIFY_RESTART_FAILED",
     });

@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const rateLimitResponse = await withRateLimit("logout", 20, 60);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, { action: "logout", scope: "ip" });
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, { action: "logout", scope: "ip" });
     return rateLimitResponse;
   }
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   const identifierRateLimit = await withRateLimitByIdentifier("logout-session", rateLimitIdentifier, 30, 60);
   if (identifierRateLimit) {
-    logAudit("rate_limit_exceeded", ip, session?.user?.id, {
+    await logAudit("rate_limit_exceeded", ip, session?.user?.id, {
       action: "logout",
       scope: "session",
     });
@@ -67,10 +67,10 @@ export async function POST(request: NextRequest) {
   if (typeof token?.sessionJti === "string" && typeof token.exp === "number") {
     const expiresAt = new Date(token.exp * 1000);
     await revokeSessionJti({ jti: token.sessionJti, expiresAt });
-    logAudit("session_revoked", ip, session?.user?.id, { reason: "logout", scope: "single-session" });
+    await logAudit("session_revoked", ip, session?.user?.id, { reason: "logout", scope: "single-session" });
   }
 
-  logAudit("logout_success", ip, session?.user?.id);
+  await logAudit("logout_success", ip, session?.user?.id);
 
   return NextResponse.json(ok({ accepted: true }), { status: 200 });
 }

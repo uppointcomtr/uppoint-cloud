@@ -238,12 +238,14 @@ model IdempotencyRecord {
   id          String   @id @default(cuid())
   action      String
   key         String
+  subjectHash String   @default("global")
   statusCode  Int
   contentType String?
   body        String
   createdAt   DateTime @default(now())
   expiresAt   DateTime
 
-  @@unique([action, key])
+  @@unique([action, key, subjectHash])
+  @@index([action, subjectHash])
   @@index([expiresAt])
 }

@@ -73,7 +73,14 @@ export async function sendAuthSms(options: {
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`SMS request failed: ${response.status} ${errorBody}`);
+    const upstreamRequestId =
+      response.headers.get("x-request-id")
+      || response.headers.get("x-correlation-id")
+      || response.headers.get("x-trace-id");
+    throw new Error(
+      upstreamRequestId
+        ? `SMS request failed: status ${response.status}, request ${upstreamRequestId}`
+        : `SMS request failed: status ${response.status}`,
+    );
   }
 }

@@ -40,7 +40,10 @@ function buildForwardHeaders(request: NextRequest, requestId: string): Headers {
 }
 
 function withSecurityHeaders(response: NextResponse, requestId: string): NextResponse {
-  response.headers.set("x-request-id", requestId);
+  // In production Nginx is the canonical x-request-id producer/propagator.
+  if (!IS_PRODUCTION) {
+    response.headers.set("x-request-id", requestId);
+  }
   return response;
 }
 
@@ -53,8 +56,8 @@ function shouldBypassProxy(pathname: string): boolean {
   );
 }
 
-function isAuthApiMutation(pathname: string, method: string): boolean {
-  if (!pathname.startsWith("/api/auth/")) {
+function isApiMutation(pathname: string, method: string): boolean {
+  if (!pathname.startsWith("/api/")) {
     return false;
   }
 
@@ -87,7 +90,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (IS_PRODUCTION && isAuthApiMutation(pathname, request.method)) {
+  if (IS_PRODUCTION && isApiMutation(pathname, request.method)) {
     const origin = request.headers.get("origin");
 
     if (!isAllowedOrigin(origin, ALLOWED_ORIGINS)) {
@@ -157,7 +160,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/api/auth/:path*",
+    "/api/:path*",
     "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

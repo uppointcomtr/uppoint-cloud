@@ -22,7 +22,7 @@ describe("startPasswordResetChallenge", () => {
       },
     );
 
-    expect(result.challengeId).toMatch(/^decoy_/);
+    expect(result.challengeId).toMatch(/^c[a-z0-9]{24}$/);
     expect(result.emailCodeExpiresAt).toEqual(new Date("2026-02-28T12:03:00.000Z"));
   });
 

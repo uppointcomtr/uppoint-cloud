@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
-import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
@@ -11,12 +10,11 @@ import {
 } from "@/modules/auth/server/password-reset-challenge";
 
 export async function POST(request: Request) {
-  return withIdempotency("auth:forgot-password-verify-sms", async () => {
   // Rate limit: 10 attempts per 15 minutes per IP
   const rateLimitResponse = await withRateLimit("forgot-password-verify-sms", 10, 900);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "forgot-password-verify-sms",
       scope: "ip",
     });
@@ -38,7 +36,7 @@ export async function POST(request: Request) {
   if (challengeId) {
     const identifierRateLimit = await withRateLimitByIdentifier("forgot-password-verify-sms-challenge", challengeId, 8, 900);
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "forgot-password-verify-sms",
         scope: "challenge",
       });
@@ -57,7 +55,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logAudit("password_reset_failed", ip, undefined, {
+      await logAudit("password_reset_failed", ip, undefined, {
         step: "verify_sms",
         reason: "VALIDATION_FAILED",
       });
@@ -65,21 +63,25 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof PasswordResetChallengeError) {
+      const neutralizedChallengeCode =
+        error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "INVALID_SMS_CODE";
       const status =
-        error.code === "INVALID_OR_EXPIRED_CHALLENGE" ||
-        error.code === "INVALID_SMS_CODE" ||
+        neutralizedChallengeCode ||
         error.code === "MAX_ATTEMPTS_REACHED"
           ? 400
           : 500;
 
-      logAudit("password_reset_failed", ip, undefined, {
+      await logAudit("password_reset_failed", ip, undefined, {
         step: "verify_sms",
-        reason: error.code,
+        reason: neutralizedChallengeCode ? "VERIFICATION_CODE_REJECTED" : error.code,
       });
-      return NextResponse.json(fail(error.code), { status });
+      return NextResponse.json(
+        fail(neutralizedChallengeCode ? "INVALID_OR_EXPIRED_CHALLENGE" : error.code),
+        { status },
+      );
     }
 
-    logAudit("password_reset_failed", ip, undefined, {
+    await logAudit("password_reset_failed", ip, undefined, {
       step: "verify_sms",
       reason: "FORGOT_PASSWORD_VERIFY_SMS_FAILED",
     });
@@ -88,7 +90,6 @@ export async function POST(request: Request) {
       status: 500,
     });
   }
-  });
 }
 
 export async function GET() {

@@ -265,6 +265,12 @@ export const enMessages = {
     cardContent: "This page is intentionally minimal for the authentication MVP milestone.",
     tenantLabel: "Tenant",
     roleLabel: "Role",
+    tenantContextError: {
+      title: "Tenant access status could not be validated",
+      description: "No active tenant membership was found for this account or access could not be verified.",
+      noMembership: "No active tenant membership is available. Please contact support.",
+      accessDenied: "Tenant access could not be verified. Please retry with an authorized account.",
+    },
   },
   sessionTimeout: {
     warning: "Your session is expiring soon.",

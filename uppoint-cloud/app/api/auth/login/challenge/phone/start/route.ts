@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("login-phone-start", 10, 900);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "login-phone-start",
       scope: "ip",
     });
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   if (phone) {
     const identifierRateLimit = await withRateLimitByIdentifier("login-phone-start-account", phone, 8, 900);
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "login-phone-start",
         scope: "phone",
       });
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     const result = await startPhoneLoginChallenge(payload);
 
     if (!result.challengeId) {
-      logAudit("login_challenge_start_failed", ip, undefined, {
+      await logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "phone",
         reason: "INVALID_CREDENTIALS",
       });
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
     if (error instanceof LoginChallengeError) {
       if (error.code === "SMS_NOT_ENABLED") {
-        logAudit("login_challenge_start_failed", ip, undefined, {
+        await logAudit("login_challenge_start_failed", ip, undefined, {
           mode: "phone",
           reason: error.code,
         });
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       if (error.code === "EMAIL_NOT_VERIFIED") {
         // Return the same shape as "no account found" to prevent phone number enumeration.
         // The real reason is logged internally for forensic purposes.
-        logAudit("login_challenge_start_failed", ip, undefined, {
+        await logAudit("login_challenge_start_failed", ip, undefined, {
           mode: "phone",
           reason: error.code,
         });
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       }
     }
 
-    logAudit("login_challenge_start_failed", ip, undefined, {
+    await logAudit("login_challenge_start_failed", ip, undefined, {
       mode: "phone",
       reason: "LOGIN_CHALLENGE_START_FAILED",
     });

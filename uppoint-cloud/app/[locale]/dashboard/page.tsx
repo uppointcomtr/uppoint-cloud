@@ -9,12 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { logAudit } from "@/lib/audit-log";
 import { LogoutButton } from "@/modules/auth/components/logout-button";
 import { SessionTimeoutWarning } from "@/modules/auth/components/session-timeout-warning";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 import { getLocaleFromParams } from "@/modules/i18n/server";
-import { resolveUserTenantContext } from "@/modules/tenant/server/user-tenant";
+import { resolveUserTenantContext, UserTenantContextError } from "@/modules/tenant/server/user-tenant";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,31 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   }
 
   const { tenantId } = await searchParams;
-  const tenantContext = await resolveUserTenantContext({
-    userId: session.user.id,
-    tenantId,
-  });
+  let tenantContext: Awaited<ReturnType<typeof resolveUserTenantContext>> | null = null;
+  let tenantContextError: UserTenantContextError["code"] | null = null;
+
+  try {
+    tenantContext = await resolveUserTenantContext({
+      userId: session.user.id,
+      tenantId,
+    });
+  } catch (error) {
+    if (error instanceof UserTenantContextError) {
+      tenantContextError = error.code;
+      await logAudit(
+        error.code === "TENANT_NOT_FOUND" ? "tenant_context_missing" : "tenant_access_denied",
+        "unknown",
+        session.user.id,
+        {
+          reason: error.code,
+          tenantId: tenantId ?? null,
+          result: "FAILURE",
+        },
+      );
+    } else {
+      throw error;
+    }
+  }
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-5xl flex-col gap-6 px-6 py-16">
@@ -61,19 +83,33 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
       <Card>
         <CardHeader>
-          <CardTitle>{dictionary.dashboard.cardTitle}</CardTitle>
+          <CardTitle>
+            {tenantContext ? dictionary.dashboard.cardTitle : dictionary.dashboard.tenantContextError.title}
+          </CardTitle>
           <CardDescription>
-            {dictionary.dashboard.cardDescriptionPrefix} {session.user.email}.
+            {tenantContext
+              ? `${dictionary.dashboard.cardDescriptionPrefix} ${session.user.email}.`
+              : dictionary.dashboard.tenantContextError.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p>{dictionary.dashboard.cardContent}</p>
-          <p className="text-sm text-muted-foreground">
-            {dictionary.dashboard.tenantLabel}: {tenantContext.tenantId}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {dictionary.dashboard.roleLabel}: {tenantContext.role}
-          </p>
+          {tenantContext ? (
+            <>
+              <p>{dictionary.dashboard.cardContent}</p>
+              <p className="text-sm text-muted-foreground">
+                {dictionary.dashboard.tenantLabel}: {tenantContext.tenantId}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {dictionary.dashboard.roleLabel}: {tenantContext.role}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {tenantContextError === "TENANT_NOT_FOUND"
+                ? dictionary.dashboard.tenantContextError.noMembership
+                : dictionary.dashboard.tenantContextError.accessDenied}
+            </p>
+          )}
         </CardContent>
       </Card>
     </main>

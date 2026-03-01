@@ -54,11 +54,11 @@ describe("request guards", () => {
     expect(isAllowedHost("evil.example.com", allowedHosts)).toBe(false);
   });
 
-  it("allows only configured origins when origin header exists", () => {
+  it("allows only configured origins and rejects missing origin when allowlist is active", () => {
     const allowedOrigins = new Set(["https://cloud.uppoint.com.tr"]);
 
     expect(isAllowedOrigin("https://cloud.uppoint.com.tr", allowedOrigins)).toBe(true);
     expect(isAllowedOrigin("https://evil.example.com", allowedOrigins)).toBe(false);
-    expect(isAllowedOrigin(null, allowedOrigins)).toBe(true);
+    expect(isAllowedOrigin(null, allowedOrigins)).toBe(false);
   });
 });

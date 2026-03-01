@@ -1,5 +1,108 @@
 # Changelog
 
+## 2026-03-01 (test hardening: reduce audit fallback log noise)
+
+### Changed
+- Mocked `logAudit` in unit tests that intentionally run without DB access:
+  - `tests/auth/user-lifecycle.test.ts`
+  - `tests/tenant/tenant-scope.test.ts`
+- This removes noisy fallback stderr output (`PrismaClientInitializationError`) while preserving functional assertions and deterministic test output.
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run test:e2e`
+- `npm run build`
+
+## 2026-03-01 (security closure: neutralized challenge errors + strict e2e origin guard compatibility)
+
+### Changed
+- Hardened idempotency subject fingerprinting in `lib/http/idempotency.ts`:
+  - IP normalization now accepts only valid IP values (`net.isIP`), preventing arbitrary header strings from affecting replay scope.
+- Neutralized challenge verification error surfaces (enumeration resistance):
+  - `app/api/auth/register/challenge/verify-email/route.ts`
+  - `app/api/auth/register/challenge/verify-sms/route.ts`
+  - `app/api/auth/forgot-password/challenge/verify-email/route.ts`
+  - `app/api/auth/forgot-password/challenge/verify-sms/route.ts`
+  - internal specific errors (`INVALID_EMAIL_CODE`, `INVALID_SMS_CODE`) are now returned externally as the same neutral code path (`INVALID_OR_EXPIRED_CHALLENGE`) while preserving detailed audit reasoning.
+- Strengthened local E2E runner production-guard compatibility:
+  - `scripts/run-e2e-smoke-local.sh` now injects local `UPPOINT_ALLOWED_ORIGINS` (and canonical origin) in addition to hosts, so strict origin guard checks remain enabled during smoke tests.
+- Updated tests for latest hardening behavior:
+  - `tests/auth/password-reset-challenge.test.ts`
+  - `tests/auth/rate-limit-fallback.test.ts`
+
+### Verification
+- `npm run lint`
+- `npm run typecheck`
+- `npm test`
+- `npm run test:e2e`
+- `npm run build`
+
+## 2026-03-01 (security hardening: close R1-R16 except R11)
+
+### Changed
+- Expanded audit hardening in `lib/audit-log.ts`:
+  - added PII-aware metadata redaction (email/phone/name class keys),
+  - added structured `[audit-fallback]` sink for DB-write failures,
+  - added structured `[security-signal]` emissions for alert-friendly security events.
+- Removed raw email from register success audit metadata:
+  - `app/api/auth/register/route.ts`
+- Hardened health endpoint:
+  - token comparison now uses `timingSafeEqual`,
+  - response includes consistent envelope fields while preserving `status` compatibility.
+  - file: `app/api/health/route.ts`
+- Broadened edge origin guard from auth-only mutations to all `/api/*` mutations:
+  - file: `proxy.ts`
+- Reduced duplicate request-id response header behavior in production:
+  - `proxy.ts` now defers canonical response header ownership to Nginx in production.
+- Tenant boundary behavior updated:
+  - removed implicit tenant auto-bootstrap from `resolveUserTenantContext`,
+  - no-membership now throws explicit `TENANT_NOT_FOUND`,
+  - dashboard now handles tenant-context errors with localized user-facing states,
+  - tenant access denials/role insufficiency now audit-logged.
+  - files:
+    - `modules/tenant/server/user-tenant.ts`
+    - `modules/tenant/server/scope.ts`
+    - `app/[locale]/dashboard/page.tsx`
+    - `messages/tr.ts`
+    - `messages/en.ts`
+- Soft-delete lifecycle consistency improved:
+  - user soft-delete now removes tenant memberships and soft-deletes empty tenants.
+  - file: `modules/auth/server/user-lifecycle.ts`
+- Idempotency scoping strengthened:
+  - added `subjectHash` context in idempotency records and lookup keying,
+  - replay isolation now includes request-subject fingerprint (`ip + ua + session cookie`, or explicit `x-idempotency-scope`).
+  - files:
+    - `lib/http/idempotency.ts`
+    - `prisma/schema.prisma`
+    - `prisma/migrations/20260301230000_add_idempotency_subject_hash/migration.sql`
+    - `tests/http/idempotency.test.ts`
+- E2E smoke execution pipeline strengthened:
+  - added local e2e runner script that boots app and runs smoke suite.
+  - package scripts updated with `test:e2e`, `test:e2e:remote`, and `verify`.
+  - files:
+    - `scripts/run-e2e-smoke-local.sh`
+    - `package.json`
+- CSP hardening in Nginx templates:
+  - removed `style-src 'unsafe-inline'`,
+  - style nonce injection added via `sub_filter`.
+  - files:
+    - `ops/nginx/cloud.uppoint.com.tr.conf`
+    - `ops/nginx/cloud.uppoint.com.tr.bootstrap.conf`
+- Cron least-privilege/environment hardening:
+  - `env -i`/strict PATH for cron jobs,
+  - health probe executes script as `www-data` via `runuser` while keeping root-owned lock/log handling.
+  - files:
+    - `ops/cron/uppoint-health-probe`
+    - `ops/cron/uppoint-postgres-backup`
+    - `ops/cron/uppoint-db-cleanup`
+    - `ops/cron/uppoint-redis-backup`
+    - `ops/cron/uppoint-auth-rate-limit-tune`
+- Documentation updates aligned with the above hardening:
+  - `README.md`
+  - `ops/README.md`
+
 ## 2026-03-01 (docs: correct AGENTS.md DATABASE_URL description)
 
 ### Changed

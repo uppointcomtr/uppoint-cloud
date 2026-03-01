@@ -9,6 +9,7 @@ import { registerSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 
 import { sendAuthEmail } from "./email-service";
+import { generateOpaqueChallengeId } from "./opaque-challenge";
 import { hashOtpCode } from "./otp-hash";
 import { hashPassword } from "./password";
 import { sendAuthSms } from "./sms-service";
@@ -176,9 +177,9 @@ export async function startPasswordResetChallenge(
   const user = await dependencies.findUserByEmail(input.email);
 
   if (!user) {
-    // Security-sensitive: return an opaque decoy challenge to reduce account enumeration signals.
+    // Security-sensitive: return an opaque decoy challenge with a realistic id shape.
     return {
-      challengeId: `decoy_${generateResetToken().slice(0, 24)}`,
+      challengeId: generateOpaqueChallengeId(),
       emailCodeExpiresAt: expiresAt,
     };
   }

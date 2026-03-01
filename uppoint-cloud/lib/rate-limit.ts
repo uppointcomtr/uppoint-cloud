@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash, randomUUID } from "crypto";
 import { isIP } from "net";
+import { Prisma } from "@prisma/client";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { headers } from "next/headers";
@@ -166,6 +167,73 @@ interface RateLimitCheckResult {
   retryAfterSeconds?: number;
 }
 
+async function checkPrismaFallbackRateLimit(
+  action: string,
+  subject: string,
+  max: number,
+  windowSeconds: number,
+): Promise<RateLimitCheckResult> {
+  const key = `${action}:${subject}`;
+
+  // Serializable transaction prevents check-then-insert races under concurrent attempts.
+  for (let retry = 0; retry < 2; retry += 1) {
+    const nowMs = Date.now();
+    const windowStart = new Date(nowMs - windowSeconds * 1000);
+
+    try {
+      const allowed = await prisma.$transaction(
+        async (tx) => {
+          const count = await tx.rateLimitAttempt.count({
+            where: {
+              key,
+              createdAt: {
+                gte: windowStart,
+              },
+            },
+          });
+
+          if (count >= max) {
+            return false;
+          }
+
+          await tx.rateLimitAttempt.create({ data: { key } });
+          return true;
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        },
+      );
+
+      if (!allowed) {
+        return { allowed: false, retryAfterSeconds: windowSeconds };
+      }
+
+      schedulePrismaFallbackCleanup(nowMs);
+      return { allowed: true };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError
+        && error.code === "P2034"
+        && retry < 1
+      ) {
+        continue;
+      }
+
+      // Security-sensitive: auth endpoints must not fail open under limiter backend failures.
+      console.error("[rate-limit] Database error — failing closed for action:", action, error);
+      return {
+        allowed: false,
+        retryAfterSeconds: Math.max(1, windowSeconds),
+      };
+    }
+  }
+
+  return {
+    allowed: false,
+    retryAfterSeconds: Math.max(1, windowSeconds),
+  };
+}
+
 function schedulePrismaFallbackCleanup(nowMs: number): void {
   if (prismaFallbackCleanupRunning) {
     return;
@@ -289,32 +357,7 @@ export async function checkRateLimit(
     }
   }
 
-  const key = `${action}:${subject}`;
-  const windowStart = new Date(Date.now() - windowSeconds * 1000);
-
-  try {
-    const count = await prisma.rateLimitAttempt.count({
-      where: { key, createdAt: { gte: windowStart } },
-    });
-
-    if (count >= max) {
-      return { allowed: false, retryAfterSeconds: windowSeconds };
-    }
-
-    await prisma.rateLimitAttempt.create({ data: { key } });
-
-    // Deterministic background cleanup to avoid unbounded table growth in Prisma fallback mode.
-    schedulePrismaFallbackCleanup(Date.now());
-
-    return { allowed: true };
-  } catch (error) {
-    // Security-sensitive: auth endpoints must not fail open under limiter backend failures.
-    console.error("[rate-limit] Database error — failing closed for action:", action, error);
-    return {
-      allowed: false,
-      retryAfterSeconds: Math.max(1, windowSeconds),
-    };
-  }
+  return checkPrismaFallbackRateLimit(action, subject, max, windowSeconds);
 }
 
 /**

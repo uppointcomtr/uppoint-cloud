@@ -14,7 +14,7 @@ export async function POST(request: Request, context: { params: Promise<{ nextau
   const ipRateLimit = await withRateLimit("nextauth-post", 30, 60);
   if (ipRateLimit) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "nextauth-post",
       scope: "ip",
     });
@@ -34,7 +34,7 @@ export async function POST(request: Request, context: { params: Promise<{ nextau
 
   if (identifierRateLimit) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "nextauth-post",
       scope: "action",
     });

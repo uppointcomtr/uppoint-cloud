@@ -14,7 +14,7 @@ import { hashOtpCode } from "./otp-hash";
 import { hashPassword } from "./password";
 import { sendAuthSms } from "./sms-service";
 
-const REGISTER_CODE_TTL_MINUTES = 3;
+export const REGISTER_CODE_TTL_MINUTES = 3;
 const REGISTER_MAX_ATTEMPTS = 5;
 
 const restartRegisterVerificationSchema = z.object({

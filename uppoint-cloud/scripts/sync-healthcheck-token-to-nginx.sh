@@ -18,6 +18,18 @@ if [ -z "$TOKEN_VALUE" ] || [ "$TOKEN_LINE" = "$TOKEN_VALUE" ]; then
   exit 1
 fi
 
+if printf "%s" "$TOKEN_VALUE" | grep -q '[[:cntrl:]]'; then
+  echo "[health-token-sync] HEALTHCHECK_TOKEN contains control characters and cannot be written safely" >&2
+  exit 1
+fi
+
+escape_for_nginx_double_quoted_value() {
+  printf "%s" "$1" \
+    | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\$/\\$/g'
+}
+
+TOKEN_VALUE_ESCAPED="$(escape_for_nginx_double_quoted_value "$TOKEN_VALUE")"
+
 install -d -m 755 "$SNIPPET_DIR"
 
 TMP_FILE="$(mktemp)"
@@ -25,7 +37,7 @@ trap 'rm -f "$TMP_FILE"' EXIT
 
 cat > "$TMP_FILE" <<EOF
 # Managed by /opt/uppoint-cloud/scripts/sync-healthcheck-token-to-nginx.sh
-proxy_set_header x-health-token "${TOKEN_VALUE}";
+proxy_set_header x-health-token "${TOKEN_VALUE_ESCAPED}";
 EOF
 
 install -m 640 -o root -g www-data "$TMP_FILE" "$SNIPPET_FILE"

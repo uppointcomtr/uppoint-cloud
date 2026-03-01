@@ -16,15 +16,15 @@ const verifyEmailBodySchema = z.object({
 async function handleVerify(token: string, ip: string) {
   try {
     await verifyEmailToken(token);
-    logAudit("email_verified", ip);
+    await logAudit("email_verified", ip);
     return NextResponse.json(ok({ verified: true }), { status: 200 });
   } catch (error) {
     if (error instanceof EmailVerificationError) {
-      logAudit("email_verification_failed", ip, undefined, { reason: error.code });
+      await logAudit("email_verification_failed", ip, undefined, { reason: error.code });
       return NextResponse.json(fail(error.code), { status: 400 });
     }
 
-    logAudit("email_verification_failed", ip, undefined, { reason: "VERIFICATION_FAILED" });
+    await logAudit("email_verification_failed", ip, undefined, { reason: "VERIFICATION_FAILED" });
     console.error("Email verification failed", error);
     return NextResponse.json(fail("VERIFICATION_FAILED"), { status: 500 });
   }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("verify-email", 10, 900);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "verify-email",
       scope: "ip",
     });
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
 
   const identifierRateLimit = await withRateLimitByIdentifier("verify-email-token", token, 8, 900);
   if (identifierRateLimit) {
-    logAudit("rate_limit_exceeded", ip, undefined, {
+    await logAudit("rate_limit_exceeded", ip, undefined, {
       action: "verify-email",
       scope: "token",
     });

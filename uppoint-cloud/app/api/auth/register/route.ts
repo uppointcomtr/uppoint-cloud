@@ -7,8 +7,10 @@ import { fail, ok } from "@/lib/http/response";
 import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
   RegisterVerificationChallengeError,
+  REGISTER_CODE_TTL_MINUTES,
   startRegisterVerificationChallenge,
 } from "@/modules/auth/server/register-verification-challenge";
+import { generateOpaqueChallengeId, getOpaqueChallengeExpiresAt } from "@/modules/auth/server/opaque-challenge";
 
 export async function POST(request: Request) {
   return withIdempotency("auth:register", async () => {
@@ -16,7 +18,7 @@ export async function POST(request: Request) {
   const rateLimitResponse = await withRateLimit("register", 5, 600);
   if (rateLimitResponse) {
     const limitedIp = await getClientIp();
-    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
       action: "register",
       scope: "ip",
     });
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
   if (normalizedEmail) {
     const identifierRateLimit = await withRateLimitByIdentifier("register-email", normalizedEmail, 3, 600);
     if (identifierRateLimit) {
-      logAudit("rate_limit_exceeded", ip, undefined, {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "register",
         scope: "email",
       });
@@ -52,9 +54,8 @@ export async function POST(request: Request) {
   try {
     const challenge = await startRegisterVerificationChallenge(payload);
 
-    logAudit("register_success", ip, undefined, {
+    await logAudit("register_success", ip, undefined, {
       step: "challenge_started",
-      email: normalizedEmail,
     });
 
     return NextResponse.json(ok({
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      logAudit("register_verification_failed", ip, undefined, {
+      await logAudit("register_verification_failed", ip, undefined, {
         step: "start",
         reason: "VALIDATION_FAILED",
       });
@@ -77,21 +78,25 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof RegisterVerificationChallengeError && error.code === "EMAIL_TAKEN") {
-      logAudit("register_verification_failed", ip, undefined, {
+      await logAudit("register_verification_failed", ip, undefined, {
         step: "start",
         reason: "ACCOUNT_HIDDEN",
       });
-      // Security-sensitive: keep response neutral to reduce account enumeration risk.
+      // Security-sensitive: return the same shape as successful challenge creation.
+      const decoyChallengeId = generateOpaqueChallengeId();
+      const decoyExpiresAt = getOpaqueChallengeExpiresAt(REGISTER_CODE_TTL_MINUTES);
       return NextResponse.json(ok({
         accepted: true,
-        hasChallenge: false,
+        hasChallenge: true,
+        challengeId: decoyChallengeId,
+        emailCodeExpiresAt: decoyExpiresAt.toISOString(),
       }), {
-        status: 202,
+        status: 201,
       });
     }
 
     if (error instanceof RegisterVerificationChallengeError) {
-      logAudit("register_verification_failed", ip, undefined, {
+      await logAudit("register_verification_failed", ip, undefined, {
         step: "start",
         reason: error.code,
       });
@@ -100,7 +105,7 @@ export async function POST(request: Request) {
       });
     }
 
-    logAudit("register_verification_failed", ip, undefined, {
+    await logAudit("register_verification_failed", ip, undefined, {
       step: "start",
       reason: "REGISTER_VERIFICATION_START_FAILED",
     });

@@ -1,4 +1,6 @@
 # Uppoint Cloud PostgreSQL backup (daily at 02:00)
 SHELL=/bin/bash
+PATH=/usr/bin:/bin
 
-0 2 * * * root /usr/bin/flock -n /var/lock/uppoint-postgres-backup.lock /opt/uppoint-cloud/scripts/backup-db.sh >> /var/log/uppoint-postgres-backup.log 2>&1
+# Runs as root because backup destination and retention cleanup are root-owned.
+0 2 * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-postgres-backup.lock /opt/uppoint-cloud/scripts/backup-db.sh >> /var/log/uppoint-postgres-backup.log 2>&1

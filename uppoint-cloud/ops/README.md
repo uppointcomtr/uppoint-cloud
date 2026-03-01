@@ -29,6 +29,16 @@ sudo systemctl enable --now uppoint-cloud.service
 sudo systemctl status uppoint-cloud.service
 ```
 
+Optional hardware tuning service (boot-time) is now explicit opt-in:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/systemd/uppoint-tune.service /etc/systemd/system/uppoint-tune.service
+sudo install -d -m 755 /etc/uppoint-cloud
+sudo touch /etc/uppoint-cloud/enable-boot-tune
+sudo systemctl daemon-reload
+sudo systemctl enable --now uppoint-tune.service
+```
+
 Environment values should be provided in `/opt/uppoint-cloud/.env` (not in git), for example:
 
 ```bash
@@ -78,9 +88,9 @@ Expected results:
 ## 2. Nginx reverse proxy setup
 
 Note:
-- CSP is set in Nginx using per-request nonce (`$request_id`) for `script-src`.
-- Nginx injects nonce into rendered HTML scripts via `sub_filter`, so Next.js inline scripts satisfy CSP.
-- `script-src` avoids `unsafe-inline`; `style-src` intentionally keeps `unsafe-inline` for framework inline styles.
+- CSP is set in Nginx using per-request nonce (`$request_id`) for both `script-src` and `style-src`.
+- Nginx injects nonce into rendered HTML `<script>` and `<style>` tags via `sub_filter`.
+- Both `script-src` and `style-src` avoid `unsafe-inline`; inline tags must carry request nonce.
 
 Bootstrap HTTP config (used before certificate issuance):
 
@@ -98,6 +108,13 @@ Auth API edge rate-limit zone config:
 sudo cp /opt/uppoint-cloud/ops/nginx/uppoint-rate-limit.conf /etc/nginx/conf.d/uppoint-rate-limit.conf
 sudo nginx -t
 sudo systemctl reload nginx
+```
+
+Drift/security verification (must pass after config rollout):
+
+```bash
+cd /opt/uppoint-cloud
+npm run verify:nginx-drift
 ```
 
 ## 3. Let's Encrypt issuance
