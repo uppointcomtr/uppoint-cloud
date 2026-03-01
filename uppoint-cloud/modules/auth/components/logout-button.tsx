@@ -12,11 +12,29 @@ interface LogoutButtonProps {
 }
 
 export function LogoutButton({ locale, label }: LogoutButtonProps) {
+  async function handleLogout() {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 5_000);
+
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        signal: controller.signal,
+      });
+    } catch {
+      // Best-effort audit logging; logout must continue even if audit endpoint fails.
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+
+    await signOut({ callbackUrl: withLocale("/login", locale) });
+  }
+
   return (
     <Button
       type="button"
       variant="outline"
-      onClick={() => void signOut({ callbackUrl: withLocale("/login", locale) })}
+      onClick={() => void handleLogout()}
     >
       {label}
     </Button>

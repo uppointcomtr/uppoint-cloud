@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/db/client";
 import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
   registerUser,
   RegisterUserError,
@@ -17,7 +17,14 @@ import {
 export async function POST(request: Request) {
   // Rate limit: 5 registration attempts per 10 minutes per IP
   const rateLimitResponse = await withRateLimit("register", 5, 600);
-  if (rateLimitResponse) return rateLimitResponse;
+  if (rateLimitResponse) {
+    const limitedIp = await getClientIp();
+    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+      action: "register",
+      scope: "ip",
+    });
+    return rateLimitResponse;
+  }
 
   const ip = await getClientIp();
 
@@ -34,6 +41,17 @@ export async function POST(request: Request) {
   const rawPayload = payload as Record<string, unknown>;
   const locale = typeof rawPayload.locale === "string" ? rawPayload.locale : "tr";
   const normalizedEmail = typeof rawPayload.email === "string" ? rawPayload.email.trim().toLowerCase() : null;
+
+  if (normalizedEmail) {
+    const identifierRateLimit = await withRateLimitByIdentifier("register-email", normalizedEmail, 3, 600);
+    if (identifierRateLimit) {
+      logAudit("rate_limit_exceeded", ip, undefined, {
+        action: "register",
+        scope: "email",
+      });
+      return identifierRateLimit;
+    }
+  }
 
   try {
     const user = await registerUser(payload);
@@ -56,6 +74,8 @@ export async function POST(request: Request) {
     logAudit("register_success", ip, user.id);
 
     return NextResponse.json(ok({
+      accepted: true,
+      hasChallenge: true,
       userId: user.id,
       challengeId: challenge.challengeId,
       emailCodeExpiresAt: challenge.emailCodeExpiresAt.toISOString(),
@@ -85,6 +105,8 @@ export async function POST(request: Request) {
 
             logAudit("register_verification_restarted", ip, pendingUser.id);
             return NextResponse.json(ok({
+              accepted: true,
+              hasChallenge: true,
               userId: pendingUser.id,
               challengeId: challenge.challengeId,
               emailCodeExpiresAt: challenge.emailCodeExpiresAt.toISOString(),
@@ -97,8 +119,12 @@ export async function POST(request: Request) {
         }
       }
 
-      return NextResponse.json(fail("EMAIL_TAKEN"), {
-        status: 409,
+      // Security-sensitive: keep response neutral to reduce account enumeration risk.
+      return NextResponse.json(ok({
+        accepted: true,
+        hasChallenge: false,
+      }), {
+        status: 202,
       });
     }
 

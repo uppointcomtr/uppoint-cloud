@@ -8,19 +8,7 @@ import {
   EmailVerificationError,
 } from "@/modules/auth/server/email-verification";
 
-export async function GET(request: Request) {
-  // Rate limit: 10 verification attempts per 15 minutes per IP
-  const rateLimitResponse = await withRateLimit("verify-email", 10, 900);
-  if (rateLimitResponse) return rateLimitResponse;
-
-  const ip = await getClientIp();
-  const url = new URL(request.url);
-  const token = url.searchParams.get("token");
-
-  if (!token) {
-    return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
-  }
-
+async function handleVerify(token: string, ip: string) {
   try {
     await verifyEmailToken(token);
     logAudit("email_verified", ip);
@@ -34,4 +22,46 @@ export async function GET(request: Request) {
     console.error("Email verification failed", error);
     return NextResponse.json(fail("VERIFICATION_FAILED"), { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json(
+    fail("METHOD_NOT_ALLOWED"),
+    {
+      status: 405,
+      headers: {
+        Allow: "POST",
+      },
+    },
+  );
+}
+
+export async function POST(request: Request) {
+  const rateLimitResponse = await withRateLimit("verify-email", 10, 900);
+  if (rateLimitResponse) {
+    const limitedIp = await getClientIp();
+    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+      action: "verify-email",
+      scope: "ip",
+    });
+    return rateLimitResponse;
+  }
+
+  const ip = await getClientIp();
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+  }
+
+  const rawPayload = payload as Record<string, unknown>;
+  const token = typeof rawPayload.token === "string" ? rawPayload.token.trim() : "";
+
+  if (!token) {
+    return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+  }
+
+  return handleVerify(token, ip);
 }

@@ -210,6 +210,7 @@ export const trMessages = {
     verification: {
       emailCodeSent: "E-posta doğrulama kodu gönderildi.",
       emailCodeResent: "Yeni e-posta doğrulama kodu gönderildi.",
+      accountExists: "Bu e-posta için kayıtlı bir hesap bulunuyor. Giriş yapabilir veya mevcut doğrulama adımlarını tamamlayabilirsiniz.",
       smsCodeSent: "Telefonunuza SMS doğrulama kodu gönderildi.",
       smsSentToPrefix: "Kod gönderilen telefon",
       verifyEmailCodeIdle: "E-posta kodunu doğrula",

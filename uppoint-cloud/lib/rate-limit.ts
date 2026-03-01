@@ -1,6 +1,7 @@
 import "server-only";
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import { isIP } from "net";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { headers } from "next/headers";
@@ -160,38 +161,85 @@ interface RateLimitCheckResult {
   retryAfterSeconds?: number;
 }
 
+function normalizeIpAddress(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // Strip IPv4 port notation when present (e.g. 203.0.113.5:443)
+  const withoutPort = trimmed.match(/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/)
+    ? trimmed.replace(/:\d+$/, "")
+    : trimmed;
+
+  const normalized = withoutPort.startsWith("::ffff:")
+    ? withoutPort.slice("::ffff:".length)
+    : withoutPort;
+
+  return isIP(normalized) ? normalized : null;
+}
+
+function extractTrustedForwardedIp(value: string): string | null {
+  const parts = value
+    .split(",")
+    .map((part) => normalizeIpAddress(part))
+    .filter((part): part is string => Boolean(part));
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  // With standard reverse-proxy behavior, the nearest trusted proxy appends its own remote addr.
+  // Using the right-most valid IP avoids trusting attacker-controlled left-most values.
+  return parts[parts.length - 1] ?? null;
+}
+
+export function normalizeRateLimitIdentifier(value: string): string {
+  return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
+}
+
 /**
  * Extracts the real client IP from request headers.
- * Respects X-Forwarded-For (set by the reverse proxy).
+ * Prefers X-Real-IP and falls back to a trusted parse of X-Forwarded-For.
  */
 export async function getClientIp(): Promise<string> {
   const headersList = await headers();
-  const forwarded = headersList.get("x-forwarded-for");
+  const realIp = headersList.get("x-real-ip");
 
-  if (forwarded) {
-    // X-Forwarded-For may contain a comma-separated list; take the first entry
-    return forwarded.split(",")[0]?.trim() ?? "unknown";
+  if (realIp) {
+    const normalizedRealIp = normalizeIpAddress(realIp);
+    if (normalizedRealIp) {
+      return normalizedRealIp;
+    }
   }
 
-  return headersList.get("x-real-ip") ?? "unknown";
+  const forwarded = headersList.get("x-forwarded-for");
+  if (forwarded) {
+    const forwardedIp = extractTrustedForwardedIp(forwarded);
+    if (forwardedIp) {
+      return forwardedIp;
+    }
+  }
+
+  return "unknown";
 }
 
 /**
  * Records an attempt and checks whether the IP is within the allowed rate limit.
  *
- * @param action  Identifier for the action (e.g. "register", "login-email-start")
- * @param ip      Client IP address
- * @param max     Maximum number of attempts allowed within the window
- * @param windowSeconds  Length of the sliding window in seconds
- * @returns true when the request is allowed; false when the limit is exceeded
+  * @param action  Identifier for the action (e.g. "register", "login-email-start")
+ * @param subject Client IP or normalized identifier key
+  * @param max     Maximum number of attempts allowed within the window
+  * @param windowSeconds  Length of the sliding window in seconds
+  * @returns true when the request is allowed; false when the limit is exceeded
  */
 export async function checkRateLimit(
   action: string,
-  ip: string,
+  subject: string,
   max: number,
   windowSeconds: number,
 ): Promise<RateLimitCheckResult> {
-  const localRedisResult = await checkLocalRedisRateLimit(action, ip, max, windowSeconds);
+  const localRedisResult = await checkLocalRedisRateLimit(action, subject, max, windowSeconds);
 
   if (localRedisResult) {
     return localRedisResult;
@@ -201,7 +249,7 @@ export async function checkRateLimit(
 
   if (upstashLimiter) {
     try {
-      const result = await upstashLimiter.limit(`${action}:${ip}`);
+      const result = await upstashLimiter.limit(`${action}:${subject}`);
       const retryAfterSeconds = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
 
       return {
@@ -213,7 +261,7 @@ export async function checkRateLimit(
     }
   }
 
-  const key = `${action}:${ip}`;
+  const key = `${action}:${subject}`;
   const windowStart = new Date(Date.now() - windowSeconds * 1000);
 
   try {
@@ -239,11 +287,12 @@ export async function checkRateLimit(
 
     return { allowed: true };
   } catch (error) {
-    // Fail open: if the database is unreachable, allow the request rather
-    // than blocking all users. The application's own error handling will
-    // surface any downstream DB failures.
-    console.error("[rate-limit] Database error — failing open for action:", action, error);
-    return { allowed: true };
+    // Security-sensitive: auth endpoints must not fail open under limiter backend failures.
+    console.error("[rate-limit] Database error — failing closed for action:", action, error);
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, windowSeconds),
+    };
   }
 }
 
@@ -258,6 +307,37 @@ export async function withRateLimit(
 ): Promise<Response | null> {
   const ip = await getClientIp();
   const result = await checkRateLimit(action, ip, max, windowSeconds);
+
+  if (!result.allowed) {
+    const retryAfter = result.retryAfterSeconds ?? windowSeconds;
+
+    return Response.json(
+      { success: false, error: "TOO_MANY_REQUESTS" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfter),
+          "X-RateLimit-Limit": String(max),
+          "X-RateLimit-Window-Seconds": String(windowSeconds),
+        },
+      },
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Convenience wrapper for a secondary identifier-based limit (email/phone/user).
+ */
+export async function withRateLimitByIdentifier(
+  action: string,
+  identifier: string,
+  max: number,
+  windowSeconds: number,
+): Promise<Response | null> {
+  const normalizedIdentifier = normalizeRateLimitIdentifier(identifier);
+  const result = await checkRateLimit(action, `id:${normalizedIdentifier}`, max, windowSeconds);
 
   if (!result.allowed) {
     const retryAfter = result.retryAfterSeconds ?? windowSeconds;

@@ -185,7 +185,13 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
       return;
     }
 
-    let payload: ApiResponse<{ userId: string; challengeId: string; emailCodeExpiresAt: string }>;
+    let payload: ApiResponse<{
+      accepted?: boolean;
+      hasChallenge?: boolean;
+      userId?: string;
+      challengeId?: string | null;
+      emailCodeExpiresAt?: string | null;
+    }>;
 
     try {
       payload = await response.json() as typeof payload;
@@ -195,8 +201,20 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
       return;
     }
 
-    if (!response.ok || !payload.success || !payload.data?.challengeId || !payload.data?.emailCodeExpiresAt) {
+    if (!response.ok || !payload.success || !payload.data) {
       setSubmitError(mapRegisterStartError(payload.error, dictionary, apiErrors));
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (payload.data.accepted && payload.data.hasChallenge === false) {
+      setSubmitInfo(dictionary.verification.accountExists);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!payload.data.challengeId || !payload.data.emailCodeExpiresAt || !payload.data.userId) {
+      setSubmitError(dictionary.errors.verificationStartFailed);
       setIsSubmitting(false);
       return;
     }

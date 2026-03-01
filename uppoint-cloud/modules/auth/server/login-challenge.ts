@@ -379,13 +379,16 @@ interface VerifyLoginCodeDependencies {
     codeAttempts: number;
     verifiedAt: Date | null;
   } | null>;
-  incrementCodeAttempts: (id: string) => Promise<void>;
+  incrementCodeAttempts: (id: string) => Promise<number>;
   markVerifiedAndStoreLoginToken: (input: {
     id: string;
+    mode: LoginChallengeMode;
+    expectedCodeHash: string;
+    maxAttempts: number;
     loginTokenHash: string;
     loginTokenExpiresAt: Date;
     now: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   now: () => Date;
   hashValue: (value: string) => string;
   generateLoginToken: () => string;
@@ -406,18 +409,35 @@ const defaultVerifyLoginCodeDependencies: VerifyLoginCodeDependencies = {
       },
     }),
   incrementCodeAttempts: async (id) => {
-    await prisma.loginChallenge.update({
-      where: { id },
+    const result = await prisma.loginChallenge.updateMany({
+      where: {
+        id,
+        codeAttempts: {
+          lt: LOGIN_MAX_ATTEMPTS,
+        },
+      },
       data: {
         codeAttempts: {
           increment: 1,
         },
       },
     });
+    return result.count;
   },
   markVerifiedAndStoreLoginToken: async (input) => {
-    await prisma.loginChallenge.update({
-      where: { id: input.id },
+    const result = await prisma.loginChallenge.updateMany({
+      where: {
+        id: input.id,
+        mode: input.mode,
+        codeHash: input.expectedCodeHash,
+        codeAttempts: {
+          lt: input.maxAttempts,
+        },
+        codeExpiresAt: {
+          gt: input.now,
+        },
+        verifiedAt: null,
+      },
       data: {
         verifiedAt: input.now,
         loginTokenHash: input.loginTokenHash,
@@ -425,6 +445,7 @@ const defaultVerifyLoginCodeDependencies: VerifyLoginCodeDependencies = {
         loginTokenUsedAt: null,
       },
     });
+    return result.count === 1;
   },
   now: () => new Date(),
   hashValue,
@@ -470,12 +491,22 @@ export async function verifyLoginChallengeCode(
   const loginTokenHash = dependencies.hashValue(loginToken);
   const loginTokenExpiresAt = expiresAtFrom(now, LOGIN_TOKEN_TTL_MINUTES);
 
-  await dependencies.markVerifiedAndStoreLoginToken({
+  const marked = await dependencies.markVerifiedAndStoreLoginToken({
     id: challenge.id,
+    mode,
+    expectedCodeHash: providedHash,
+    maxAttempts: LOGIN_MAX_ATTEMPTS,
     loginTokenHash,
     loginTokenExpiresAt,
     now,
   });
+
+  if (!marked) {
+    throw new LoginChallengeError(
+      "INVALID_OR_EXPIRED_CHALLENGE",
+      "Login challenge is invalid or expired",
+    );
+  }
 
   return {
     loginToken,
@@ -494,13 +525,15 @@ interface ConsumeLoginTokenDependencies {
       id: string;
       email: string;
       name: string | null;
+      tokenVersion: number;
     };
   } | null>;
   consumeTokenAndCleanupChallenges: (input: {
     challengeId: string;
     userId: string;
+    tokenHash: string;
     now: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   now: () => Date;
   hashValue: (value: string) => string;
 }
@@ -522,16 +555,32 @@ const defaultConsumeLoginTokenDependencies: ConsumeLoginTokenDependencies = {
             id: true,
             email: true,
             name: true,
+            tokenVersion: true,
           },
         },
       },
     }),
   consumeTokenAndCleanupChallenges: async (input) => {
-    await prisma.$transaction(async (tx) => {
-      await tx.loginChallenge.update({
-        where: { id: input.challengeId },
+    return prisma.$transaction(async (tx) => {
+      const consumed = await tx.loginChallenge.updateMany({
+        where: {
+          id: input.challengeId,
+          userId: input.userId,
+          loginTokenHash: input.tokenHash,
+          loginTokenUsedAt: null,
+          verifiedAt: {
+            not: null,
+          },
+          loginTokenExpiresAt: {
+            gt: input.now,
+          },
+        },
         data: { loginTokenUsedAt: input.now },
       });
+
+      if (consumed.count !== 1) {
+        return false;
+      }
 
       await tx.loginChallenge.deleteMany({
         where: {
@@ -539,6 +588,8 @@ const defaultConsumeLoginTokenDependencies: ConsumeLoginTokenDependencies = {
           id: { not: input.challengeId },
         },
       });
+
+      return true;
     });
   },
   now: () => new Date(),
@@ -548,7 +599,7 @@ const defaultConsumeLoginTokenDependencies: ConsumeLoginTokenDependencies = {
 export async function consumeLoginToken(
   rawInput: unknown,
   dependencies: ConsumeLoginTokenDependencies = defaultConsumeLoginTokenDependencies,
-): Promise<{ id: string; email: string; name: string | null } | null> {
+): Promise<{ id: string; email: string; name: string | null; tokenVersion: number } | null> {
   const input = consumeLoginTokenSchema.safeParse(rawInput);
 
   if (!input.success) {
@@ -570,11 +621,16 @@ export async function consumeLoginToken(
   }
 
   try {
-    await dependencies.consumeTokenAndCleanupChallenges({
+    const consumed = await dependencies.consumeTokenAndCleanupChallenges({
       challengeId: challenge.id,
       userId: challenge.userId,
+      tokenHash,
       now,
     });
+
+    if (!consumed) {
+      return null;
+    }
   } catch {
     return null;
   }
@@ -583,5 +639,6 @@ export async function consumeLoginToken(
     id: challenge.user.id,
     email: challenge.user.email,
     name: challenge.user.name,
+    tokenVersion: challenge.user.tokenVersion,
   };
 }

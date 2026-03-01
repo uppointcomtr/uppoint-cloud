@@ -22,7 +22,8 @@ describe("startPasswordResetChallenge", () => {
       },
     );
 
-    expect(result).toEqual({ challengeId: null, emailCodeExpiresAt: null });
+    expect(result.challengeId).toMatch(/^decoy_/);
+    expect(result.emailCodeExpiresAt).toEqual(new Date("2026-02-28T12:03:00.000Z"));
   });
 
   it("creates challenge and sends email for existing user", async () => {
@@ -79,7 +80,7 @@ describe("verifyPasswordResetEmailCode", () => {
               phone: "+905551112233",
             },
           }),
-          incrementEmailAttempts: vi.fn().mockResolvedValue(undefined),
+          incrementEmailAttempts: vi.fn().mockResolvedValue(1),
           markEmailVerifiedAndStoreSmsCode: vi.fn(),
           sendSmsCode: vi.fn(),
           now: vi.fn(() => new Date("2026-02-28T12:00:00.000Z")),
@@ -109,8 +110,8 @@ describe("verifyPasswordResetSmsCode", () => {
           smsCodeVerifiedAt: null,
           emailCodeVerifiedAt: new Date("2026-02-28T12:00:30.000Z"),
         }),
-        incrementSmsAttempts: vi.fn(),
-        markSmsVerifiedAndStoreResetToken: vi.fn().mockResolvedValue(undefined),
+        incrementSmsAttempts: vi.fn().mockResolvedValue(1),
+        markSmsVerifiedAndStoreResetToken: vi.fn().mockResolvedValue(true),
         now: vi.fn(() => new Date("2026-02-28T12:01:00.000Z")),
         hashValue: vi.fn((value: string) => (value === "654321" ? "sms-hash" : "token-hash")),
         generateResetToken: vi.fn(() => "raw-reset-token"),
@@ -123,7 +124,7 @@ describe("verifyPasswordResetSmsCode", () => {
 
 describe("completePasswordResetChallenge", () => {
   it("updates password for valid challenge", async () => {
-    const completePasswordUpdate = vi.fn().mockResolvedValue(undefined);
+    const completePasswordUpdate = vi.fn().mockResolvedValue(true);
 
     await completePasswordResetChallenge(
       {
@@ -150,6 +151,7 @@ describe("completePasswordResetChallenge", () => {
     expect(completePasswordUpdate).toHaveBeenCalledWith({
       challengeId: "challenge-1",
       userId: "u1",
+      expectedResetTokenHash: "token-hash",
       passwordHash: "new-hash",
       now: new Date("2026-02-28T12:02:00.000Z"),
     });

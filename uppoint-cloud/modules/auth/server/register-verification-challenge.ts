@@ -220,13 +220,14 @@ interface VerifyRegisterEmailCodeDependencies {
       phone: string | null;
     };
   } | null>;
-  incrementEmailAttempts: (id: string) => Promise<void>;
+  incrementEmailAttempts: (id: string) => Promise<number>;
   markEmailVerifiedAndStoreSmsCode: (input: {
     id: string;
+    expectedEmailCodeHash: string;
     now: Date;
     smsCodeHash: string;
     smsCodeExpiresAt: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   sendSmsCode: (input: { to: string; message: string }) => Promise<void>;
   now: () => Date;
   generateCode: () => string;
@@ -253,18 +254,34 @@ const defaultVerifyRegisterEmailCodeDependencies: VerifyRegisterEmailCodeDepende
       },
     }),
   incrementEmailAttempts: async (id) => {
-    await prisma.registrationVerificationChallenge.update({
-      where: { id },
+    const result = await prisma.registrationVerificationChallenge.updateMany({
+      where: {
+        id,
+        emailCodeAttempts: {
+          lt: REGISTER_MAX_ATTEMPTS,
+        },
+      },
       data: {
         emailCodeAttempts: {
           increment: 1,
         },
       },
     });
+    return result.count;
   },
   markEmailVerifiedAndStoreSmsCode: async (input) => {
-    await prisma.registrationVerificationChallenge.update({
-      where: { id: input.id },
+    const result = await prisma.registrationVerificationChallenge.updateMany({
+      where: {
+        id: input.id,
+        emailCodeHash: input.expectedEmailCodeHash,
+        emailCodeAttempts: {
+          lt: REGISTER_MAX_ATTEMPTS,
+        },
+        emailCodeExpiresAt: {
+          gt: input.now,
+        },
+        emailCodeVerifiedAt: null,
+      },
       data: {
         emailCodeVerifiedAt: input.now,
         smsCodeHash: input.smsCodeHash,
@@ -272,6 +289,7 @@ const defaultVerifyRegisterEmailCodeDependencies: VerifyRegisterEmailCodeDepende
         smsCodeAttempts: 0,
       },
     });
+    return result.count === 1;
   },
   sendSmsCode: async (input) => {
     await sendAuthSms(input);
@@ -327,12 +345,20 @@ export async function verifyRegisterEmailCode(
   const smsCodeHash = dependencies.hashValue(smsCode);
   const smsCodeExpiresAt = expiresAtFrom(now, REGISTER_CODE_TTL_MINUTES);
 
-  await dependencies.markEmailVerifiedAndStoreSmsCode({
+  const marked = await dependencies.markEmailVerifiedAndStoreSmsCode({
     id: challenge.id,
+    expectedEmailCodeHash: providedCodeHash,
     now,
     smsCodeHash,
     smsCodeExpiresAt,
   });
+
+  if (!marked) {
+    throw new RegisterVerificationChallengeError(
+      "INVALID_OR_EXPIRED_CHALLENGE",
+      "Register verification challenge is invalid or expired",
+    );
+  }
 
   try {
     await dependencies.sendSmsCode({
@@ -366,12 +392,13 @@ interface VerifyRegisterSmsCodeDependencies {
     smsCodeVerifiedAt: Date | null;
     emailCodeVerifiedAt: Date | null;
   } | null>;
-  incrementSmsAttempts: (id: string) => Promise<void>;
+  incrementSmsAttempts: (id: string) => Promise<number>;
   completeRegistrationVerification: (input: {
     challengeId: string;
     userId: string;
+    expectedSmsCodeHash: string;
     now: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   now: () => Date;
   hashValue: (value: string) => string;
 }
@@ -391,28 +418,62 @@ const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencie
       },
     }),
   incrementSmsAttempts: async (id) => {
-    await prisma.registrationVerificationChallenge.update({
-      where: { id },
+    const result = await prisma.registrationVerificationChallenge.updateMany({
+      where: {
+        id,
+        smsCodeAttempts: {
+          lt: REGISTER_MAX_ATTEMPTS,
+        },
+      },
       data: {
         smsCodeAttempts: {
           increment: 1,
         },
       },
     });
+    return result.count;
   },
   completeRegistrationVerification: async (input) => {
-    await prisma.$transaction([
-      prisma.user.update({
+    return prisma.$transaction(async (tx) => {
+      const consumed = await tx.registrationVerificationChallenge.updateMany({
+        where: {
+          id: input.challengeId,
+          userId: input.userId,
+          emailCodeVerifiedAt: {
+            not: null,
+          },
+          smsCodeHash: input.expectedSmsCodeHash,
+          smsCodeExpiresAt: {
+            gt: input.now,
+          },
+          smsCodeAttempts: {
+            lt: REGISTER_MAX_ATTEMPTS,
+          },
+          smsCodeVerifiedAt: null,
+        },
+        data: {
+          smsCodeVerifiedAt: input.now,
+        },
+      });
+
+      if (consumed.count !== 1) {
+        return false;
+      }
+
+      await tx.user.update({
         where: { id: input.userId },
         data: {
           emailVerified: input.now,
           phoneVerifiedAt: input.now,
         },
-      }),
-      prisma.registrationVerificationChallenge.delete({
+      });
+
+      await tx.registrationVerificationChallenge.deleteMany({
         where: { id: input.challengeId },
-      }),
-    ]);
+      });
+
+      return true;
+    });
   },
   now: () => new Date(),
   hashValue,
@@ -454,11 +515,19 @@ export async function verifyRegisterSmsCode(
     throw new RegisterVerificationChallengeError("INVALID_SMS_CODE", "SMS code is invalid");
   }
 
-  await dependencies.completeRegistrationVerification({
+  const completed = await dependencies.completeRegistrationVerification({
     challengeId: challenge.id,
     userId: challenge.userId,
+    expectedSmsCodeHash: providedCodeHash,
     now,
   });
+
+  if (!completed) {
+    throw new RegisterVerificationChallengeError(
+      "INVALID_OR_EXPIRED_CHALLENGE",
+      "Register SMS challenge is invalid or expired",
+    );
+  }
 
   return {
     verified: true,

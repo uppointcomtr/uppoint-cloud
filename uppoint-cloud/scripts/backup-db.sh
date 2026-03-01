@@ -3,6 +3,8 @@
 # Çalıştırma: cron tarafından otomatik (her gece 02:00)
 
 set -euo pipefail
+umask 077
+umask 077
 
 BACKUP_DIR="/opt/backups/postgres"
 DB_NAME="uppoint_cloud"
@@ -13,6 +15,8 @@ BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_${TIMESTAMP}.sql.gz"
 TMP_FILE="${BACKUP_FILE}.tmp"
 
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
 
 # pg_dump ile yedek al; önce geçici dosyaya yaz
 PGPASSFILE="/root/.pgpass" pg_dump \
@@ -40,6 +44,8 @@ fi
 
 # Geçici dosyayı kalıcı konuma taşı (atomic)
 mv "$TMP_FILE" "$BACKUP_FILE"
+chmod 600 "$BACKUP_FILE"
+chmod 600 "$BACKUP_FILE"
 
 echo "[backup] Tamamlandı: $BACKUP_FILE ($(du -sh "$BACKUP_FILE" | cut -f1))"
 

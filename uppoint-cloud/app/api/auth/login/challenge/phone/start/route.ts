@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
   LoginChallengeError,
   startPhoneLoginChallenge,
@@ -12,7 +12,14 @@ import {
 export async function POST(request: Request) {
   // Rate limit: 10 attempts per 15 minutes per IP
   const rateLimitResponse = await withRateLimit("login-phone-start", 10, 900);
-  if (rateLimitResponse) return rateLimitResponse;
+  if (rateLimitResponse) {
+    const limitedIp = await getClientIp();
+    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+      action: "login-phone-start",
+      scope: "ip",
+    });
+    return rateLimitResponse;
+  }
   const ip = await getClientIp();
 
   let payload: unknown;
@@ -21,6 +28,20 @@ export async function POST(request: Request) {
     payload = await request.json();
   } catch {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+  }
+
+  const rawPayload = payload as Record<string, unknown>;
+  const phone = typeof rawPayload.phone === "string" ? rawPayload.phone.trim() : "";
+
+  if (phone) {
+    const identifierRateLimit = await withRateLimitByIdentifier("login-phone-start-account", phone, 8, 900);
+    if (identifierRateLimit) {
+      logAudit("rate_limit_exceeded", ip, undefined, {
+        action: "login-phone-start",
+        scope: "phone",
+      });
+      return identifierRateLimit;
+    }
   }
 
   try {

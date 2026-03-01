@@ -125,8 +125,8 @@ describe("verifyLoginChallengeCode", () => {
           codeAttempts: 0,
           verifiedAt: null,
         }),
-        incrementCodeAttempts: vi.fn(),
-        markVerifiedAndStoreLoginToken: vi.fn().mockResolvedValue(undefined),
+        incrementCodeAttempts: vi.fn().mockResolvedValue(1),
+        markVerifiedAndStoreLoginToken: vi.fn().mockResolvedValue(true),
         now: vi.fn(() => new Date("2026-02-28T17:01:00.000Z")),
         hashValue: vi.fn((value: string) => (value === "123456" ? "code-hash" : "token-hash")),
         generateLoginToken: vi.fn(() => "raw-login-token"),
@@ -152,9 +152,10 @@ describe("consumeLoginToken", () => {
             id: "u1",
             email: "user@example.com",
             name: "User",
+            tokenVersion: 0,
           },
         }),
-        consumeTokenAndCleanupChallenges: vi.fn().mockResolvedValue(undefined),
+        consumeTokenAndCleanupChallenges: vi.fn().mockResolvedValue(true),
         now: vi.fn(() => new Date("2026-02-28T17:02:00.000Z")),
         hashValue: vi.fn(() => "token-hash"),
       },
@@ -164,6 +165,7 @@ describe("consumeLoginToken", () => {
       id: "u1",
       email: "user@example.com",
       name: "User",
+      tokenVersion: 0,
     });
   });
 });

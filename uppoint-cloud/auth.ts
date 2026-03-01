@@ -38,15 +38,47 @@ export const authOptions: NextAuthOptions = {
         token.sub = user.id;
         token.email = user.email;
         token.name = user.name;
+        token.tokenVersion = typeof user.tokenVersion === "number" ? user.tokenVersion : 0;
+        token.revoked = false;
+        return token;
       }
 
+      if (!token.sub) {
+        return token;
+      }
+
+      const currentUser = await prisma.user.findUnique({
+        where: { id: token.sub },
+        select: {
+          tokenVersion: true,
+          email: true,
+          name: true,
+        },
+      });
+
+      const tokenVersion = typeof token.tokenVersion === "number" ? token.tokenVersion : 0;
+
+      if (!currentUser || currentUser.tokenVersion !== tokenVersion) {
+        token.sub = "";
+        token.email = undefined;
+        token.name = undefined;
+        token.tokenVersion = undefined;
+        token.revoked = true;
+        return token;
+      }
+
+      token.email = currentUser.email ?? token.email;
+      token.name = currentUser.name ?? token.name;
+      token.revoked = false;
       return token;
     },
     session: async ({ session, token }) => {
       if (session.user) {
-        session.user.id = token.sub ?? "";
-        session.user.email = token.email ?? null;
-        session.user.name = token.name ?? null;
+        const revoked = token.revoked || !token.sub;
+        session.user.id = revoked ? "" : (token.sub ?? "");
+        session.user.email = revoked ? null : (token.email ?? null);
+        session.user.name = revoked ? null : (token.name ?? null);
+        session.user.tokenVersion = typeof token.tokenVersion === "number" ? token.tokenVersion : 0;
       }
 
       return session;
@@ -55,5 +87,11 @@ export const authOptions: NextAuthOptions = {
 };
 
 export async function auth() {
-  return getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return null;
+  }
+
+  return session;
 }

@@ -186,7 +186,7 @@ interface CompletePasswordResetDependencies {
     userId: string;
     passwordHash: string;
     now: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   hashToken: (token: string) => string;
   now: () => Date;
 }
@@ -204,15 +204,31 @@ const defaultCompleteDependencies: CompletePasswordResetDependencies = {
     }),
   hashPassword: async (password) => hashPassword(password, env.AUTH_BCRYPT_ROUNDS),
   consumeTokenAndUpdatePassword: async (input) => {
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: input.userId },
-        data: { passwordHash: input.passwordHash },
+    return prisma.$transaction(async (tx) => {
+      const consumed = await tx.passwordResetToken.updateMany({
+        where: {
+          id: input.tokenId,
+          userId: input.userId,
+          usedAt: null,
+          expiresAt: {
+            gt: input.now,
+          },
+        },
+        data: { usedAt: input.now },
       });
 
-      await tx.passwordResetToken.update({
-        where: { id: input.tokenId },
-        data: { usedAt: input.now },
+      if (consumed.count !== 1) {
+        return false;
+      }
+
+      await tx.user.update({
+        where: { id: input.userId },
+        data: {
+          passwordHash: input.passwordHash,
+          tokenVersion: {
+            increment: 1,
+          },
+        },
       });
 
       await tx.passwordResetToken.deleteMany({
@@ -225,6 +241,8 @@ const defaultCompleteDependencies: CompletePasswordResetDependencies = {
       await tx.session.deleteMany({
         where: { userId: input.userId },
       });
+
+      return true;
     });
   },
   hashToken: hashPasswordResetToken,
@@ -250,12 +268,19 @@ export async function completePasswordReset(
   const newPasswordHash = await dependencies.hashPassword(input.password);
 
   try {
-    await dependencies.consumeTokenAndUpdatePassword({
+    const completed = await dependencies.consumeTokenAndUpdatePassword({
       tokenId: tokenRecord.id,
       userId: tokenRecord.userId,
       passwordHash: newPasswordHash,
       now,
     });
+
+    if (!completed) {
+      throw new PasswordResetError(
+        "INVALID_OR_EXPIRED_TOKEN",
+        "Reset token is invalid or expired",
+      );
+    }
   } catch (error) {
     if (error instanceof PasswordResetError) {
       throw error;

@@ -21,9 +21,12 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Logout (dashboard action)
   - Protected dashboard placeholder (`/:locale/dashboard`)
   - Route protection via proxy + server-side checks
-  - Database-backed session persistence (Auth.js + Prisma adapter)
+  - JWT session revocation via `User.tokenVersion` checks
+  - Atomic one-time token/code consumption for login/register/password-reset challenge flows
+  - Database-backed auth persistence (Auth.js + Prisma adapter)
   - Registration notification hooks for SMTP email + Verimor SMS
   - Token-based password reset completion after dual verification
+  - Identifier + IP based auth rate-limiting (email/phone/user + IP)
 - Root entry (`/` and `/:locale`) redirects directly to localized login page
 - Legacy `/forgot-password` and `/reset-password` pages now redirect to localized login; recovery is popup-only
 - Localization foundation
@@ -60,6 +63,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
+- `HEALTHCHECK_TOKEN` (optional but recommended in production; required as `x-health-token` when set)
 - `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
 - `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
 - `UPSTASH_REDIS_REST_TOKEN` (optional, required with `UPSTASH_REDIS_REST_URL`)
@@ -87,7 +91,7 @@ Rate-limit backend priority:
 3. Prisma fallback
 
 When `RATE_LIMIT_REDIS_URL` is set, auth rate limiting uses local Redis sliding window.
-If local Redis is not configured/reachable, system tries Upstash; if that is unavailable too, it safely falls back to Prisma-backed rate limiting.
+If local Redis is not configured/reachable, system tries Upstash; if that is unavailable too, it falls back to Prisma-backed limiting with fail-closed behavior for auth routes.
 Note: Redis `maxmemory` is a Redis-specific data-store cap and does not conflict with `uppoint-cloud.service` / `tune-system.sh` memory tuning for Node.js and kernel layers.
 
 Operational check:
@@ -118,6 +122,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
+- Logout audit endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
 - Locale configuration: [modules/i18n/config.ts](/opt/uppoint-cloud/modules/i18n/config.ts)
 - Locale path helpers: [modules/i18n/paths.ts](/opt/uppoint-cloud/modules/i18n/paths.ts)
 - Dictionaries: [messages/tr.ts](/opt/uppoint-cloud/messages/tr.ts), [messages/en.ts](/opt/uppoint-cloud/messages/en.ts)
@@ -176,6 +181,16 @@ Run this checklist after deployment or UI-affecting changes:
 8. Sign in and verify `/tr/dashboard` and `/en/dashboard` render correctly in both themes.
 9. Trigger an auth error state (invalid credentials) in TR and EN and verify alert contrast/readability in both themes.
 10. Verify focus rings are visible on keyboard navigation for all auth controls in both themes.
+
+## Security hardening notes
+
+- `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated (`410 ENDPOINT_DEPRECATED`) to keep only the dual-verification challenge flow active.
+- `POST /api/auth/verify-email` is the only mutation endpoint for email verification; `GET /api/auth/verify-email` returns `405`.
+- Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
+- Health endpoint exposure is minimized:
+  - `/api/health` returns minimal status payload only
+  - in production, if `HEALTHCHECK_TOKEN` is set, callers must send `x-health-token`
+- Backup scripts now enforce restrictive filesystem permissions (`umask 077`, directories `700`, files `600`).
 
 ## Production run on `/opt/uppoint-cloud`
 

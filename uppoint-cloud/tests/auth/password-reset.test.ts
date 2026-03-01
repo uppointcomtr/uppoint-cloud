@@ -87,7 +87,7 @@ describe("completePasswordReset", () => {
   });
 
   it("updates password and consumes token when token is valid", async () => {
-    const consumeTokenAndUpdatePassword = vi.fn().mockResolvedValue(undefined);
+    const consumeTokenAndUpdatePassword = vi.fn().mockResolvedValue(true);
 
     await completePasswordReset(
       { token: "x".repeat(64), password: "StrongPass!123" },

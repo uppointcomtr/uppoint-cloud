@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
   LoginChallengeError,
   verifyLoginChallengeCode,
@@ -12,7 +12,14 @@ import {
 export async function POST(request: Request) {
   // Rate limit: 10 attempts per 15 minutes per IP
   const rateLimitResponse = await withRateLimit("login-email-verify", 10, 900);
-  if (rateLimitResponse) return rateLimitResponse;
+  if (rateLimitResponse) {
+    const limitedIp = await getClientIp();
+    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+      action: "login-email-verify",
+      scope: "ip",
+    });
+    return rateLimitResponse;
+  }
 
   const ip = await getClientIp();
 
@@ -22,6 +29,20 @@ export async function POST(request: Request) {
     payload = await request.json();
   } catch {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+  }
+
+  const rawPayload = payload as Record<string, unknown>;
+  const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
+
+  if (challengeId) {
+    const identifierRateLimit = await withRateLimitByIdentifier("login-email-verify-challenge", challengeId, 8, 900);
+    if (identifierRateLimit) {
+      logAudit("rate_limit_exceeded", ip, undefined, {
+        action: "login-email-verify",
+        scope: "challenge",
+      });
+      return identifierRateLimit;
+    }
   }
 
   try {

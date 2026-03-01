@@ -3,13 +3,20 @@ import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import { startPasswordResetChallenge } from "@/modules/auth/server/password-reset-challenge";
 
 export async function POST(request: Request) {
   // Rate limit: 5 attempts per 10 minutes per IP
   const rateLimitResponse = await withRateLimit("forgot-password-challenge-start", 5, 600);
-  if (rateLimitResponse) return rateLimitResponse;
+  if (rateLimitResponse) {
+    const limitedIp = await getClientIp();
+    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+      action: "forgot-password-challenge-start",
+      scope: "ip",
+    });
+    return rateLimitResponse;
+  }
   const ip = await getClientIp();
 
   let payload: unknown;
@@ -20,8 +27,32 @@ export async function POST(request: Request) {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 
+  const rawPayload = payload as Record<string, unknown>;
+  const email = typeof rawPayload.email === "string" ? rawPayload.email.trim().toLowerCase() : "";
+
+  if (email) {
+    const identifierRateLimit = await withRateLimitByIdentifier(
+      "forgot-password-challenge-start-account",
+      email,
+      5,
+      600,
+    );
+
+    if (identifierRateLimit) {
+      logAudit("rate_limit_exceeded", ip, undefined, {
+        action: "forgot-password-challenge-start",
+        scope: "email",
+      });
+      return identifierRateLimit;
+    }
+  }
+
   try {
     const result = await startPasswordResetChallenge(payload);
+
+    logAudit("password_reset_requested", ip, undefined, {
+      hasChallenge: Boolean(result.challengeId),
+    });
 
     if (!result.challengeId) {
       logAudit("password_reset_failed", ip, undefined, {

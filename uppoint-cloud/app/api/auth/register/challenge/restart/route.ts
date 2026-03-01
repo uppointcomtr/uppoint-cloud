@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
   RegisterVerificationChallengeError,
   startRegisterVerificationChallenge,
@@ -12,7 +12,14 @@ import {
 export async function POST(request: Request) {
   // Rate limit: 5 attempts per 10 minutes per IP
   const rateLimitResponse = await withRateLimit("register-verify-restart", 5, 600);
-  if (rateLimitResponse) return rateLimitResponse;
+  if (rateLimitResponse) {
+    const limitedIp = await getClientIp();
+    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+      action: "register-verify-restart",
+      scope: "ip",
+    });
+    return rateLimitResponse;
+  }
 
   const ip = await getClientIp();
 
@@ -22,6 +29,26 @@ export async function POST(request: Request) {
     payload = await request.json();
   } catch {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+  }
+
+  const rawPayload = payload as Record<string, unknown>;
+  const userId = typeof rawPayload.userId === "string" ? rawPayload.userId.trim() : "";
+
+  if (userId) {
+    const identifierRateLimit = await withRateLimitByIdentifier(
+      "register-verify-restart-user",
+      userId,
+      5,
+      600,
+    );
+
+    if (identifierRateLimit) {
+      logAudit("rate_limit_exceeded", ip, undefined, {
+        action: "register-verify-restart",
+        scope: "userId",
+      });
+      return identifierRateLimit;
+    }
   }
 
   try {
@@ -41,13 +68,20 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof RegisterVerificationChallengeError) {
-      const status = error.code === "USER_NOT_FOUND" ? 404 : 500;
+      if (error.code === "USER_NOT_FOUND") {
+        // Security-sensitive: keep response shape/status neutral to avoid account existence disclosure.
+        logAudit("register_verification_failed", ip, undefined, {
+          step: "restart",
+          reason: "ACCOUNT_HIDDEN",
+        });
+        return NextResponse.json(ok({ accepted: true }), { status: 200 });
+      }
 
       logAudit("register_verification_failed", ip, undefined, {
         step: "restart",
         reason: error.code,
       });
-      return NextResponse.json(fail(error.code), { status });
+      return NextResponse.json(fail(error.code), { status: 500 });
     }
 
     logAudit("register_verification_failed", ip, undefined, {

@@ -170,14 +170,18 @@ export async function startPasswordResetChallenge(
 ): Promise<{ challengeId: string | null; emailCodeExpiresAt: Date | null }> {
   const input = challengeStartSchema.parse(rawInput);
   const locale = resolveLocale(input.locale);
+  const now = dependencies.now();
+  const expiresAt = toExpiresAt(now, PASSWORD_RESET_CODE_TTL_MINUTES);
   const user = await dependencies.findUserByEmail(input.email);
 
   if (!user) {
-    return { challengeId: null, emailCodeExpiresAt: null };
+    // Security-sensitive: return an opaque decoy challenge to reduce account enumeration signals.
+    return {
+      challengeId: `decoy_${generateResetToken().slice(0, 24)}`,
+      emailCodeExpiresAt: expiresAt,
+    };
   }
 
-  const now = dependencies.now();
-  const expiresAt = toExpiresAt(now, PASSWORD_RESET_CODE_TTL_MINUTES);
   const code = dependencies.generateCode();
   const codeHash = dependencies.hashValue(code);
 
@@ -220,13 +224,14 @@ interface VerifyEmailCodeDependencies {
       phone: string | null;
     };
   } | null>;
-  incrementEmailAttempts: (id: string) => Promise<void>;
+  incrementEmailAttempts: (id: string) => Promise<number>;
   markEmailVerifiedAndStoreSmsCode: (input: {
     id: string;
+    expectedEmailCodeHash: string;
     smsCodeHash: string;
     smsCodeExpiresAt: Date;
     now: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   sendSmsCode: (input: { to: string; message: string }) => Promise<void>;
   now: () => Date;
   generateCode: () => string;
@@ -252,18 +257,34 @@ const defaultVerifyEmailDependencies: VerifyEmailCodeDependencies = {
       },
     }),
   incrementEmailAttempts: async (id) => {
-    await prisma.passwordResetChallenge.update({
-      where: { id },
+    const result = await prisma.passwordResetChallenge.updateMany({
+      where: {
+        id,
+        emailCodeAttempts: {
+          lt: PASSWORD_RESET_MAX_ATTEMPTS,
+        },
+      },
       data: {
         emailCodeAttempts: {
           increment: 1,
         },
       },
     });
+    return result.count;
   },
   markEmailVerifiedAndStoreSmsCode: async (input) => {
-    await prisma.passwordResetChallenge.update({
-      where: { id: input.id },
+    const result = await prisma.passwordResetChallenge.updateMany({
+      where: {
+        id: input.id,
+        emailCodeHash: input.expectedEmailCodeHash,
+        emailCodeAttempts: {
+          lt: PASSWORD_RESET_MAX_ATTEMPTS,
+        },
+        emailCodeExpiresAt: {
+          gt: input.now,
+        },
+        emailCodeVerifiedAt: null,
+      },
       data: {
         emailCodeVerifiedAt: input.now,
         smsCodeHash: input.smsCodeHash,
@@ -271,6 +292,7 @@ const defaultVerifyEmailDependencies: VerifyEmailCodeDependencies = {
         smsCodeAttempts: 0,
       },
     });
+    return result.count === 1;
   },
   sendSmsCode: async (input) => {
     await sendAuthSms(input);
@@ -325,12 +347,20 @@ export async function verifyPasswordResetEmailCode(
   const smsCodeHash = dependencies.hashValue(smsCode);
   const smsCodeExpiresAt = toExpiresAt(now, PASSWORD_RESET_CODE_TTL_MINUTES);
 
-  await dependencies.markEmailVerifiedAndStoreSmsCode({
+  const marked = await dependencies.markEmailVerifiedAndStoreSmsCode({
     id: challenge.id,
+    expectedEmailCodeHash: providedCodeHash,
     smsCodeHash,
     smsCodeExpiresAt,
     now,
   });
+
+  if (!marked) {
+    throw new PasswordResetChallengeError(
+      "INVALID_OR_EXPIRED_CHALLENGE",
+      "Password reset challenge is invalid or expired",
+    );
+  }
 
   await dependencies.sendSmsCode({
     to: challenge.user.phone,
@@ -356,13 +386,14 @@ interface VerifySmsCodeDependencies {
     smsCodeVerifiedAt: Date | null;
     emailCodeVerifiedAt: Date | null;
   } | null>;
-  incrementSmsAttempts: (id: string) => Promise<void>;
+  incrementSmsAttempts: (id: string) => Promise<number>;
   markSmsVerifiedAndStoreResetToken: (input: {
     id: string;
+    expectedSmsCodeHash: string;
     resetTokenHash: string;
     resetTokenExpiresAt: Date;
     now: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   now: () => Date;
   hashValue: (value: string) => string;
   generateResetToken: () => string;
@@ -382,18 +413,37 @@ const defaultVerifySmsDependencies: VerifySmsCodeDependencies = {
       },
     }),
   incrementSmsAttempts: async (id) => {
-    await prisma.passwordResetChallenge.update({
-      where: { id },
+    const result = await prisma.passwordResetChallenge.updateMany({
+      where: {
+        id,
+        smsCodeAttempts: {
+          lt: PASSWORD_RESET_MAX_ATTEMPTS,
+        },
+      },
       data: {
         smsCodeAttempts: {
           increment: 1,
         },
       },
     });
+    return result.count;
   },
   markSmsVerifiedAndStoreResetToken: async (input) => {
-    await prisma.passwordResetChallenge.update({
-      where: { id: input.id },
+    const result = await prisma.passwordResetChallenge.updateMany({
+      where: {
+        id: input.id,
+        emailCodeVerifiedAt: {
+          not: null,
+        },
+        smsCodeHash: input.expectedSmsCodeHash,
+        smsCodeAttempts: {
+          lt: PASSWORD_RESET_MAX_ATTEMPTS,
+        },
+        smsCodeExpiresAt: {
+          gt: input.now,
+        },
+        smsCodeVerifiedAt: null,
+      },
       data: {
         smsCodeVerifiedAt: input.now,
         resetTokenHash: input.resetTokenHash,
@@ -401,6 +451,7 @@ const defaultVerifySmsDependencies: VerifySmsCodeDependencies = {
         resetTokenUsedAt: null,
       },
     });
+    return result.count === 1;
   },
   now: () => new Date(),
   hashValue,
@@ -447,12 +498,20 @@ export async function verifyPasswordResetSmsCode(
   const resetTokenHash = dependencies.hashValue(rawResetToken);
   const resetTokenExpiresAt = toExpiresAt(now, env.AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES);
 
-  await dependencies.markSmsVerifiedAndStoreResetToken({
+  const marked = await dependencies.markSmsVerifiedAndStoreResetToken({
     id: challenge.id,
+    expectedSmsCodeHash: providedCodeHash,
     resetTokenHash,
     resetTokenExpiresAt,
     now,
   });
+
+  if (!marked) {
+    throw new PasswordResetChallengeError(
+      "INVALID_OR_EXPIRED_CHALLENGE",
+      "Password reset challenge is invalid or expired",
+    );
+  }
 
   return {
     resetToken: rawResetToken,
@@ -472,9 +531,10 @@ interface CompleteChallengeDependencies {
   completePasswordUpdate: (input: {
     challengeId: string;
     userId: string;
+    expectedResetTokenHash: string;
     passwordHash: string;
     now: Date;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   hashValue: (value: string) => string;
   now: () => Date;
 }
@@ -494,15 +554,35 @@ const defaultCompleteChallengeDependencies: CompleteChallengeDependencies = {
     }),
   hashPassword: async (password) => hashPassword(password, env.AUTH_BCRYPT_ROUNDS),
   completePasswordUpdate: async (input) => {
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: input.userId },
-        data: { passwordHash: input.passwordHash },
+    return prisma.$transaction(async (tx) => {
+      const consumed = await tx.passwordResetChallenge.updateMany({
+        where: {
+          id: input.challengeId,
+          userId: input.userId,
+          smsCodeVerifiedAt: {
+            not: null,
+          },
+          resetTokenHash: input.expectedResetTokenHash,
+          resetTokenExpiresAt: {
+            gt: input.now,
+          },
+          resetTokenUsedAt: null,
+        },
+        data: { resetTokenUsedAt: input.now },
       });
 
-      await tx.passwordResetChallenge.update({
-        where: { id: input.challengeId },
-        data: { resetTokenUsedAt: input.now },
+      if (consumed.count !== 1) {
+        return false;
+      }
+
+      await tx.user.update({
+        where: { id: input.userId },
+        data: {
+          passwordHash: input.passwordHash,
+          tokenVersion: {
+            increment: 1,
+          },
+        },
       });
 
       await tx.passwordResetChallenge.deleteMany({
@@ -519,6 +599,8 @@ const defaultCompleteChallengeDependencies: CompleteChallengeDependencies = {
       await tx.session.deleteMany({
         where: { userId: input.userId },
       });
+
+      return true;
     });
   },
   hashValue,
@@ -559,12 +641,20 @@ export async function completePasswordResetChallenge(
   const newPasswordHash = await dependencies.hashPassword(input.password);
 
   try {
-    await dependencies.completePasswordUpdate({
+    const completed = await dependencies.completePasswordUpdate({
       challengeId: challenge.id,
       userId: challenge.userId,
+      expectedResetTokenHash: challenge.resetTokenHash,
       passwordHash: newPasswordHash,
       now,
     });
+
+    if (!completed) {
+      throw new PasswordResetChallengeError(
+        "INVALID_OR_EXPIRED_RESET_TOKEN",
+        "Reset token is invalid or expired",
+      );
+    }
   } catch (error) {
     if (error instanceof PasswordResetChallengeError) {
       throw error;

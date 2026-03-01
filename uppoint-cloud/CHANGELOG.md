@@ -1,5 +1,57 @@
 # Changelog
 
+## 2026-03-01 (Auth security hardening: token revocation, atomic challenge consumption, limiter trust fixes)
+
+### Added
+- `prisma/schema.prisma`:
+  - `User.tokenVersion` alanı eklendi (`@default(0)`) ve migration oluşturuldu:
+    - `prisma/migrations/20260301150000_add_user_token_version/migration.sql`
+- `app/api/auth/logout/route.ts` eklendi:
+  - logout olayı için server-side audit kayıt noktası.
+- `modules/auth/components/verify-email-status.tsx` eklendi:
+  - e-posta doğrulama işlemini client-side POST akışına taşıyan durum bileşeni.
+
+### Changed
+- `auth.ts`:
+  - JWT callback’inde `tokenVersion` kontrolü eklendi.
+  - güvenlik kritik durumlarda revize edilen kullanıcı sürümü ile token sürümü uyuşmazsa oturum düşürülüyor.
+- `modules/auth/server/login-challenge.ts`:
+  - login OTP doğrulama ve login token tüketimi atomik hale getirildi (conditional update).
+  - consume edilen kullanıcıya `tokenVersion` taşınıyor.
+- `modules/auth/server/register-verification-challenge.ts`:
+  - register email/SMS challenge doğrulamaları atomik tüketim modeline alındı.
+- `modules/auth/server/password-reset-challenge.ts` ve `modules/auth/server/password-reset.ts`:
+  - reset token/challenge tüketimi atomik hale getirildi.
+  - parola değişiminde `User.tokenVersion` artırılarak eski JWT’lerin geçersiz kalması sağlandı.
+- `lib/rate-limit.ts`:
+  - IP çözümlemesi `X-Real-IP` öncelikli ve güvenli `X-Forwarded-For` parse (right-most trusted).
+  - auth limiter backend hatasında fail-open yerine fail-closed davranışa geçildi.
+  - identifier bazlı ikinci katman limit fonksiyonu eklendi.
+- Auth API route’larında (`login/register/forgot-password`):
+  - limiter aşımlarında audit log eklendi.
+  - email/phone/user bazlı identifier rate-limit katmanı eklendi.
+- `app/[locale]/verify-email/page.tsx` + `app/api/auth/verify-email/route.ts`:
+  - doğrulama route’u POST akışıyla çalışacak şekilde güncellendi.
+  - `GET /api/auth/verify-email` artık mutasyon yapmaz (`405 METHOD_NOT_ALLOWED`).
+- `app/api/health/route.ts`:
+  - health response sadeleştirildi, production’da opsiyonel `HEALTHCHECK_TOKEN` doğrulaması eklendi.
+- `scripts/backup-db.sh` ve `scripts/backup-redis.sh`:
+  - `umask 077` + backup dizin/dosya izin sertleştirmesi eklendi.
+- `lib/audit-log.ts`:
+  - audit metadata’ya otomatik `requestId`, `userAgent`, `forwardedFor` bağlamı eklendi.
+  - metadata anahtarlarında hassas alanlar (`password|token|secret|authorization|cookie`) redakte edilir hale getirildi.
+- Auth verify route’larında:
+  - challengeId bazlı identifier limiter katmanı eklendi (`login/register/forgot-password verify` + `forgot-password complete`).
+- `README.md`:
+  - yeni güvenlik akışları, health token ve deprecate edilen reset endpoint’leri belgelendi.
+
+### Fixed
+- Auth rate-limit bypass riski (spoofed `X-Forwarded-For`) azaltıldı.
+- Login/reset/register doğrulama adımlarında replay/race pencereleri daraltıldı.
+- JWT oturum iptali için parola sıfırlama sonrası etkisiz kalan eski token problemi giderildi.
+- Legacy password reset endpoint saldırı yüzeyi azaltıldı (`410 ENDPOINT_DEPRECATED`).
+- State-changing verify-email GET riski kaldırıldı (POST-only mutation).
+
 ## 2026-03-01 (Verification code input redesign: underlined 6-digit slots)
 
 ### Changed
