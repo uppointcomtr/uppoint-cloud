@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-03-01 (Security re-audit: logout rate limiting)
+
+### Changed
+- `app/api/auth/logout/route.ts`: rate limiting eklendi (20 istek/dakika per IP) — flood saldırılarında DB baskısı engelleniyor, `rate_limit_exceeded` audit logu eklendi.
+
 ## 2026-03-01 (Security audit kapsamı: timing attack, plaintext token, enumeration, infra hardening)
 
 ### Added
