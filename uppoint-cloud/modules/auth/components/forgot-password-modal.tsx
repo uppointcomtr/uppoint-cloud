@@ -12,6 +12,7 @@ import { getLoginSchema, getRegisterSchema } from "@/modules/auth/schemas/auth-s
 import { cn } from "@/lib/utils";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
+import { VerificationCodeInput } from "@/modules/auth/components/verification-code-input";
 
 type RecoveryStep = "email" | "emailCode" | "smsCode" | "newPassword" | "success";
 
@@ -482,18 +483,13 @@ export function ForgotPasswordModal({
               </div>
             </div>
 
-            {/* Large code input */}
-            <input
+            <VerificationCodeInput
               id="forgot-password-email-code"
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              autoFocus
               value={emailCode}
-              onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="——————"
-              aria-label={dictionary.fields.emailCode}
-              className="w-full rounded-lg border-2 border-input bg-muted/20 py-3.5 text-center font-mono text-2xl tracking-[0.4em] text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-input/20"
+              onChange={setEmailCode}
+              placeholder={dictionary.fields.emailCode}
+              ariaLabel={dictionary.fields.emailCode}
+              autoFocus
             />
 
             <div className="grid gap-2 sm:grid-cols-2">
@@ -544,18 +540,13 @@ export function ForgotPasswordModal({
               </div>
             </div>
 
-            {/* Large code input */}
-            <input
+            <VerificationCodeInput
               id="forgot-password-sms-code"
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              autoFocus
               value={smsCode}
-              onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="——————"
-              aria-label={dictionary.fields.smsCode}
-              className="w-full rounded-lg border-2 border-input bg-muted/20 py-3.5 text-center font-mono text-2xl tracking-[0.4em] text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-input/20"
+              onChange={setSmsCode}
+              placeholder={dictionary.fields.smsCode}
+              ariaLabel={dictionary.fields.smsCode}
+              autoFocus
             />
 
             <div className="grid gap-2 sm:grid-cols-2">

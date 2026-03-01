@@ -38,4 +38,8 @@ echo "[cleanup] VerificationToken: ${VT_DELETED} satır silindi"
 AL_DELETED=$($PSQL -c "WITH d AS (DELETE FROM \"AuditLog\" WHERE \"createdAt\" < NOW() - INTERVAL '90 days' RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] AuditLog (>90 gün): ${AL_DELETED} satır silindi"
 
+# 7. RegistrationVerificationChallenge — süresi dolmuş kayıtlar
+RVC_DELETED=$($PSQL -c "WITH d AS (DELETE FROM \"RegistrationVerificationChallenge\" WHERE \"emailCodeExpiresAt\" < NOW() - INTERVAL '1 hour' RETURNING id) SELECT count(*) FROM d;")
+echo "[cleanup] RegistrationVerificationChallenge: ${RVC_DELETED} satır silindi"
+
 echo "[cleanup] Tamamlandı: $(date)"

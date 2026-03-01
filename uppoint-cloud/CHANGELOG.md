@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-03-01 (Verification code input redesign: underlined 6-digit slots)
+
+### Changed
+- `modules/auth/components/verification-code-input.tsx` altı çizgili 6 hane slot tasarımına geçirildi.
+- Kod alanı artık tüm auth akışlarında aynı görsel standardı kullanıyor:
+  - login OTP
+  - register e-posta/SMS doğrulama
+  - şifre sıfırlama e-posta/SMS doğrulama
+- Giriş sadece numerik (`0-9`) ve maksimum 6 hane olacak şekilde korunmaya devam ediyor.
+
+## 2026-03-01 (Register verification SMS delivery fix + clearer error mapping)
+
+### Fixed
+- Register e-posta kodu doğrulama sonrası SMS gönderim hatası (`401 Eksik kullanıcı adı/şifre`) için provider uyumluluk ayarı etkinleştirildi:
+  - `.env`: `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS=true`
+- `modules/auth/server/register-verification-challenge.ts`:
+  - SMS gönderim hatası artık `SMS_DELIVERY_FAILED` olarak kontrollü şekilde sınıflandırılıyor.
+- `app/api/auth/register/challenge/verify-email/route.ts`:
+  - `SMS_DELIVERY_FAILED` kodu API cevabına yansıtılıyor.
+- `modules/auth/components/register-form.tsx` ve sözlükler:
+  - Bu durum için kullanıcıya daha net hata mesajı gösteriliyor (TR/EN).
+
+## 2026-03-01 (Unified 6-digit verification input style)
+
+### Changed
+- `modules/auth/components/verification-code-input.tsx` eklendi:
+  - 6 haneli doğrulama kodu için tek satır, sade ve placeholder tabanlı ortak input bileşeni.
+  - Sadece rakam kabul eder (`0-9`) ve değeri 6 hane ile sınırlar.
+- Aşağıdaki ekranlarda kod alanları ortak bileşene taşındı:
+  - `modules/auth/components/login-form.tsx` (e-posta OTP + telefon OTP)
+  - `modules/auth/components/register-form.tsx` (kayıt e-posta kodu + SMS kodu)
+  - `modules/auth/components/forgot-password-modal.tsx` (e-posta kodu + SMS kodu)
+
+## 2026-03-01 (Register OTP verification flow: email + SMS, 3-minute sequential steps)
+
+### Added
+- `modules/auth/server/register-verification-challenge.ts`:
+  - Register sonrası e-posta kodu (3 dk) üretim/gönderim
+  - E-posta kodu doğrulama sonrası SMS kodu (3 dk) üretim/gönderim
+  - SMS kodu doğrulama sonrası kullanıcı doğrulama tamamlama (`emailVerified`, `phoneVerifiedAt`)
+- Yeni API route'ları:
+  - `POST /api/auth/register/challenge/verify-email`
+  - `POST /api/auth/register/challenge/verify-sms`
+  - `POST /api/auth/register/challenge/restart`
+- Yeni test dosyası:
+  - `tests/auth/register-verification-challenge.test.ts`
+- Prisma schema güncellendi:
+  - `User.phoneVerifiedAt`
+  - `RegistrationVerificationChallenge` modeli
+  - Migration: `20260301103939_add_register_verification_challenge`
+
+### Changed
+- `app/api/auth/register/route.ts` artık doğrulama linki yerine register challenge başlatır ve `challengeId + emailCodeExpiresAt` döner.
+- Register sırasında challenge başlatma başarısız olursa oluşturulan kullanıcı için best-effort rollback uygulanır.
+- `EMAIL_TAKEN` durumunda, doğrulaması tamamlanmamış hesap için verification flow yeniden başlatılabilir.
+- `modules/auth/components/register-form.tsx` akışı güncellendi:
+  - adım 1: hesap bilgileri
+  - adım 2: e-posta kodu doğrulama (3 dk sayaç)
+  - adım 3: SMS kodu doğrulama (3 dk sayaç)
+  - süre dolduğunda `Yeni kod gönder` ile akış yeniden başlatma
+- `messages/tr.ts` ve `messages/en.ts` register sözlükleri yeni OTP adımlarına göre genişletildi.
+- `scripts/cleanup-db.sh` içine `RegistrationVerificationChallenge` temizlik adımı eklendi.
+- `README.md` auth milestone açıklaması register OTP akışını yansıtacak şekilde güncellendi.
+
+## 2026-03-01 (Register success state persistence fix)
+
+### Fixed
+- Kayıt sonrası başarı adımında `router.refresh()` kaldırıldı.
+- Böylece e-posta doğrulama bilgilendirme popup/kartı kullanıcı manuel ilerleyene kadar açık kalır; otomatik kapanma/step reset engellendi.
+
 ## 2026-03-01 (Register success notice copy update)
 
 ### Changed

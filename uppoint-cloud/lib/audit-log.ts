@@ -6,6 +6,9 @@ import { prisma } from "@/db/client";
 
 export type AuditAction =
   | "register_success"
+  | "register_verified"
+  | "register_verification_restarted"
+  | "register_verification_failed"
   | "login_success"
   | "login_otp_failed"
   | "login_challenge_start_failed"

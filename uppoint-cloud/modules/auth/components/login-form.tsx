@@ -23,6 +23,7 @@ import { withLocale } from "@/modules/i18n/paths";
 import { AuthCard } from "./auth-card";
 import { ForgotPasswordModal } from "./forgot-password-modal";
 import { PhoneInput } from "./phone-input";
+import { VerificationCodeInput } from "./verification-code-input";
 
 type LoginMode = "email" | "phone";
 type EmailStep = "identifier" | "password" | "otp";
@@ -642,23 +643,13 @@ export function LoginForm({
 
             {emailStep === "otp" ? (
               <>
-                <div className="space-y-1.5">
-                  <label htmlFor="email-otp" className="text-xs font-medium text-muted-foreground">
-                    {dictionary.fields.otp}
-                  </label>
-                  <input
-                    id="email-otp"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    autoComplete="one-time-code"
-                    autoFocus
-                    placeholder="••••••"
-                    value={otpCode}
-                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="w-full rounded-lg border-2 border-input bg-muted/20 py-3.5 text-center font-mono text-2xl tracking-[0.4em] text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-input/20"
-                  />
-                </div>
+                <VerificationCodeInput
+                  id="email-otp"
+                  value={otpCode}
+                  onChange={setOtpCode}
+                  placeholder={dictionary.fields.otp}
+                  autoFocus
+                />
 
                 <div className="space-y-2">
                   {isCodeExpired ? (
@@ -780,23 +771,13 @@ export function LoginForm({
 
             {phoneStep === "otp" ? (
               <>
-                <div className="space-y-1.5">
-                  <label htmlFor="phone-otp" className="text-xs font-medium text-muted-foreground">
-                    {dictionary.fields.otp}
-                  </label>
-                  <input
-                    id="phone-otp"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    autoComplete="one-time-code"
-                    autoFocus
-                    placeholder="••••••"
-                    value={otpCode}
-                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="w-full rounded-lg border-2 border-input bg-muted/20 py-3.5 text-center font-mono text-2xl tracking-[0.4em] text-foreground outline-none transition-all placeholder:text-muted-foreground/30 focus:border-primary focus:ring-4 focus:ring-primary/15 dark:bg-input/20"
-                  />
-                </div>
+                <VerificationCodeInput
+                  id="phone-otp"
+                  value={otpCode}
+                  onChange={setOtpCode}
+                  placeholder={dictionary.fields.otp}
+                  autoFocus
+                />
 
                 <div className="space-y-2">
                   {isCodeExpired ? (
