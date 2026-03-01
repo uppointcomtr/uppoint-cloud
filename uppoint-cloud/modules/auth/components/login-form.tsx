@@ -95,7 +95,8 @@ export function LoginForm({
 }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? withLocale("/dashboard", locale);
+  const rawCallbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl = rawCallbackUrl?.startsWith("/") ? rawCallbackUrl : withLocale("/dashboard", locale);
   const prefilledEmail = searchParams.get("email") ?? "";
 
   const [mode, setMode] = useState<LoginMode>("email");

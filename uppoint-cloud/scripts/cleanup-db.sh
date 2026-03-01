@@ -58,4 +58,9 @@ echo "[cleanup] AuditLog (>90 gün): ${AL_DELETED} satır silindi"
 RVC_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"RegistrationVerificationChallenge\" WHERE \"emailCodeExpiresAt\" < NOW() - INTERVAL '1 hour' RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] RegistrationVerificationChallenge: ${RVC_DELETED} satır silindi"
 
+# 8. RevokedSessionToken — süresi dolmuş JTI blacklist kayıtları
+#    (Kod içinde lazy cleanup var ama pasif token'lar asla silinmez; bu tablo şişebilir)
+RST_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"RevokedSessionToken\" WHERE \"expiresAt\" < NOW() RETURNING id) SELECT count(*) FROM d;")
+echo "[cleanup] RevokedSessionToken: ${RST_DELETED} satır silindi"
+
 echo "[cleanup] Tamamlandı: $(date)"

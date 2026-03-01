@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-01 (Security: callbackUrl redirect fix + RevokedSessionToken cleanup + audit)
+
+### Security
+- **callbackUrl open redirect kapatıldı**: `login-form.tsx`'te URL parametresinden gelen `callbackUrl` artık yalnızca `/` ile başlıyorsa kabul ediliyor; harici domain'e redirect engellenmiş.
+- **RevokedSessionToken scheduled cleanup**: `scripts/cleanup-db.sh`'e süresi dolmuş JTI blacklist kayıtlarını temizleyen adım eklendi (8. tablo). Önceden yalnızca lazy cleanup vardı; pasif token'lar tablo şişmesine yol açabilirdi.
+
+### Fixed
+- `proxy.ts`'in Next.js 16'nın resmi proxy/middleware dosyası olduğu doğrulandı (`PROXY_FILENAME = 'proxy'`). Build çıktısında "ƒ Proxy (Middleware)" ile teyit edildi; edge auth aktif.
+- `scripts/health-probe.sh` nginx `/healthz` snippet'ı üzerinden token inject ettiği doğrulandı; probe script'e ek değişiklik gerekmedi.
+
 ## 2026-03-01 (Security + architecture closure batch: remaining findings 1-16)
 
 ### Changed
