@@ -64,8 +64,22 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
   it("serves localized login and register pages", async () => {
     const loginResponse = await fetchWithTimeout("/tr/login");
     expect(loginResponse.status).toBe(200);
+
     const loginHtml = await loginResponse.text();
     expect(loginHtml).toContain("Oturum aç");
+
+    if (baseUrl.startsWith("https://")) {
+      const cspHeader = loginResponse.headers.get("content-security-policy");
+      expect(cspHeader).toContain("script-src 'self' 'nonce-");
+      expect(cspHeader).toContain("'strict-dynamic'");
+      expect(cspHeader).not.toContain("script-src 'self' 'unsafe-inline'");
+
+      const nonceMatch = cspHeader?.match(/script-src[^;]*'nonce-([^']+)'/);
+      expect(nonceMatch).toBeTruthy();
+      if (nonceMatch) {
+        expect(loginHtml).toContain(`nonce="${nonceMatch[1]}"`);
+      }
+    }
 
     const registerResponse = await fetchWithTimeout("/tr/register");
     expect(registerResponse.status).toBe(200);
@@ -92,9 +106,11 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
 
     if (registerResponse.status !== 201) {
       // In production-like environments, SMTP delivery can reject test inboxes.
-      // Keep this smoke test deterministic by asserting controlled failure shape.
+      // Shared environments can also return rate-limit responses.
       expect(registerPayload.success).toBe(false);
-      expect(registerPayload.error).toBe("REGISTER_VERIFICATION_START_FAILED");
+      expect(["REGISTER_VERIFICATION_START_FAILED", "TOO_MANY_REQUESTS"]).toContain(
+        registerPayload.error,
+      );
       return;
     }
 

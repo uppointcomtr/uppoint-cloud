@@ -74,6 +74,11 @@ Expected results:
 
 ## 2. Nginx reverse proxy setup
 
+Note:
+- CSP is set in Nginx using per-request nonce (`$request_id`) for `script-src`.
+- Nginx injects nonce into rendered HTML scripts via `sub_filter`, so Next.js inline scripts satisfy CSP.
+- `script-src` avoids `unsafe-inline`; `style-src` intentionally keeps `unsafe-inline` for framework inline styles.
+
 Bootstrap HTTP config (used before certificate issuance):
 
 ```bash
@@ -338,3 +343,36 @@ sudo /opt/uppoint-cloud/scripts/check-nginx-config-drift.sh
 Site config is accepted if it matches either:
 - `ops/nginx/cloud.uppoint.com.tr.bootstrap.conf` (pre-certificate)
 - `ops/nginx/cloud.uppoint.com.tr.conf` (TLS)
+
+Rate-limit file note:
+- `/etc/nginx/conf.d/uppoint-rate-limit.conf` may diverge after auto-tuning runs and is reported as warning by default.
+- Set `STRICT_RATE_LIMIT_TEMPLATE=1` to treat rate-limit divergence as a hard failure.
+
+## 15. Restore drill (staging rehearsal)
+
+PostgreSQL drill (recommended on staging or temporary drill database):
+
+```bash
+cd /opt/uppoint-cloud
+LATEST_BACKUP="$(ls -1t /opt/backups/postgres/*.sql.gz | head -n1)"
+DRILL_DB="uppoint_cloud_restore_drill_$(date +%Y%m%d%H%M%S)"
+DATABASE_URL_VALUE="$(grep -E '^DATABASE_URL=' .env | tail -n1 | cut -d '=' -f2-)"
+ADMIN_URL="$(DATABASE_URL="$DATABASE_URL_VALUE" node -e 'const u=new URL(process.env.DATABASE_URL); u.pathname="/postgres"; console.log(u.toString())')"
+DRILL_URL="$(DATABASE_URL="$DATABASE_URL_VALUE" node -e 'const u=new URL(process.env.DATABASE_URL); u.pathname="/" + process.argv[1]; console.log(u.toString())' "$DRILL_DB")"
+psql "$ADMIN_URL" -c "CREATE DATABASE \"$DRILL_DB\";"
+DATABASE_URL="$DRILL_URL" ./scripts/restore-db.sh "$LATEST_BACKUP" --confirm
+psql "$DRILL_URL" -Atqc 'SELECT COUNT(*) FROM "User";'
+psql "$ADMIN_URL" -c "DROP DATABASE \"$DRILL_DB\";"
+```
+
+Redis drill (non-disruptive, temporary local instance):
+
+```bash
+LATEST_REDIS_BACKUP="$(ls -1t /opt/backups/redis/*.tar.gz | head -n1)"
+TMP_DIR="$(mktemp -d)"
+tar -xzf "$LATEST_REDIS_BACKUP" -C "$TMP_DIR"
+redis-server --port 0 --unixsocket "$TMP_DIR/redis-drill.sock" --unixsocketperm 700 --save "" --appendonly no --dir "$TMP_DIR" --dbfilename dump.rdb --daemonize yes --pidfile "$TMP_DIR/redis-drill.pid" --logfile "$TMP_DIR/redis-drill.log"
+redis-cli -s "$TMP_DIR/redis-drill.sock" ping
+redis-cli -s "$TMP_DIR/redis-drill.sock" shutdown nosave
+rm -rf "$TMP_DIR"
+```

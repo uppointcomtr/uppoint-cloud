@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-03-01 (CSP nonce hardening + restore drill validation)
+
+### Changed
+- Nginx CSP policy migrated to nonce-based script protection:
+  - `script-src` now uses per-request nonce (`$request_id`) with `strict-dynamic`.
+  - Removed `unsafe-inline` from `script-src`.
+  - `style-src` keeps `unsafe-inline` intentionally for framework-generated inline styles.
+- Added nonce injection for HTML scripts via Nginx `sub_filter` in:
+  - `ops/nginx/cloud.uppoint.com.tr.conf`
+  - `ops/nginx/cloud.uppoint.com.tr.bootstrap.conf`
+- Added `proxy_set_header Accept-Encoding ""` on page proxy locations so nonce injection is applied consistently.
+- `scripts/check-nginx-config-drift.sh` updated to warn (not fail) for tuned `uppoint-rate-limit.conf` divergence unless `STRICT_RATE_LIMIT_TEMPLATE=1`.
+- Updated E2E smoke coverage (`tests/e2e/auth-http-smoke.test.ts`) to verify CSP nonce behavior for HTTPS base URLs.
+- Hardened E2E tolerance in shared environments by accepting controlled register throttle responses (`TOO_MANY_REQUESTS`) in non-201 branch.
+
+### Ops verification
+- Executed PostgreSQL restore drill on temporary database and validated restored row access.
+- Executed non-disruptive Redis restore drill on temporary local Redis instance using backup archive.
+- Updated `ops/README.md` with repeatable restore drill procedures.
+
 ## 2026-03-01 (docs: harden AGENTS.md with 10 rules derived from real security findings)
 
 ### Changed

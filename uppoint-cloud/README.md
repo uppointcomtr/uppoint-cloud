@@ -190,6 +190,8 @@ Run this checklist after deployment or UI-affecting changes:
 - `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated (`410 ENDPOINT_DEPRECATED`) to keep only the dual-verification challenge flow active.
 - `POST /api/auth/verify-email` is the only mutation endpoint for email verification; `GET /api/auth/verify-email` returns `405`.
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
+- CSP is nonce-based at Nginx layer: per-request `$request_id` is used as script nonce and injected into HTML script tags via `sub_filter`.
+- `script-src` no longer uses `unsafe-inline`; `style-src` keeps `unsafe-inline` for framework-generated inline styles.
 - Health endpoint exposure is minimized:
   - `/api/health` returns minimal status payload only
   - in production, if `HEALTHCHECK_TOKEN` is set, callers must send `x-health-token`

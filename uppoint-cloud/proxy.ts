@@ -23,7 +23,7 @@ function buildForwardHeaders(request: NextRequest, requestId: string): Headers {
   return headers;
 }
 
-function withRequestId(response: NextResponse, requestId: string): NextResponse {
+function withSecurityHeaders(response: NextResponse, requestId: string): NextResponse {
   response.headers.set("x-request-id", requestId);
   return response;
 }
@@ -53,7 +53,7 @@ export async function proxy(request: NextRequest) {
   const forwardHeaders = buildForwardHeaders(request, requestId);
 
   if (shouldBypassProxy(pathname)) {
-    return withRequestId(
+    return withSecurityHeaders(
       NextResponse.next({
         request: {
           headers: forwardHeaders,
@@ -68,7 +68,7 @@ export async function proxy(request: NextRequest) {
   if (!locale) {
     const destination = request.nextUrl.clone();
     destination.pathname = withLocale(pathname === "/" ? "/login" : pathname, defaultLocale);
-    return withRequestId(NextResponse.redirect(destination), requestId);
+    return withSecurityHeaders(NextResponse.redirect(destination), requestId);
   }
 
   const useSecureCookie = usesSecureSessionCookie(request);
@@ -86,7 +86,7 @@ export async function proxy(request: NextRequest) {
   const redirectPath = resolveAuthRedirect(pathname, Boolean(token));
 
   if (!redirectPath) {
-    return withRequestId(
+    return withSecurityHeaders(
       NextResponse.next({
         request: {
           headers: forwardHeaders,
@@ -103,7 +103,7 @@ export async function proxy(request: NextRequest) {
     destination.searchParams.set("callbackUrl", pathname);
   }
 
-  return withRequestId(NextResponse.redirect(destination), requestId);
+  return withSecurityHeaders(NextResponse.redirect(destination), requestId);
 }
 
 export const config = {
