@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-03-01 (docs: refine AGENTS.md — consolidated structure, explicit agent discipline)
+
+### Changed
+- `AGENTS.md` refined: consolidated sections, merged quality/performance/database into one section, merged jobs/idempotency, caching/logging/audit; tightened wording throughout.
+
 ## 2026-03-01 (docs: update AGENTS.md — add agent behavior, tool discipline, startup validation, testing strategy, ask-vs-proceed rules)
 
 ### Changed
