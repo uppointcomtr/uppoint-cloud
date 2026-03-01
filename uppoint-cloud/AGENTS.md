@@ -21,10 +21,9 @@ Do not replace this stack unless there is a strong technical reason and you expl
 
 * App layer: **Next.js** (App Router, TypeScript, strict mode)
 * UI: **shadcn/ui**
-* Database: **Managed PostgreSQL** accessed via **Prisma Accelerate**
-  — `DATABASE_URL` is a Prisma Accelerate connection string (`prisma://...`), not a standard PostgreSQL URL.
-  — Do not run `psql` or `pg_dump` against `DATABASE_URL`; it will not work.
-  — For operational tools (backup, restore, direct queries), use `DIRECT_DATABASE_URL` (the underlying PostgreSQL URL) if available.
+* Database: **Managed PostgreSQL** (standard `postgresql://` connection string)
+  — `DATABASE_URL` is a direct PostgreSQL URL — `psql`, `pg_dump`, and backup scripts can use it directly.
+  — Prisma Accelerate is **not** in use; do not add `prisma://` or `directUrl` unless explicitly migrating.
 * ORM: **Prisma**
 * Validation: **Zod**
 * Forms: **React Hook Form**

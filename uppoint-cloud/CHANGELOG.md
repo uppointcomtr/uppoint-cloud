@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-01 (docs: correct AGENTS.md DATABASE_URL description)
+
+### Changed
+- Removed incorrect Prisma Accelerate description from `AGENTS.md` (lines 24–27).
+  `DATABASE_URL` is a standard `postgresql://` URL — Accelerate is not in use.
+  Backup/ops scripts can use `DATABASE_URL` directly with `psql`/`pg_dump`.
+
 ## 2026-03-01 (security: neutralize EMAIL_NOT_VERIFIED in email login-start response)
 
 ### Changed
