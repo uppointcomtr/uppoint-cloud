@@ -1,0 +1,17 @@
+[Unit]
+Description=Uppoint Cloud — Donanım Tabanlı Performans Ayarlama
+Documentation=file:///opt/uppoint-cloud/scripts/tune-system.sh
+# local-fs bittikten sonra çalışır; uygulama servisinden önce olması tercih edilir.
+After=local-fs.target
+Before=uppoint-cloud.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/uppoint-cloud/scripts/tune-system.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+# multi-user.target tarafından her önyüklemede çalıştırılır.
+WantedBy=multi-user.target

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-03-01 (Otomatik donanım tabanlı performans ayarlama sistemi)
+
+### Added
+- **`scripts/tune-system.sh`**: Tüm bileşenleri sunucunun RAM ve CPU sayısına göre otomatik ayarlayan tek script:
+  - **PostgreSQL** → `/etc/postgresql/17/main/conf.d/99-uppoint-tuned.conf` (shared_buffers=RAM/4, effective_cache_size=RAM×0.75, work_mem, maintenance_work_mem, wal_buffers)
+  - **Node.js heap** → `/etc/uppoint-cloud-tuned.env` (`NODE_OPTIONS=--max-old-space-size=N`, MemoryMax'ın %75'i)
+  - **Kernel ağ parametreleri** → `/etc/sysctl.d/99-uppoint-tuned.conf` (somaxconn=1024, netdev_max_backlog=5000, tcp_fin_timeout=30, fs.file-max=1000000)
+  - **Nginx worker_connections** → CPU×1024 olacak şekilde `nginx.conf` güncellenir
+- **`ops/systemd/uppoint-tune.service`**: Önyükleme sırasında `tune-system.sh`'ı otomatik çalıştıran oneshot systemd servisi. `uppoint-cloud.service`'den önce tamamlanır.
+- **`ops/systemd/uppoint-cloud.service`**: `MemoryMax=20%` (yüzde sözdizimi — RAM yükseltilince otomatik ölçeklenir), `EnvironmentFile=-/etc/uppoint-cloud-tuned.env` (NODE_OPTIONS), `Wants=uppoint-tune.service` eklendi.
+
+### Changed
+- PostgreSQL'in donanıma bağlı ayarları (shared_buffers vb.) artık sabit değer yerine `conf.d/99-uppoint-tuned.conf` üzerinden yönetilir. Bir dahaki RAM yükseltmesinde `sudo bash scripts/tune-system.sh` komutu yeterlidir.
+
 ## 2026-03-01 (Production hazırlık — hata sayfaları, sağlık endpoint, nginx & systemd sertleştirme)
 
 ### Added

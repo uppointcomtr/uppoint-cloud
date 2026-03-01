@@ -1,7 +1,7 @@
 [Unit]
 Description=Uppoint Cloud Next.js Service
-After=network-online.target
-Wants=network-online.target
+After=network-online.target uppoint-tune.service
+Wants=network-online.target uppoint-tune.service
 
 [Service]
 Type=simple
@@ -11,6 +11,8 @@ WorkingDirectory=/opt/uppoint-cloud
 Environment=NODE_ENV=production
 Environment=PORT=3000
 EnvironmentFile=/opt/uppoint-cloud/.env
+# tune-system.sh tarafından oluşturulur; yoksa yoksay (-).
+EnvironmentFile=-/etc/uppoint-cloud-tuned.env
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache/images
@@ -19,7 +21,8 @@ Restart=always
 RestartSec=5
 TimeoutStartSec=30
 TimeoutStopSec=15
-MemoryMax=2G
+# RAM'in %20'si — donanım yükseltilirse otomatik olarak ölçeklenir.
+MemoryMax=20%
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
