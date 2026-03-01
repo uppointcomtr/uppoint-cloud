@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-03-01 (Security categories 17 & 18: config/env guardrails + background job hardening)
+
+### Changed
+- `lib/env/server.ts` production fail-fast rules expanded:
+  - `NEXT_PUBLIC_APP_URL` must use `https` in production.
+  - `AUTH_TRUST_HOST=true` required in production.
+  - `HEALTHCHECK_TOKEN` required in production.
+  - Managed PostgreSQL production URLs must include `sslmode=require` (or `verify-full`) when DB host is non-local.
+  - New optional envs: `UPPOINT_ALLOWED_HOSTS`, `UPPOINT_ALLOWED_ORIGINS`.
+- `proxy.ts` now applies production request boundary checks:
+  - invalid host headers rejected with `400 INVALID_HOST_HEADER`.
+  - cross-origin auth mutations (`/api/auth/*`, non-GET/HEAD/OPTIONS) rejected with `403 ORIGIN_NOT_ALLOWED`.
+  - matcher expanded to include `/api/auth/:path*` so edge guard is enforced on auth APIs too.
+- New request guard utility:
+  - `lib/security/request-guards.ts`
+  - test coverage: `tests/security/request-guards.test.ts`
+
+### Background jobs / ops hardening
+- `scripts/backup-db.sh` and `scripts/backup-redis.sh` now produce `*.sha256` checksum sidecars.
+- `scripts/restore-db.sh` and `scripts/restore-redis.sh` now verify checksums by default.
+  - unsigned legacy backups require explicit `--allow-unsigned`.
+- `scripts/cleanup-db.sh` now deletes expired `IdempotencyRecord` rows to prevent unbounded growth.
+
+### Docs
+- `README.md` and `ops/README.md` updated for:
+  - new env security knobs,
+  - host/origin edge-guard behavior,
+  - checksum-verified restore workflow.
+
 ## 2026-03-01 (docs: rewrite AGENTS.md — production-grade instruction set)
 
 ### Changed

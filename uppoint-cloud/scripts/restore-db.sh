@@ -4,14 +4,36 @@ set -euo pipefail
 ENV_FILE="/opt/uppoint-cloud/.env"
 BACKUP_FILE="${1:-}"
 CONFIRM_FLAG="${2:-}"
+OPTIONAL_FLAG="${3:-}"
+ALLOW_UNSIGNED=0
 
 if [ -z "$BACKUP_FILE" ] || [ "$CONFIRM_FLAG" != "--confirm" ]; then
-  echo "Usage: $0 <backup.sql.gz> --confirm" >&2
+  echo "Usage: $0 <backup.sql.gz> --confirm [--allow-unsigned]" >&2
+  exit 1
+fi
+
+if [ "$OPTIONAL_FLAG" = "--allow-unsigned" ]; then
+  ALLOW_UNSIGNED=1
+elif [ -n "$OPTIONAL_FLAG" ]; then
+  echo "[restore-db] unknown option: $OPTIONAL_FLAG" >&2
   exit 1
 fi
 
 if [ ! -f "$BACKUP_FILE" ]; then
   echo "[restore-db] backup file not found: $BACKUP_FILE" >&2
+  exit 1
+fi
+
+CHECKSUM_FILE="${BACKUP_FILE}.sha256"
+
+if [ -f "$CHECKSUM_FILE" ]; then
+  if ! sha256sum -c "$CHECKSUM_FILE" >/dev/null 2>&1; then
+    echo "[restore-db] checksum validation failed: $CHECKSUM_FILE" >&2
+    exit 1
+  fi
+elif [ "$ALLOW_UNSIGNED" -ne 1 ]; then
+  echo "[restore-db] missing checksum file: $CHECKSUM_FILE" >&2
+  echo "[restore-db] use --allow-unsigned only for legacy backups" >&2
   exit 1
 fi
 

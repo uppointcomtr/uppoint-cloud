@@ -12,6 +12,17 @@ const booleanFromString = z.preprocess((value) => {
 
 const emailBackendSchema = z.enum(["smtp", "disabled"]);
 
+function parseCsv(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
 const serverEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().url(),
@@ -23,6 +34,8 @@ const serverEnvSchema = z.object({
   AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
   AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().min(30).max(3650).default(180),
   HEALTHCHECK_TOKEN: z.string().min(16).optional(),
+  UPPOINT_ALLOWED_HOSTS: z.string().optional(),
+  UPPOINT_ALLOWED_ORIGINS: z.string().optional(),
   RATE_LIMIT_REDIS_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
@@ -42,6 +55,83 @@ const serverEnvSchema = z.object({
   UPPOINT_SMS_DATACODING: z.coerce.number().int().min(0).max(2).default(2),
   UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS: booleanFromString.default(false),
 }).superRefine((input, context) => {
+  let appUrl: URL | null = null;
+  let databaseUrl: URL | null = null;
+
+  try {
+    appUrl = new URL(input.NEXT_PUBLIC_APP_URL);
+  } catch {
+    // NEXT_PUBLIC_APP_URL format validation is already handled by zod.
+  }
+
+  try {
+    databaseUrl = new URL(input.DATABASE_URL);
+  } catch {
+    // DATABASE_URL format validation is already handled by zod.
+  }
+
+  if (input.NODE_ENV === "production") {
+    if (!appUrl || appUrl.protocol !== "https:") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["NEXT_PUBLIC_APP_URL"],
+        message: "NEXT_PUBLIC_APP_URL must use https in production",
+      });
+    }
+
+    if (!input.AUTH_TRUST_HOST) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AUTH_TRUST_HOST"],
+        message: "AUTH_TRUST_HOST must be true in production",
+      });
+    }
+
+    if (!input.HEALTHCHECK_TOKEN) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["HEALTHCHECK_TOKEN"],
+        message: "HEALTHCHECK_TOKEN is required in production",
+      });
+    }
+
+    if (databaseUrl) {
+      const isLocalDatabaseHost = ["localhost", "127.0.0.1", "::1"].includes(databaseUrl.hostname);
+      const sslMode = databaseUrl.searchParams.get("sslmode");
+
+      if (!isLocalDatabaseHost && sslMode !== "require" && sslMode !== "verify-full") {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["DATABASE_URL"],
+          message: "Managed PostgreSQL production connections must include sslmode=require (or verify-full)",
+        });
+      }
+    }
+
+    if (appUrl) {
+      const canonicalHost = appUrl.host.toLowerCase();
+      const canonicalOrigin = appUrl.origin.toLowerCase();
+      const allowedHosts = parseCsv(input.UPPOINT_ALLOWED_HOSTS).map((value) => value.toLowerCase());
+      const allowedOrigins = parseCsv(input.UPPOINT_ALLOWED_ORIGINS).map((value) => value.toLowerCase());
+
+      if (allowedHosts.length > 0 && !allowedHosts.includes(canonicalHost)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["UPPOINT_ALLOWED_HOSTS"],
+          message: "UPPOINT_ALLOWED_HOSTS must include NEXT_PUBLIC_APP_URL host",
+        });
+      }
+
+      if (allowedOrigins.length > 0 && !allowedOrigins.includes(canonicalOrigin)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["UPPOINT_ALLOWED_ORIGINS"],
+          message: "UPPOINT_ALLOWED_ORIGINS must include NEXT_PUBLIC_APP_URL origin",
+        });
+      }
+    }
+  }
+
   if (input.UPSTASH_REDIS_REST_URL && !input.UPSTASH_REDIS_REST_TOKEN) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -128,6 +218,8 @@ const parsedEnv = serverEnvSchema.safeParse({
   AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES: process.env.AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES,
   AUDIT_LOG_RETENTION_DAYS: process.env.AUDIT_LOG_RETENTION_DAYS,
   HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
+  UPPOINT_ALLOWED_HOSTS: process.env.UPPOINT_ALLOWED_HOSTS,
+  UPPOINT_ALLOWED_ORIGINS: process.env.UPPOINT_ALLOWED_ORIGINS,
   RATE_LIMIT_REDIS_URL: process.env.RATE_LIMIT_REDIS_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,

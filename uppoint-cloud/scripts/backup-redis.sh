@@ -10,6 +10,7 @@ KEEP_DAYS=14
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_FILE="${BACKUP_DIR}/redis_${TIMESTAMP}.tar.gz"
 TMP_FILE="${BACKUP_FILE}.tmp"
+CHECKSUM_FILE="${BACKUP_FILE}.sha256"
 
 REDIS_DATA_DIR="/var/lib/redis"
 RDB_FILE="${REDIS_DATA_DIR}/dump.rdb"
@@ -60,7 +61,14 @@ fi
 mv "$TMP_FILE" "$BACKUP_FILE"
 chmod 600 "$BACKUP_FILE"
 
-echo "[redis-backup] Tamamlandı: $BACKUP_FILE ($(du -sh "$BACKUP_FILE" | cut -f1))"
+sha256sum "$BACKUP_FILE" > "$CHECKSUM_FILE"
+chmod 600 "$CHECKSUM_FILE"
 
-find "$BACKUP_DIR" -name "redis_*.tar.gz" -mtime +"$KEEP_DAYS" -delete
+echo "[redis-backup] Tamamlandı: $BACKUP_FILE ($(du -sh "$BACKUP_FILE" | cut -f1))"
+echo "[redis-backup] Checksum: $CHECKSUM_FILE"
+
+while IFS= read -r expired_backup; do
+  rm -f "$expired_backup" "${expired_backup}.sha256"
+done < <(find "$BACKUP_DIR" -name "redis_*.tar.gz" -mtime +"$KEEP_DAYS")
+
 echo "[redis-backup] Eski yedekler temizlendi (>${KEEP_DAYS} gün)"

@@ -63,8 +63,10 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
-- `AUDIT_LOG_RETENTION_DAYS` (optional, default `90`, min `7`)
+- `AUDIT_LOG_RETENTION_DAYS` (optional, default `180`, min `30`)
 - `HEALTHCHECK_TOKEN` (optional but recommended in production; required as `x-health-token` when set)
+- `UPPOINT_ALLOWED_HOSTS` (optional, comma-separated host allowlist for production request host validation)
+- `UPPOINT_ALLOWED_ORIGINS` (optional, comma-separated origin allowlist for production auth API origin validation)
 - `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
 - `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
 - `UPSTASH_REDIS_REST_TOKEN` (optional, required with `UPSTASH_REDIS_REST_URL`)
@@ -190,6 +192,7 @@ Run this checklist after deployment or UI-affecting changes:
 - `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated (`410 ENDPOINT_DEPRECATED`) to keep only the dual-verification challenge flow active.
 - `POST /api/auth/verify-email` is the only mutation endpoint for email verification; `GET /api/auth/verify-email` returns `405`.
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
+- Production edge guard rejects invalid `Host/X-Forwarded-Host` values (`INVALID_HOST_HEADER`) and invalid cross-origin auth mutations (`ORIGIN_NOT_ALLOWED`).
 - CSP is nonce-based at Nginx layer: per-request `$request_id` is used as script nonce and injected into HTML script tags via `sub_filter`.
 - `script-src` no longer uses `unsafe-inline`; `style-src` keeps `unsafe-inline` for framework-generated inline styles.
 - Health endpoint exposure is minimized:
@@ -197,6 +200,7 @@ Run this checklist after deployment or UI-affecting changes:
   - in production, if `HEALTHCHECK_TOKEN` is set, callers must send `x-health-token`
   - local Nginx probe endpoint `/healthz` is loopback-only and injects token via snippet (`/etc/nginx/snippets/uppoint-health-token.conf`)
 - Backup scripts now enforce restrictive filesystem permissions (`umask 077`, directories `700`, files `600`).
+- Backup scripts now create `*.sha256` checksum sidecars, and restore scripts verify checksums by default.
 
 ## Production run on `/opt/uppoint-cloud`
 

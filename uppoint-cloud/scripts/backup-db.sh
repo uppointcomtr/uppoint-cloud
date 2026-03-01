@@ -31,6 +31,7 @@ DB_NAME_FROM_URL="$(printf '%s' "$DATABASE_URL" | sed -E 's#^[^:]+://[^/]+/([^?]
 DB_NAME="${DB_NAME_FROM_URL:-database}"
 BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_${TIMESTAMP}.sql.gz"
 TMP_FILE="${BACKUP_FILE}.tmp"
+CHECKSUM_FILE="${BACKUP_FILE}.sha256"
 
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
@@ -60,8 +61,16 @@ fi
 mv "$TMP_FILE" "$BACKUP_FILE"
 chmod 600 "$BACKUP_FILE"
 
+# Checksum üret (restore öncesi doğrulama için)
+sha256sum "$BACKUP_FILE" > "$CHECKSUM_FILE"
+chmod 600 "$CHECKSUM_FILE"
+
 echo "[backup] Tamamlandı: $BACKUP_FILE ($(du -sh "$BACKUP_FILE" | cut -f1))"
+echo "[backup] Checksum: $CHECKSUM_FILE"
 
 # 14 günden eski yedekleri sil
-find "$BACKUP_DIR" -name "${DB_NAME}_*.sql.gz" -mtime +"$KEEP_DAYS" -delete
+while IFS= read -r expired_backup; do
+  rm -f "$expired_backup" "${expired_backup}.sha256"
+done < <(find "$BACKUP_DIR" -name "${DB_NAME}_*.sql.gz" -mtime +"$KEEP_DAYS")
+
 echo "[backup] Eski yedekler temizlendi (>${KEEP_DAYS} gün)"

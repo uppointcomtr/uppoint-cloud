@@ -76,4 +76,8 @@ echo "[cleanup] RegistrationVerificationChallenge: ${RVC_DELETED} satır silindi
 RST_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"RevokedSessionToken\" WHERE \"expiresAt\" < NOW() RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] RevokedSessionToken: ${RST_DELETED} satır silindi"
 
+# 9. IdempotencyRecord — süresi geçmiş kayıtlar
+IDR_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"IdempotencyRecord\" WHERE \"expiresAt\" < NOW() RETURNING id) SELECT count(*) FROM d;")
+echo "[cleanup] IdempotencyRecord: ${IDR_DELETED} satır silindi"
+
 echo "[cleanup] Tamamlandı: $(date)"

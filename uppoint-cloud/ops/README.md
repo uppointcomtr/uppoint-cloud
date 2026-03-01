@@ -38,6 +38,9 @@ DATABASE_URL=postgresql://...
 AUTH_SECRET=replace-with-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
+HEALTHCHECK_TOKEN=replace-with-strong-random-token
+UPPOINT_ALLOWED_HOSTS=cloud.uppoint.com.tr
+UPPOINT_ALLOWED_ORIGINS=https://cloud.uppoint.com.tr
 ```
 
 This matches the shipped systemd unit (`EnvironmentFile=/opt/uppoint-cloud/.env`).
@@ -330,7 +333,15 @@ Redis restore (requires explicit confirmation):
 sudo /opt/uppoint-cloud/scripts/restore-redis.sh /opt/backups/redis/backup-file.tar.gz --confirm
 ```
 
-Both restore scripts create a pre-restore backup snapshot before modifying live data.
+Both restore scripts verify `*.sha256` checksums by default.
+Legacy unsigned backups can be restored only with explicit override:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/restore-db.sh /opt/backups/postgres/legacy.sql.gz --confirm --allow-unsigned
+sudo /opt/uppoint-cloud/scripts/restore-redis.sh /opt/backups/redis/legacy.tar.gz --confirm --allow-unsigned
+```
+
+PostgreSQL restore also creates a pre-restore backup snapshot before modifying live data.
 
 ## 14. Nginx config drift check
 
