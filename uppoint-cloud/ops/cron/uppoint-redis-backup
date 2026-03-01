@@ -1,0 +1,2 @@
+# Uppoint Cloud Redis backup (daily)
+40 2 * * * root /opt/uppoint-cloud/scripts/backup-redis.sh >> /var/log/uppoint-redis-backup.log 2>&1

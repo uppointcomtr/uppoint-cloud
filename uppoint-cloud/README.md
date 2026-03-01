@@ -85,6 +85,7 @@ Rate-limit backend priority:
 
 When `RATE_LIMIT_REDIS_URL` is set, auth rate limiting uses local Redis sliding window.
 If local Redis is not configured/reachable, system tries Upstash; if that is unavailable too, it safely falls back to Prisma-backed rate limiting.
+Note: Redis `maxmemory` is a Redis-specific data-store cap and does not conflict with `uppoint-cloud.service` / `tune-system.sh` memory tuning for Node.js and kernel layers.
 
 Operational check:
 

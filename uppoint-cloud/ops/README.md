@@ -79,6 +79,14 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
+Auth API edge rate-limit zone config:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/nginx/uppoint-rate-limit.conf /etc/nginx/conf.d/uppoint-rate-limit.conf
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
 ## 3. Let's Encrypt issuance
 
 Issue certificate with webroot challenge:
@@ -129,3 +137,56 @@ Automatic certificate issuance will fail if any of the following are not ready:
 - Inbound TCP `80` and `443` are blocked by firewall/security groups.
 - Another service already occupies `80` during HTTP challenge.
 - Nginx config does not expose `/.well-known/acme-challenge/` from `/var/www/certbot`.
+
+## 6. Redis rate-limit hardening
+
+Install and enable Redis:
+
+```bash
+sudo apt-get update
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y redis-server
+sudo systemctl enable --now redis-server
+redis-cli ping
+```
+
+Apply Redis hardening config:
+
+```bash
+sudo mkdir -p /etc/redis/redis.conf.d
+sudo cp /opt/uppoint-cloud/ops/redis/99-uppoint-cloud.conf /etc/redis/redis.conf.d/99-uppoint-cloud.conf
+grep -q '^include /etc/redis/redis.conf.d/\*\.conf$' /etc/redis/redis.conf || echo 'include /etc/redis/redis.conf.d/*.conf' | sudo tee -a /etc/redis/redis.conf
+sudo systemctl restart redis-server
+redis-cli CONFIG GET appendonly maxmemory maxmemory-policy appendfsync
+```
+
+Set app environment for local Redis rate limiting:
+
+```bash
+echo 'RATE_LIMIT_REDIS_URL=redis://127.0.0.1:6379' | sudo tee -a /opt/uppoint-cloud/.env
+sudo systemctl restart uppoint-cloud.service
+```
+
+## 7. Fail2ban auth abuse jail
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/fail2ban/nginx-uppoint-auth.conf /etc/fail2ban/filter.d/nginx-uppoint-auth.conf
+sudo cp /opt/uppoint-cloud/ops/fail2ban/uppoint-auth.local /etc/fail2ban/jail.d/uppoint-auth.local
+sudo systemctl restart fail2ban
+sudo fail2ban-client status nginx-uppoint-auth
+```
+
+## 8. Redis backup automation
+
+Install cron entry:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-redis-backup /etc/cron.d/uppoint-redis-backup
+sudo chmod 644 /etc/cron.d/uppoint-redis-backup
+```
+
+Run a manual backup test:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/backup-redis.sh
+ls -lah /opt/backups/redis
+```

@@ -1,11 +1,16 @@
 # Changelog
 
-## 2026-03-01 (Local Redis rate-limit backend activation)
+## 2026-03-01 (Local Redis + Nginx/Fail2ban hardening bundle)
 
 ### Added
 - Sunucuya `redis-server` (v7.0.15) + `redis-tools` kuruldu, systemd altında etkinleştirildi (`redis-server.service`).
 - `lib/env/server.ts`: `RATE_LIMIT_REDIS_URL` environment variable eklendi (opsiyonel).
 - `package.json`: `redis` npm dependency eklendi.
+- `scripts/backup-redis.sh`: Redis persistence dosyaları (`dump.rdb` + `appendonlydir`) için günlük backup scripti.
+- `ops/redis/99-uppoint-cloud.conf`: Redis hardening örnek konfigürasyonu.
+- `ops/nginx/uppoint-rate-limit.conf`: Auth API `limit_req_zone` konfigürasyonu.
+- `ops/fail2ban/nginx-uppoint-auth.conf` + `ops/fail2ban/uppoint-auth.local`: Auth 429 pattern jail/filter dosyaları.
+- `ops/cron/uppoint-redis-backup`: günlük Redis backup cron şablonu.
 
 ### Changed
 - `lib/rate-limit.ts` backend önceliği güncellendi:
@@ -13,18 +18,31 @@
   2. Upstash (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`)
   3. Prisma fallback
 - Local Redis için atomic sliding-window algoritması (Lua + sorted set) eklendi.
+- Redis hardening runtime ayarları uygulandı:
+  - `appendonly yes`
+  - `appendfsync everysec`
+  - `maxmemory 256mb`
+  - `maxmemory-policy volatile-ttl`
+- Nginx auth route katmanında edge throttling eklendi (`/api/auth/*`, zone `uppoint_auth_per_ip`, 30r/m + burst 20).
+- Fail2ban tarafında `nginx-uppoint-auth` jail aktif edildi (access.log üzerinde `/api/auth/*` + `429` eşleşmesi).
+- Redis backup cron gerçek sisteme yazıldı: `/etc/cron.d/uppoint-redis-backup`.
+- Logrotate kuralına `/var/log/uppoint-redis-backup.log` eklendi.
 - `.env` yerel çalışma için `RATE_LIMIT_REDIS_URL=redis://127.0.0.1:6379` ile güncellendi (repo dışı operasyonel dosya).
-- `README.md` rate-limit backend önceliği ve env dokümantasyonu güncellendi.
+- `README.md` + `ops/README.md` rate-limit backend önceliği, maxmemory açıklaması ve hardening runbook’u güncellendi.
 
 ### Verification
 - `redis-cli ping` -> `PONG`
 - `systemctl is-active redis-server` -> `active`
+- `redis-cli CONFIG GET appendonly maxmemory maxmemory-policy appendfsync` -> beklenen değerler doğrulandı
+- `nginx -t` + `systemctl reload nginx` -> ✓
+- `fail2ban-client status nginx-uppoint-auth` -> ✓
+- `/opt/uppoint-cloud/scripts/backup-redis.sh` manuel çalıştırma -> ✓
 - `npm run lint` -> ✓
 - `npm run typecheck` -> ✓
 - `npm run test` -> ✓
 - `npm run test:e2e` -> ✓
 - `npm run build` -> ✓ (`uppoint-cloud.service` restarted)
-- Runtime check: aynı IP ile 6. register isteğinde `429 TOO_MANY_REQUESTS`
+- Runtime check: aynı IP ile 6. register isteğinde `429 TOO_MANY_REQUESTS`, Redis key oluştu ve `RateLimitAttempt` DB satırı artmadı (`0 -> 0`).
 
 ## 2026-03-01 (Proxy geri dönüşü + backup tracking temizliği + auth E2E smoke)
 
