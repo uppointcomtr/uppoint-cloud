@@ -2,7 +2,7 @@ import "server-only";
 
 import nodemailer from "nodemailer";
 
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 
 let transporter: nodemailer.Transporter | null = null;
 

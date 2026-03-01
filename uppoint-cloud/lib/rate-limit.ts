@@ -8,7 +8,7 @@ import { headers } from "next/headers";
 import { createClient, type RedisClientType } from "redis";
 
 import { prisma } from "@/db/client";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 
 const upstashConfig = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
   ? {

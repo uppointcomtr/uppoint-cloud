@@ -2,7 +2,7 @@ import "server-only";
 
 import crypto from "crypto";
 
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 
 function resolveOtpPepper(): string {
   return env.AUTH_OTP_PEPPER ?? env.AUTH_SECRET;

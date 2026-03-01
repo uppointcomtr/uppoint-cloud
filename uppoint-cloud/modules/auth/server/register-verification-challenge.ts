@@ -1,22 +1,24 @@
 import "server-only";
 
 import crypto from "crypto";
-import { TenantRole } from "@prisma/client";
+import { Prisma, TenantRole } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "@/db/client";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
+import { getRegisterSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 
 import { sendAuthEmail } from "./email-service";
 import { hashOtpCode } from "./otp-hash";
+import { hashPassword } from "./password";
 import { sendAuthSms } from "./sms-service";
 
 const REGISTER_CODE_TTL_MINUTES = 3;
 const REGISTER_MAX_ATTEMPTS = 5;
 
-const startRegisterVerificationSchema = z.object({
-  userId: z.string().trim().min(1).max(191),
+const restartRegisterVerificationSchema = z.object({
+  challengeId: z.string().trim().min(1).max(191),
   locale: z.string().optional(),
 });
 
@@ -37,6 +39,19 @@ function resolveLocale(value: string | undefined): Locale {
   }
 
   return defaultLocale;
+}
+
+function getLocaleFromInput(rawInput: unknown): Locale {
+  if (typeof rawInput !== "object" || rawInput === null) {
+    return defaultLocale;
+  }
+
+  const localeValue = (rawInput as Record<string, unknown>).locale;
+  return resolveLocale(typeof localeValue === "string" ? localeValue : undefined);
+}
+
+function normalizePhone(phone: string): string {
+  return phone.startsWith("+") ? phone : `+${phone}`;
 }
 
 function hashValue(value: string): string {
@@ -112,7 +127,8 @@ export class RegisterVerificationChallengeError extends Error {
       | "SMS_NOT_ENABLED"
       | "SMS_DELIVERY_FAILED"
       | "PHONE_NOT_AVAILABLE"
-      | "USER_NOT_FOUND"
+      | "EMAIL_TAKEN"
+      | "REGISTRATION_CONFLICT"
       | "UNKNOWN",
     message: string,
   ) {
@@ -121,85 +137,116 @@ export class RegisterVerificationChallengeError extends Error {
   }
 }
 
+interface IssueRegisterChallengeInput {
+  email: string;
+  name: string;
+  phone: string;
+  passwordHash: string;
+  locale: Locale;
+}
+
 interface StartRegisterVerificationDependencies {
-  findUserById: (userId: string) => Promise<{
-    id: string;
+  findActiveUserByEmail: (email: string) => Promise<{ id: string } | null>;
+  findActiveUserByPhone: (phone: string) => Promise<{ id: string } | null>;
+  deletePendingChallengesByEmail: (email: string) => Promise<void>;
+  createPendingChallenge: (input: {
     email: string;
-    name: string | null;
-    phone: string | null;
-  } | null>;
-  deleteChallengesForUser: (userId: string) => Promise<void>;
-  createChallenge: (input: {
-    userId: string;
+    name: string;
+    phone: string;
+    passwordHash: string;
     emailCodeHash: string;
     emailCodeExpiresAt: Date;
   }) => Promise<{ id: string }>;
   sendEmailCode: (input: { to: string; subject: string; text: string }) => Promise<void>;
+  hashPassword: (password: string) => Promise<string>;
   now: () => Date;
   generateCode: () => string;
   hashValue: (value: string) => string;
 }
 
 const defaultStartRegisterVerificationDependencies: StartRegisterVerificationDependencies = {
-  findUserById: async (userId) =>
+  findActiveUserByEmail: async (email) =>
     prisma.user.findFirst({
-      where: { id: userId, deletedAt: null },
-      select: { id: true, email: true, name: true, phone: true },
+      where: {
+        email,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
     }),
-  deleteChallengesForUser: async (userId) => {
-    await prisma.registrationVerificationChallenge.deleteMany({ where: { userId } });
+  findActiveUserByPhone: async (phone) =>
+    prisma.user.findFirst({
+      where: {
+        phone,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    }),
+  deletePendingChallengesByEmail: async (email) => {
+    await prisma.registrationVerificationChallenge.deleteMany({
+      where: {
+        email,
+      },
+    });
   },
-  createChallenge: async (input) =>
+  createPendingChallenge: async (input) =>
     prisma.registrationVerificationChallenge.create({
       data: {
-        userId: input.userId,
+        email: input.email,
+        name: input.name,
+        phone: input.phone,
+        passwordHash: input.passwordHash,
         emailCodeHash: input.emailCodeHash,
         emailCodeExpiresAt: input.emailCodeExpiresAt,
       },
-      select: { id: true },
+      select: {
+        id: true,
+      },
     }),
   sendEmailCode: async (input) => {
     await sendAuthEmail(input);
   },
+  hashPassword: async (password) => hashPassword(password, env.AUTH_BCRYPT_ROUNDS),
   now: () => new Date(),
   generateCode: generateNumericCode,
   hashValue,
 };
 
-export async function startRegisterVerificationChallenge(
-  rawInput: unknown,
-  dependencies: StartRegisterVerificationDependencies = defaultStartRegisterVerificationDependencies,
+async function issueRegisterChallenge(
+  input: IssueRegisterChallengeInput,
+  dependencies: Pick<
+    StartRegisterVerificationDependencies,
+    "deletePendingChallengesByEmail" | "createPendingChallenge" | "sendEmailCode" | "now" | "generateCode" | "hashValue"
+  >,
 ): Promise<{ challengeId: string; emailCodeExpiresAt: Date }> {
-  const input = startRegisterVerificationSchema.parse(rawInput);
-  const locale = resolveLocale(input.locale);
-  const user = await dependencies.findUserById(input.userId);
-
-  if (!user) {
-    throw new RegisterVerificationChallengeError("USER_NOT_FOUND", "User not found");
-  }
-
   const now = dependencies.now();
   const emailCodeExpiresAt = expiresAtFrom(now, REGISTER_CODE_TTL_MINUTES);
   const emailCode = dependencies.generateCode();
   const emailCodeHash = dependencies.hashValue(emailCode);
 
-  await dependencies.deleteChallengesForUser(user.id);
+  await dependencies.deletePendingChallengesByEmail(input.email);
 
-  const challenge = await dependencies.createChallenge({
-    userId: user.id,
+  const challenge = await dependencies.createPendingChallenge({
+    email: input.email,
+    name: input.name,
+    phone: input.phone,
+    passwordHash: input.passwordHash,
     emailCodeHash,
     emailCodeExpiresAt,
   });
 
   const message = buildRegisterEmailCodeMessage({
-    locale,
-    name: user.name,
+    locale: input.locale,
+    name: input.name,
     code: emailCode,
     ttlMinutes: REGISTER_CODE_TTL_MINUTES,
   });
 
   await dependencies.sendEmailCode({
-    to: user.email,
+    to: input.email,
     subject: message.subject,
     text: message.text,
   });
@@ -210,17 +257,112 @@ export async function startRegisterVerificationChallenge(
   };
 }
 
+export async function startRegisterVerificationChallenge(
+  rawInput: unknown,
+  dependencies: StartRegisterVerificationDependencies = defaultStartRegisterVerificationDependencies,
+): Promise<{ challengeId: string; emailCodeExpiresAt: Date }> {
+  const locale = getLocaleFromInput(rawInput);
+  const parsedRegisterInput = getRegisterSchema(locale).parse(rawInput);
+  const normalizedPhone = normalizePhone(parsedRegisterInput.phone);
+
+  const [emailUser, phoneUser] = await Promise.all([
+    dependencies.findActiveUserByEmail(parsedRegisterInput.email),
+    dependencies.findActiveUserByPhone(normalizedPhone),
+  ]);
+
+  if (emailUser || phoneUser) {
+    throw new RegisterVerificationChallengeError(
+      "EMAIL_TAKEN",
+      "A user with this email or phone already exists",
+    );
+  }
+
+  const passwordHash = await dependencies.hashPassword(parsedRegisterInput.password);
+
+  return issueRegisterChallenge(
+    {
+      email: parsedRegisterInput.email,
+      name: parsedRegisterInput.name,
+      phone: normalizedPhone,
+      passwordHash,
+      locale,
+    },
+    dependencies,
+  );
+}
+
+interface RestartRegisterVerificationDependencies extends StartRegisterVerificationDependencies {
+  findPendingChallengeById: (challengeId: string) => Promise<{
+    email: string;
+    name: string;
+    phone: string;
+    passwordHash: string;
+  } | null>;
+}
+
+const defaultRestartRegisterVerificationDependencies: RestartRegisterVerificationDependencies = {
+  ...defaultStartRegisterVerificationDependencies,
+  findPendingChallengeById: async (challengeId) =>
+    prisma.registrationVerificationChallenge.findUnique({
+      where: {
+        id: challengeId,
+      },
+      select: {
+        email: true,
+        name: true,
+        phone: true,
+        passwordHash: true,
+      },
+    }),
+};
+
+export async function restartRegisterVerificationChallenge(
+  rawInput: unknown,
+  dependencies: RestartRegisterVerificationDependencies = defaultRestartRegisterVerificationDependencies,
+): Promise<{ challengeId: string; emailCodeExpiresAt: Date }> {
+  const input = restartRegisterVerificationSchema.parse(rawInput);
+  const locale = resolveLocale(input.locale);
+  const pendingChallenge = await dependencies.findPendingChallengeById(input.challengeId);
+
+  if (!pendingChallenge) {
+    throw new RegisterVerificationChallengeError(
+      "INVALID_OR_EXPIRED_CHALLENGE",
+      "Register challenge is invalid or expired",
+    );
+  }
+
+  const [emailUser, phoneUser] = await Promise.all([
+    dependencies.findActiveUserByEmail(pendingChallenge.email),
+    dependencies.findActiveUserByPhone(pendingChallenge.phone),
+  ]);
+
+  if (emailUser || phoneUser) {
+    throw new RegisterVerificationChallengeError(
+      "EMAIL_TAKEN",
+      "A user with this email or phone already exists",
+    );
+  }
+
+  return issueRegisterChallenge(
+    {
+      email: pendingChallenge.email,
+      name: pendingChallenge.name,
+      phone: pendingChallenge.phone,
+      passwordHash: pendingChallenge.passwordHash,
+      locale,
+    },
+    dependencies,
+  );
+}
+
 interface VerifyRegisterEmailCodeDependencies {
   findChallengeById: (id: string) => Promise<{
     id: string;
-    userId: string;
+    phone: string;
     emailCodeHash: string;
     emailCodeExpiresAt: Date;
     emailCodeAttempts: number;
     emailCodeVerifiedAt: Date | null;
-    user: {
-      phone: string | null;
-    };
   } | null>;
   incrementEmailAttempts: (id: string) => Promise<number>;
   markEmailVerifiedAndStoreSmsCode: (input: {
@@ -240,19 +382,16 @@ interface VerifyRegisterEmailCodeDependencies {
 const defaultVerifyRegisterEmailCodeDependencies: VerifyRegisterEmailCodeDependencies = {
   findChallengeById: async (id) =>
     prisma.registrationVerificationChallenge.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       select: {
         id: true,
-        userId: true,
+        phone: true,
         emailCodeHash: true,
         emailCodeExpiresAt: true,
         emailCodeAttempts: true,
         emailCodeVerifiedAt: true,
-        user: {
-          select: {
-            phone: true,
-          },
-        },
       },
     }),
   incrementEmailAttempts: async (id) => {
@@ -269,6 +408,7 @@ const defaultVerifyRegisterEmailCodeDependencies: VerifyRegisterEmailCodeDepende
         },
       },
     });
+
     return result.count;
   },
   markEmailVerifiedAndStoreSmsCode: async (input) => {
@@ -291,6 +431,7 @@ const defaultVerifyRegisterEmailCodeDependencies: VerifyRegisterEmailCodeDepende
         smsCodeAttempts: 0,
       },
     });
+
     return result.count === 1;
   },
   sendSmsCode: async (input) => {
@@ -333,7 +474,7 @@ export async function verifyRegisterEmailCode(
     throw new RegisterVerificationChallengeError("INVALID_EMAIL_CODE", "Email code is invalid");
   }
 
-  if (!challenge.user.phone) {
+  if (!challenge.phone) {
     throw new RegisterVerificationChallengeError(
       "PHONE_NOT_AVAILABLE",
       "Phone number is required for SMS verification",
@@ -365,7 +506,7 @@ export async function verifyRegisterEmailCode(
 
   try {
     await dependencies.sendSmsCode({
-      to: challenge.user.phone,
+      to: challenge.phone,
       message: buildRegisterSmsCodeMessage({
         locale,
         code: smsCode,
@@ -381,14 +522,17 @@ export async function verifyRegisterEmailCode(
 
   return {
     smsCodeExpiresAt,
-    maskedPhone: maskPhone(challenge.user.phone),
+    maskedPhone: maskPhone(challenge.phone),
   };
 }
 
 interface VerifyRegisterSmsCodeDependencies {
   findChallengeById: (id: string) => Promise<{
     id: string;
-    userId: string;
+    email: string;
+    name: string;
+    phone: string;
+    passwordHash: string;
     smsCodeHash: string | null;
     smsCodeExpiresAt: Date | null;
     smsCodeAttempts: number;
@@ -398,10 +542,13 @@ interface VerifyRegisterSmsCodeDependencies {
   incrementSmsAttempts: (id: string) => Promise<number>;
   completeRegistrationVerification: (input: {
     challengeId: string;
-    userId: string;
+    email: string;
+    name: string;
+    phone: string;
+    passwordHash: string;
     expectedSmsCodeHash: string;
     now: Date;
-  }) => Promise<boolean>;
+  }) => Promise<string | null>;
   now: () => Date;
   hashValue: (value: string) => string;
 }
@@ -409,10 +556,15 @@ interface VerifyRegisterSmsCodeDependencies {
 const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencies = {
   findChallengeById: async (id) =>
     prisma.registrationVerificationChallenge.findUnique({
-      where: { id },
+      where: {
+        id,
+      },
       select: {
         id: true,
-        userId: true,
+        email: true,
+        name: true,
+        phone: true,
+        passwordHash: true,
         smsCodeHash: true,
         smsCodeExpiresAt: true,
         smsCodeAttempts: true,
@@ -434,6 +586,7 @@ const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencie
         },
       },
     });
+
     return result.count;
   },
   completeRegistrationVerification: async (input) => {
@@ -441,7 +594,6 @@ const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencie
       const consumed = await tx.registrationVerificationChallenge.updateMany({
         where: {
           id: input.challengeId,
-          userId: input.userId,
           emailCodeVerifiedAt: {
             not: null,
           },
@@ -460,55 +612,65 @@ const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencie
       });
 
       if (consumed.count !== 1) {
-        return false;
+        return null;
       }
 
-      await tx.user.update({
-        where: { id: input.userId },
-        data: {
-          emailVerified: input.now,
-          phoneVerifiedAt: input.now,
-        },
-      });
+      let userId: string;
 
-      const existingMembership = await tx.tenantMembership.findFirst({
-        where: {
-          userId: input.userId,
-          tenant: {
-            deletedAt: null,
+      try {
+        const user = await tx.user.create({
+          data: {
+            email: input.email,
+            name: input.name,
+            phone: input.phone,
+            passwordHash: input.passwordHash,
+            emailVerified: input.now,
+            phoneVerifiedAt: input.now,
           },
+          select: {
+            id: true,
+          },
+        });
+        userId = user.id;
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError
+          && error.code === "P2002"
+        ) {
+          throw new RegisterVerificationChallengeError(
+            "REGISTRATION_CONFLICT",
+            "Registration data conflicts with an existing account",
+          );
+        }
+        throw error;
+      }
+
+      // Security-sensitive: every verified account is provisioned into an isolated tenant boundary by default.
+      const tenant = await tx.tenant.create({
+        data: {
+          slug: `usr-${userId}`,
+          name: `Workspace ${userId.slice(-6)}`,
         },
         select: {
           id: true,
         },
       });
 
-      if (!existingMembership) {
-        // Security-sensitive: every verified account is provisioned into an isolated tenant boundary by default.
-        const tenant = await tx.tenant.create({
-          data: {
-            slug: `usr-${input.userId}`,
-            name: `Workspace ${input.userId.slice(-6)}`,
-          },
-          select: {
-            id: true,
-          },
-        });
-
-        await tx.tenantMembership.create({
-          data: {
-            tenantId: tenant.id,
-            userId: input.userId,
-            role: TenantRole.OWNER,
-          },
-        });
-      }
-
-      await tx.registrationVerificationChallenge.deleteMany({
-        where: { id: input.challengeId },
+      await tx.tenantMembership.create({
+        data: {
+          tenantId: tenant.id,
+          userId,
+          role: TenantRole.OWNER,
+        },
       });
 
-      return true;
+      await tx.registrationVerificationChallenge.deleteMany({
+        where: {
+          email: input.email,
+        },
+      });
+
+      return userId;
     });
   },
   now: () => new Date(),
@@ -547,19 +709,22 @@ export async function verifyRegisterSmsCode(
   const providedCodeHash = dependencies.hashValue(input.smsCode);
 
   // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
-  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.smsCodeHash!, "hex"))) {
+  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.smsCodeHash, "hex"))) {
     await dependencies.incrementSmsAttempts(challenge.id);
     throw new RegisterVerificationChallengeError("INVALID_SMS_CODE", "SMS code is invalid");
   }
 
-  const completed = await dependencies.completeRegistrationVerification({
+  const userId = await dependencies.completeRegistrationVerification({
     challengeId: challenge.id,
-    userId: challenge.userId,
+    email: challenge.email,
+    name: challenge.name,
+    phone: challenge.phone,
+    passwordHash: challenge.passwordHash,
     expectedSmsCodeHash: providedCodeHash,
     now,
   });
 
-  if (!completed) {
+  if (!userId) {
     throw new RegisterVerificationChallengeError(
       "INVALID_OR_EXPIRED_CHALLENGE",
       "Register SMS challenge is invalid or expired",
@@ -568,6 +733,6 @@ export async function verifyRegisterSmsCode(
 
   return {
     verified: true,
-    userId: challenge.userId,
+    userId,
   };
 }

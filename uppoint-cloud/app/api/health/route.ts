@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/db/client";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 
 // Health check endpoint for monitoring / load-balancer liveness probes.
 // Returns 200 + JSON when the app and DB are reachable; 503 otherwise.

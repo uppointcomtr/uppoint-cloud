@@ -70,13 +70,16 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof LoginChallengeError && error.code === "EMAIL_NOT_VERIFIED") {
+      // Return the same shape as "no account found" to prevent email/account-state enumeration.
+      // The real reason is logged internally for forensic purposes.
       logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "email",
         reason: error.code,
       });
-      return NextResponse.json(fail(error.code), {
-        status: 403,
-      });
+      return NextResponse.json(
+        ok({ hasChallenge: false, challengeId: null, codeExpiresAt: null }),
+        { status: 200 },
+      );
     }
 
     if (

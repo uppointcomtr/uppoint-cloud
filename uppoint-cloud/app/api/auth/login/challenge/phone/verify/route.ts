@@ -71,6 +71,10 @@ export async function POST(request: Request) {
       return NextResponse.json(fail(error.code), { status });
     }
 
+    logAudit("login_otp_failed", ip, undefined, {
+      mode: "phone",
+      reason: "LOGIN_CHALLENGE_VERIFY_FAILED",
+    });
     console.error("Failed to verify phone login challenge", error);
     return NextResponse.json(fail("LOGIN_CHALLENGE_VERIFY_FAILED"), {
       status: 500,

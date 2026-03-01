@@ -3,9 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import { revokeSessionJti } from "@/lib/session-revocation";
 
 function usesSecureSessionCookie(request: NextRequest): boolean {
@@ -50,6 +50,19 @@ export async function POST(request: NextRequest) {
       ? "__Secure-next-auth.session-token"
       : "next-auth.session-token",
   });
+
+  const rateLimitIdentifier = typeof token?.sessionJti === "string"
+    ? token.sessionJti
+    : (session?.user?.id ?? "anonymous");
+
+  const identifierRateLimit = await withRateLimitByIdentifier("logout-session", rateLimitIdentifier, 30, 60);
+  if (identifierRateLimit) {
+    logAudit("rate_limit_exceeded", ip, session?.user?.id, {
+      action: "logout",
+      scope: "session",
+    });
+    return identifierRateLimit;
+  }
 
   if (typeof token?.sessionJti === "string" && typeof token.exp === "number") {
     const expiresAt = new Date(token.exp * 1000);

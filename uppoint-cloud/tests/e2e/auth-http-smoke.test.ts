@@ -87,7 +87,7 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(registerHtml).toContain("Hesap oluştur");
   });
 
-  it("blocks email login challenge for unverified users", async () => {
+  it("returns neutral response for unverified email login challenge", async () => {
     const registerResponse = await fetchWithTimeout("/api/auth/register", {
       method: "POST",
       headers: {
@@ -128,10 +128,15 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
       }),
     });
 
-    expect(response.status).toBe(403);
-    const payload = await response.json() as { success: boolean; error?: string };
-    expect(payload.success).toBe(false);
-    expect(payload.error).toBe("EMAIL_NOT_VERIFIED");
+    expect(response.status).toBe(200);
+    const payload = await response.json() as {
+      success: boolean;
+      data?: { hasChallenge?: boolean; challengeId?: string | null; codeExpiresAt?: string | null };
+    };
+    expect(payload.success).toBe(true);
+    expect(payload.data?.hasChallenge).toBe(false);
+    expect(payload.data?.challengeId ?? null).toBeNull();
+    expect(payload.data?.codeExpiresAt ?? null).toBeNull();
   });
 
   it("enforces IP-based register rate limit", async () => {

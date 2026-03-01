@@ -1,5 +1,56 @@
 # Changelog
 
+## 2026-03-01 (security: neutralize EMAIL_NOT_VERIFIED in email login-start response)
+
+### Changed
+- `POST /api/auth/login/challenge/email/start` no longer returns distinct `EMAIL_NOT_VERIFIED` error/status.
+- For unverified accounts, endpoint now returns neutral success shape:
+  - `200` with `{ success: true, data: { hasChallenge: false, challengeId: null, codeExpiresAt: null } }`
+- Internal reason (`EMAIL_NOT_VERIFIED`) is still captured through audit logging.
+- Updated e2e smoke expectation in `tests/e2e/auth-http-smoke.test.ts` for neutral response model.
+
+## 2026-03-01 (auth follow-up: deletedAt index + verify-email zod body validation)
+
+### Changed
+- Added `@@index([deletedAt])` to `User` model in Prisma schema for soft-delete query performance.
+- Added migration:
+  - `prisma/migrations/20260301214000_add_user_deleted_at_index/migration.sql`
+- Standardized `POST /api/auth/verify-email` body validation with Zod `safeParse`:
+  - `token` now validated via schema (`trim`, `min(1)`, `max(512)`) instead of manual `typeof` checks.
+
+## 2026-03-01 (Auth hardening: pending registration model + findings 2/3/4/5 closure)
+
+### Changed
+- Registration flow migrated to **pending challenge first** model:
+  - `User` is no longer created at `/api/auth/register` start.
+  - User creation now happens only after successful email OTP + SMS OTP completion.
+  - Updated register restart flow to use `challengeId` instead of `userId`.
+- `RegistrationVerificationChallenge` now stores pending registration payload (`email`, `name`, `phone`, `passwordHash`) and supports pre-user verification lifecycle.
+- Added migration:
+  - `prisma/migrations/20260301211000_pending_register_without_user/migration.sql`
+
+### Security / Compliance
+- Closed **finding #2** (`deletedAt` filter consistency):
+  - `modules/auth/server/email-verification.ts`
+  - `modules/auth/server/register-user.ts`
+- Closed **finding #3** (dual-layer auth rate-limit on remaining routes):
+  - `app/api/auth/verify-email/route.ts`
+  - `app/api/auth/logout/route.ts`
+  - `app/api/auth/forgot-password/request/route.ts`
+  - `app/api/auth/forgot-password/reset/route.ts`
+  - `app/api/auth/[...nextauth]/route.ts` (POST wrapper)
+- Closed **finding #4** (validated env single entrypoint):
+  - added `lib/env/index.ts`
+  - switched env imports from `@/lib/env/server` to `@/lib/env`
+- Closed **finding #5** (missing audit on unexpected auth errors):
+  - `app/api/auth/login/challenge/email/verify/route.ts`
+  - `app/api/auth/login/challenge/phone/verify/route.ts`
+  - `app/api/auth/verify-email/route.ts`
+  - `app/api/auth/register/route.ts`
+
+### Tests
+- Updated `tests/auth/register-verification-challenge.test.ts` for pending-registration lifecycle.
+
 ## 2026-03-01 (docs: align AGENTS.md with latest user-provided canonical policy text)
 
 ### Changed

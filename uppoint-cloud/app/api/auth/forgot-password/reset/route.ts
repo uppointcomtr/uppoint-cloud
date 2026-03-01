@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fail } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit-log";
 
 export async function POST() {
@@ -13,6 +13,22 @@ export async function POST() {
       scope: "ip",
     });
     return rateLimitResponse;
+  }
+
+  const identifierRateLimit = await withRateLimitByIdentifier(
+    "forgot-password-reset-legacy",
+    "legacy-endpoint",
+    30,
+    600,
+  );
+
+  if (identifierRateLimit) {
+    const limitedIp = await getClientIp();
+    logAudit("rate_limit_exceeded", limitedIp, undefined, {
+      action: "forgot-password-reset",
+      scope: "legacy-endpoint",
+    });
+    return identifierRateLimit;
   }
 
   const ip = await getClientIp();

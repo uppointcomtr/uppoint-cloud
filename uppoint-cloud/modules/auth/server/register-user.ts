@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "@/db/client";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 import { registerSchema } from "@/modules/auth/schemas/auth-schemas";
 
 import { hashPassword } from "./password";
@@ -36,7 +36,11 @@ export interface RegisterUserDependencies {
 }
 
 const defaultDependencies: RegisterUserDependencies = {
-  findUserByEmail: async (email) => prisma.user.findUnique({ where: { email }, select: { id: true } }),
+  findUserByEmail: async (email) =>
+    prisma.user.findFirst({
+      where: { email, deletedAt: null },
+      select: { id: true },
+    }),
   createUser: async (input) =>
     prisma.user.create({
       data: {

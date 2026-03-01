@@ -7,33 +7,36 @@ import {
 } from "@/modules/auth/server/register-verification-challenge";
 
 describe("startRegisterVerificationChallenge", () => {
-  it("creates challenge and sends email code", async () => {
-    const createChallenge = vi.fn().mockResolvedValue({ id: "challenge-1" });
+  it("creates pending challenge and sends email code", async () => {
+    const createPendingChallenge = vi.fn().mockResolvedValue({ id: "challenge-1" });
     const sendEmailCode = vi.fn().mockResolvedValue(undefined);
 
     const result = await startRegisterVerificationChallenge(
       {
-        userId: "u1",
+        name: "User Name",
+        email: "user@example.com",
+        phone: "+905551112233",
+        password: "StrongPass!123",
         locale: "tr",
       },
       {
-        findUserById: vi.fn().mockResolvedValue({
-          id: "u1",
-          email: "user@example.com",
-          phone: "+905551112233",
-          name: "User",
-        }),
-        deleteChallengesForUser: vi.fn().mockResolvedValue(undefined),
-        createChallenge,
+        findActiveUserByEmail: vi.fn().mockResolvedValue(null),
+        findActiveUserByPhone: vi.fn().mockResolvedValue(null),
+        deletePendingChallengesByEmail: vi.fn().mockResolvedValue(undefined),
+        createPendingChallenge,
         sendEmailCode,
+        hashPassword: vi.fn().mockResolvedValue("password-hash"),
         now: vi.fn(() => new Date("2026-03-01T10:00:00.000Z")),
         generateCode: vi.fn(() => "123456"),
         hashValue: vi.fn(() => "email-hash"),
       },
     );
 
-    expect(createChallenge).toHaveBeenCalledWith({
-      userId: "u1",
+    expect(createPendingChallenge).toHaveBeenCalledWith({
+      email: "user@example.com",
+      name: "User Name",
+      phone: "+905551112233",
+      passwordHash: "password-hash",
       emailCodeHash: "email-hash",
       emailCodeExpiresAt: new Date("2026-03-01T10:03:00.000Z"),
     });
@@ -61,14 +64,11 @@ describe("verifyRegisterEmailCode", () => {
         {
           findChallengeById: vi.fn().mockResolvedValue({
             id: "challenge-1",
-            userId: "u1",
+            phone: "+905551112233",
             emailCodeHash: storedHash,
             emailCodeExpiresAt: new Date("2026-03-01T10:03:00.000Z"),
             emailCodeAttempts: 0,
             emailCodeVerifiedAt: null,
-            user: {
-              phone: "+905551112233",
-            },
           }),
           incrementEmailAttempts: vi.fn().mockResolvedValue(1),
           markEmailVerifiedAndStoreSmsCode: vi.fn(),
@@ -95,7 +95,10 @@ describe("verifyRegisterSmsCode", () => {
       {
         findChallengeById: vi.fn().mockResolvedValue({
           id: "challenge-1",
-          userId: "u1",
+          email: "user@example.com",
+          name: "User Name",
+          phone: "+905551112233",
+          passwordHash: "password-hash",
           smsCodeHash: "sms-hash",
           smsCodeExpiresAt: new Date("2026-03-01T10:05:00.000Z"),
           smsCodeAttempts: 0,
@@ -103,7 +106,7 @@ describe("verifyRegisterSmsCode", () => {
           emailCodeVerifiedAt: new Date("2026-03-01T10:01:00.000Z"),
         }),
         incrementSmsAttempts: vi.fn().mockResolvedValue(1),
-        completeRegistrationVerification: vi.fn().mockResolvedValue(true),
+        completeRegistrationVerification: vi.fn().mockResolvedValue("u1"),
         now: vi.fn(() => new Date("2026-03-01T10:02:00.000Z")),
         hashValue: vi.fn((value: string) => (value === "654321" ? "sms-hash" : "wrong-hash")),
       },

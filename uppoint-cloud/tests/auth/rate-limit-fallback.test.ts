@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   deleteMany: vi.fn(),
 }));
 
-vi.mock("@/lib/env/server", () => ({
+vi.mock("@/lib/env", () => ({
   env: {
     UPSTASH_REDIS_REST_URL: undefined,
     UPSTASH_REDIS_REST_TOKEN: undefined,

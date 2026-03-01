@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit } from "@/lib/rate-limit";
+import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
   verifyEmailToken,
   EmailVerificationError,
 } from "@/modules/auth/server/email-verification";
+
+const verifyEmailBodySchema = z.object({
+  token: z.string().trim().min(1).max(512),
+});
 
 async function handleVerify(token: string, ip: string) {
   try {
@@ -19,6 +24,7 @@ async function handleVerify(token: string, ip: string) {
       return NextResponse.json(fail(error.code), { status: 400 });
     }
 
+    logAudit("email_verification_failed", ip, undefined, { reason: "VERIFICATION_FAILED" });
     console.error("Email verification failed", error);
     return NextResponse.json(fail("VERIFICATION_FAILED"), { status: 500 });
   }
@@ -56,11 +62,19 @@ export async function POST(request: Request) {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 
-  const rawPayload = payload as Record<string, unknown>;
-  const token = typeof rawPayload.token === "string" ? rawPayload.token.trim() : "";
-
-  if (!token) {
+  const parsedBody = verifyEmailBodySchema.safeParse(payload);
+  if (!parsedBody.success) {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+  }
+  const token = parsedBody.data.token;
+
+  const identifierRateLimit = await withRateLimitByIdentifier("verify-email-token", token, 8, 900);
+  if (identifierRateLimit) {
+    logAudit("rate_limit_exceeded", ip, undefined, {
+      action: "verify-email",
+      scope: "token",
+    });
+    return identifierRateLimit;
   }
 
   return handleVerify(token, ip);

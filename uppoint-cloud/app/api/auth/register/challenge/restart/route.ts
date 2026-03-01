@@ -7,7 +7,7 @@ import { fail, ok } from "@/lib/http/response";
 import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
   RegisterVerificationChallengeError,
-  startRegisterVerificationChallenge,
+  restartRegisterVerificationChallenge,
 } from "@/modules/auth/server/register-verification-challenge";
 
 export async function POST(request: Request) {
@@ -34,12 +34,12 @@ export async function POST(request: Request) {
   }
 
   const rawPayload = payload as Record<string, unknown>;
-  const userId = typeof rawPayload.userId === "string" ? rawPayload.userId.trim() : "";
+  const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
 
-  if (userId) {
+  if (challengeId) {
     const identifierRateLimit = await withRateLimitByIdentifier(
-      "register-verify-restart-user",
-      userId,
+      "register-verify-restart-challenge",
+      challengeId,
       5,
       600,
     );
@@ -47,14 +47,14 @@ export async function POST(request: Request) {
     if (identifierRateLimit) {
       logAudit("rate_limit_exceeded", ip, undefined, {
         action: "register-verify-restart",
-        scope: "userId",
+        scope: "challengeId",
       });
       return identifierRateLimit;
     }
   }
 
   try {
-    const result = await startRegisterVerificationChallenge(payload);
+    const result = await restartRegisterVerificationChallenge(payload);
 
     return NextResponse.json(ok({
       challengeId: result.challengeId,
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof RegisterVerificationChallengeError) {
-      if (error.code === "USER_NOT_FOUND") {
+      if (error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "EMAIL_TAKEN") {
         // Security-sensitive: keep response shape/status neutral to avoid account existence disclosure.
         logAudit("register_verification_failed", ip, undefined, {
           step: "restart",

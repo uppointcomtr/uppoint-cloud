@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/db/client";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 import { generateSessionJti, isSessionJtiRevoked } from "@/lib/session-revocation";
 import { consumeLoginToken } from "@/modules/auth/server/login-challenge";
 import { defaultLocale } from "@/modules/i18n/config";

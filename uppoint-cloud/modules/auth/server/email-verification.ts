@@ -3,7 +3,7 @@ import "server-only";
 import crypto from "crypto";
 
 import { prisma } from "@/db/client";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 import { defaultLocale, isLocale } from "@/modules/i18n/config";
 import { withLocale } from "@/modules/i18n/paths";
 
@@ -76,8 +76,11 @@ export async function verifyEmailToken(rawToken: string): Promise<void> {
     );
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: tokenRecord.identifier },
+  const user = await prisma.user.findFirst({
+    where: {
+      email: tokenRecord.identifier,
+      deletedAt: null,
+    },
     select: { id: true },
   });
 

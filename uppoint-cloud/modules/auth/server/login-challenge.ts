@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { z } from "zod";
 
 import { prisma } from "@/db/client";
-import { env } from "@/lib/env/server";
+import { env } from "@/lib/env";
 import { getLoginSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 

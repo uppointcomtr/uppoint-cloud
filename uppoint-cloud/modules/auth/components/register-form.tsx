@@ -114,7 +114,6 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [emailCode, setEmailCode] = useState("");
   const [smsCode, setSmsCode] = useState("");
   const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
@@ -188,7 +187,6 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
     let payload: ApiResponse<{
       accepted?: boolean;
       hasChallenge?: boolean;
-      userId?: string;
       challengeId?: string | null;
       emailCodeExpiresAt?: string | null;
     }>;
@@ -213,7 +211,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
       return;
     }
 
-    if (!payload.data.challengeId || !payload.data.emailCodeExpiresAt || !payload.data.userId) {
+    if (!payload.data.challengeId || !payload.data.emailCodeExpiresAt) {
       setSubmitError(dictionary.errors.verificationStartFailed);
       setIsSubmitting(false);
       return;
@@ -222,7 +220,6 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
     const emailCodeExpiresAtTs = new Date(payload.data.emailCodeExpiresAt).getTime();
 
     setChallengeId(payload.data.challengeId);
-    setUserId(payload.data.userId);
     setExpiresAtTimestamp(emailCodeExpiresAtTs);
     setNowTimestamp(emailCodeExpiresAtTs - REGISTER_CODE_TTL_SECONDS * 1000);
     setEmailCode("");
@@ -236,7 +233,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
   async function restartVerificationFlow() {
     if (isSubmitting) return;
 
-    if (!userId) {
+    if (!challengeId) {
       setSubmitError(dictionary.errors.verificationUnavailable);
       return;
     }
@@ -251,7 +248,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId,
+          challengeId,
           locale,
         }),
       });

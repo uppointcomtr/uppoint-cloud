@@ -1,15 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@/db/client";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
-import {
-  registerUser,
-  RegisterUserError,
-} from "@/modules/auth/server/register-user";
 import {
   RegisterVerificationChallengeError,
   startRegisterVerificationChallenge,
@@ -41,7 +36,6 @@ export async function POST(request: Request) {
   }
 
   const rawPayload = payload as Record<string, unknown>;
-  const locale = typeof rawPayload.locale === "string" ? rawPayload.locale : "tr";
   const normalizedEmail = typeof rawPayload.email === "string" ? rawPayload.email.trim().toLowerCase() : null;
 
   if (normalizedEmail) {
@@ -56,29 +50,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await registerUser(payload);
-    let challenge: { challengeId: string; emailCodeExpiresAt: Date };
+    const challenge = await startRegisterVerificationChallenge(payload);
 
-    try {
-      challenge = await startRegisterVerificationChallenge({
-        userId: user.id,
-        locale,
-      });
-    } catch (error) {
-      // Security-sensitive: avoid leaving an unreachable unverified account
-      // when verification challenge delivery/setup fails.
-      await prisma.user.delete({ where: { id: user.id } }).catch(() => {
-        // best-effort rollback; original error is handled below
-      });
-      throw error;
-    }
-
-    logAudit("register_success", ip, user.id);
+    logAudit("register_success", ip, undefined, {
+      step: "challenge_started",
+      email: normalizedEmail,
+    });
 
     return NextResponse.json(ok({
       accepted: true,
       hasChallenge: true,
-      userId: user.id,
       challengeId: challenge.challengeId,
       emailCodeExpiresAt: challenge.emailCodeExpiresAt.toISOString(),
     }), {
@@ -86,41 +67,20 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      logAudit("register_verification_failed", ip, undefined, {
+        step: "start",
+        reason: "VALIDATION_FAILED",
+      });
       return NextResponse.json(fail("VALIDATION_FAILED"), {
         status: 400,
       });
     }
 
-    if (error instanceof RegisterUserError && error.code === "EMAIL_TAKEN") {
-      if (normalizedEmail) {
-        const pendingUser = await prisma.user.findUnique({
-          where: { email: normalizedEmail },
-          select: { id: true, emailVerified: true },
-        });
-
-        if (pendingUser && !pendingUser.emailVerified) {
-          try {
-            const challenge = await startRegisterVerificationChallenge({
-              userId: pendingUser.id,
-              locale,
-            });
-
-            logAudit("register_verification_restarted", ip, pendingUser.id);
-            return NextResponse.json(ok({
-              accepted: true,
-              hasChallenge: true,
-              userId: pendingUser.id,
-              challengeId: challenge.challengeId,
-              emailCodeExpiresAt: challenge.emailCodeExpiresAt.toISOString(),
-            }), {
-              status: 200,
-            });
-          } catch {
-            // fall through to EMAIL_TAKEN response to avoid leaking internals
-          }
-        }
-      }
-
+    if (error instanceof RegisterVerificationChallengeError && error.code === "EMAIL_TAKEN") {
+      logAudit("register_verification_failed", ip, undefined, {
+        step: "start",
+        reason: "ACCOUNT_HIDDEN",
+      });
       // Security-sensitive: keep response neutral to reduce account enumeration risk.
       return NextResponse.json(ok({
         accepted: true,
@@ -140,6 +100,10 @@ export async function POST(request: Request) {
       });
     }
 
+    logAudit("register_verification_failed", ip, undefined, {
+      step: "start",
+      reason: "REGISTER_VERIFICATION_START_FAILED",
+    });
     console.error("Failed to register user", error);
     return NextResponse.json(fail("REGISTER_VERIFICATION_START_FAILED"), {
       status: 500,
