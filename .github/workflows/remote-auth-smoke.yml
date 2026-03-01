@@ -26,6 +26,9 @@ jobs:
     env:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
+    defaults:
+      run:
+        working-directory: uppoint-cloud
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,6 +38,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          cache-dependency-path: uppoint-cloud/package-lock.json
 
       - name: Install dependencies
         run: npm ci

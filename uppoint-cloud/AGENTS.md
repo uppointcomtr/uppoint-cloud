@@ -91,7 +91,7 @@ Do not jump straight into changes without first confirming the local context and
 * Read the failing file and the surrounding context before applying a fix
 * Prefer the smallest verified fix that addresses the actual failure
 * After fixing a failure, rerun the relevant failing command first, then rerun the full verification sequence
-* Keep `.github/workflows/remote-auth-smoke.yml` active as the canonical nightly remote auth smoke check
+* Keep repository-root `.github/workflows/remote-auth-smoke.yml` active as the canonical nightly remote auth smoke check
 * Remote smoke must run nightly and remain runnable on-demand via `workflow_dispatch`
 * Use `https://cloud.uppoint.com.tr` as the default remote smoke target unless explicitly changed
 * If production health endpoint is token-gated, repository secret `E2E_HEALTHCHECK_TOKEN` must be configured in GitHub Actions

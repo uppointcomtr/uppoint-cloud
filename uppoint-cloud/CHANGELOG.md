@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-01 (ci fix: move remote smoke workflow to repository root)
+
+### Fixed
+- Moved remote smoke workflow to repository root so GitHub Actions can discover and execute it:
+  - from: `uppoint-cloud/.github/workflows/remote-auth-smoke.yml`
+  - to: `.github/workflows/remote-auth-smoke.yml`
+- Updated workflow execution context to run in `uppoint-cloud/` working directory.
+
+### Documentation
+- Updated workflow path references:
+  - `README.md`
+  - `AGENTS.md`
+
 ## 2026-03-01 (ci: nightly remote auth smoke workflow)
 
 ### Added
