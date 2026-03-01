@@ -142,8 +142,8 @@ model LoginChallenge {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([mode])
-  @@index([codeExpiresAt])
-  @@index([loginTokenExpiresAt])
+  @@index([userId, mode])       // deleteChallengesForUserAndMode(userId, mode)
+  @@index([loginTokenHash])     // consumeLoginToken → findChallengeByTokenHash
+  @@index([codeExpiresAt])      // cleanup: süresi dolmuş challenge'lar
+  @@index([loginTokenExpiresAt]) // cleanup: süresi dolmuş tokenlar
 }

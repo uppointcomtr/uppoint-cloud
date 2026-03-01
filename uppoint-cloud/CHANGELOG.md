@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-03-01 (Veritabanı index optimizasyonu + PostgreSQL bellek tuning)
+
+### Fixed
+- **`prisma/schema.prisma` — LoginChallenge index yeniden yapılandırıldı**:
+  - `@@index([mode])` kaldırıldı (cardinality=2, planner kullanmıyordu, write overhead üretiyordu)
+  - `@@index([userId])` kaldırıldı, yerine `@@index([userId, mode])` composite eklendi — `deleteChallengesForUserAndMode(userId, mode)` sorgusunu tek index traversal ile karşılar
+  - `@@index([loginTokenHash])` eklendi — `consumeLoginToken → findChallengeByTokenHash` sorgusu önceden full table scan yapıyordu; artık index'li
+- **PostgreSQL `shared_buffers`**: 128MB → 3GB (15GB RAM'in %20'si). Varsayılan değer sunucu kapasitesini tamamen görmezden geliyordu.
+- **PostgreSQL `effective_cache_size`**: 4GB → 11GB (15GB RAM'in %75'i). Query planner artık gerçekçi cache boyutuna göre plan seçer.
+- **PostgreSQL `work_mem`**: 4MB → 16MB. Sort/hash join operasyonları için daha az disk I/O.
+- **PostgreSQL `log_min_duration_statement`**: disabled → 500ms. 500ms'den uzun sorgular artık loglanıyor — üretimde yavaş sorgu tespiti mümkün.
+
+### Added
+- Migration `20260301072030_add_login_challenge_indexes`: LoginChallenge index değişikliklerini veritabanına uygular.
+
 ## 2026-03-01 (Veritabanı büyüme ve temizlik iyileştirmeleri)
 
 ### Fixed
