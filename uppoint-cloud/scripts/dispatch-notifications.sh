@@ -20,17 +20,35 @@ cleanup() {
 trap cleanup EXIT
 
 INTERNAL_DISPATCH_TOKEN="${INTERNAL_DISPATCH_TOKEN:-}"
+INTERNAL_DISPATCH_SIGNING_SECRET="${INTERNAL_DISPATCH_SIGNING_SECRET:-}"
 if [ -z "$INTERNAL_DISPATCH_TOKEN" ]; then
   INTERNAL_DISPATCH_TOKEN="$(read_env_value "$ENV_FILE" "INTERNAL_DISPATCH_TOKEN")"
+fi
+if [ -z "$INTERNAL_DISPATCH_SIGNING_SECRET" ]; then
+  INTERNAL_DISPATCH_SIGNING_SECRET="$(read_env_value "$ENV_FILE" "INTERNAL_DISPATCH_SIGNING_SECRET")"
 fi
 
 if [ -z "$INTERNAL_DISPATCH_TOKEN" ]; then
   echo "[dispatch-notifications] HATA: INTERNAL_DISPATCH_TOKEN bulunamadi." >&2
   exit 1
 fi
+if [ -z "$INTERNAL_DISPATCH_SIGNING_SECRET" ]; then
+  echo "[dispatch-notifications] HATA: INTERNAL_DISPATCH_SIGNING_SECRET bulunamadi." >&2
+  exit 1
+fi
+
+REQUEST_TS="$(date -u +%s)"
+BODY_SHA256="$(printf '' | sha256sum | awk '{print $1}')"
+CANONICAL_REQUEST="POST
+/api/internal/notifications/dispatch
+${REQUEST_TS}
+${BODY_SHA256}"
+REQUEST_SIGNATURE="$(printf '%s' "$CANONICAL_REQUEST" | openssl dgst -sha256 -hmac "$INTERNAL_DISPATCH_SIGNING_SECRET" -binary | xxd -p -c 256)"
 
 {
   printf 'x-internal-dispatch-token: %s\n' "$INTERNAL_DISPATCH_TOKEN"
+  printf 'x-internal-request-ts: %s\n' "$REQUEST_TS"
+  printf 'x-internal-request-signature: %s\n' "$REQUEST_SIGNATURE"
   printf 'origin: https://%s\n' "$DOMAIN"
 } > "$HEADER_FILE"
 

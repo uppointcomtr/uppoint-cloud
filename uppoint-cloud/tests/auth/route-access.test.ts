@@ -23,6 +23,10 @@ describe("resolveAuthRedirect", () => {
     expect(resolveAuthRedirect("/tr/forgot-password", true)).toBeNull();
     expect(resolveAuthRedirect("/en/reset-password", true)).toBeNull();
   });
+
+  it("treats unknown pages as protected by default", () => {
+    expect(resolveAuthRedirect("/tr/settings", false)).toBe("/tr/login");
+  });
 });
 
 describe("shouldPreserveCallbackUrl", () => {
@@ -35,5 +39,9 @@ describe("shouldPreserveCallbackUrl", () => {
     expect(shouldPreserveCallbackUrl("/login")).toBe(false);
     expect(shouldPreserveCallbackUrl("/register")).toBe(false);
     expect(shouldPreserveCallbackUrl("/")).toBe(false);
+  });
+
+  it("preserves callback for non-public protected routes", () => {
+    expect(shouldPreserveCallbackUrl("/settings")).toBe(true);
   });
 });

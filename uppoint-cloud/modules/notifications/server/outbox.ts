@@ -7,6 +7,7 @@ import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
 import { sendAuthEmail } from "@/modules/auth/server/email-service";
 import { sendAuthSms } from "@/modules/auth/server/sms-service";
+import { openNotificationPayload, sealNotificationPayload } from "@/modules/notifications/server/payload-crypto";
 
 type NotificationChannel = "EMAIL" | "SMS";
 type NotificationOutboxStatus = "PENDING" | "SENT" | "FAILED";
@@ -57,6 +58,7 @@ const defaultOutboxDependencies: OutboxDependencies = {
   now: () => new Date(),
   createOutboxRecord: async (input) => {
     const metadata = input.metadata ? JSON.stringify(input.metadata) : null;
+    const sealedBody = sealNotificationPayload(input.body);
     await prisma.$executeRaw`
       INSERT INTO "NotificationOutbox" (
         "id", "channel", "recipient", "subject", "body", "metadata", "status", "nextAttemptAt", "updatedAt"
@@ -66,7 +68,7 @@ const defaultOutboxDependencies: OutboxDependencies = {
         ${input.channel}::"NotificationChannel",
         ${input.recipient},
         ${input.subject ?? null},
-        ${input.body},
+        ${sealedBody},
         ${metadata ? metadata : null}::jsonb,
         'PENDING'::"NotificationOutboxStatus",
         NOW(),
@@ -231,15 +233,17 @@ export async function dispatchNotificationOutboxBatch(
 
     try {
       if (record.channel === "EMAIL") {
+        const resolvedBody = openNotificationPayload(record.body);
         await dependencies.sendEmail({
           to: record.recipient,
           subject: record.subject ?? "",
-          text: record.body,
+          text: resolvedBody,
         });
       } else {
+        const resolvedBody = openNotificationPayload(record.body);
         await dependencies.sendSms({
           to: record.recipient,
-          message: record.body,
+          message: resolvedBody,
         });
       }
 

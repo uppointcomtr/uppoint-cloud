@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
+import { withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { verifyInternalRequestAuth } from "@/lib/security/internal-request-auth";
 
 const securityEventSchema = z.object({
   action: z.enum(["edge_host_rejected", "edge_origin_rejected"]),
@@ -17,28 +18,27 @@ const securityEventSchema = z.object({
   reason: z.string().trim().max(128).optional(),
 });
 
-function matchesInternalAuditToken(providedToken: string | null): boolean {
-  const expectedToken = env.INTERNAL_AUDIT_TOKEN ?? "";
-  if (expectedToken.length === 0) {
-    return false;
-  }
-  const providedBuffer = Buffer.from(providedToken ?? "");
-  const expectedBuffer = Buffer.from(expectedToken);
-
-  return (
-    providedBuffer.length === expectedBuffer.length
-    && timingSafeEqual(providedBuffer, expectedBuffer)
-  );
-}
-
 export async function POST(request: Request) {
-  if (!matchesInternalAuditToken(request.headers.get("x-internal-audit-token"))) {
+  const ipRateLimitResponse = await withRateLimit("internal-audit-security-event", 300, 60);
+  if (ipRateLimitResponse) {
+    return ipRateLimitResponse;
+  }
+
+  const verifiedRequest = await verifyInternalRequestAuth({
+    request,
+    expectedPath: "/api/internal/audit/security-event",
+    tokenHeaderName: "x-internal-audit-token",
+    expectedToken: env.INTERNAL_AUDIT_TOKEN ?? "",
+    signingSecret: env.INTERNAL_AUDIT_SIGNING_SECRET ?? "",
+  });
+
+  if (!verifiedRequest) {
     return NextResponse.json(fail("UNAUTHORIZED"), { status: 401 });
   }
 
   let payload: unknown;
   try {
-    payload = await request.json();
+    payload = JSON.parse(verifiedRequest.rawBody);
   } catch {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
@@ -49,6 +49,16 @@ export async function POST(request: Request) {
   }
 
   const event = parsed.data;
+  const identifierRateLimitResponse = await withRateLimitByIdentifier(
+    "internal-audit-security-event-request",
+    `${event.action}:${event.requestId}`,
+    40,
+    60,
+  );
+  if (identifierRateLimitResponse) {
+    return identifierRateLimitResponse;
+  }
+
   await logAudit(event.action, "unknown", undefined, {
     requestId: event.requestId,
     path: event.path,

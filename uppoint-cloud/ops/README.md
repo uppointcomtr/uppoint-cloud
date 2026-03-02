@@ -49,6 +49,9 @@ AUTH_SECRET=replace-with-strong-random-secret
 AUTH_OTP_PEPPER=replace-with-separate-strong-random-secret
 INTERNAL_AUDIT_TOKEN=replace-with-strong-random-token
 INTERNAL_DISPATCH_TOKEN=replace-with-strong-random-token
+INTERNAL_AUDIT_SIGNING_SECRET=replace-with-strong-random-secret
+INTERNAL_DISPATCH_SIGNING_SECRET=replace-with-strong-random-secret
+NOTIFICATION_PAYLOAD_SECRET=replace-with-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
 HEALTHCHECK_TOKEN=replace-with-strong-random-token
@@ -254,8 +257,17 @@ sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
 ls -lah /opt/backups/postgres
 ```
 
-`dispatch-notifications.sh` reads `INTERNAL_DISPATCH_TOKEN` from `/opt/uppoint-cloud/.env`
-and sends `x-internal-dispatch-token` to `/api/internal/notifications/dispatch`.
+`cleanup-db.sh` audit retention behavior:
+
+- `AUDIT_LOG_ARCHIVE_BEFORE_DELETE=true` (default) exports old audit rows to JSONL archive before deletion.
+- archive target defaults to `/opt/backups/audit` and can be overridden with `AUDIT_LOG_ARCHIVE_DIR`.
+
+`dispatch-notifications.sh` reads `INTERNAL_DISPATCH_TOKEN` and
+`INTERNAL_DISPATCH_SIGNING_SECRET` from `/opt/uppoint-cloud/.env` and sends:
+
+- `x-internal-dispatch-token`
+- `x-internal-request-ts`
+- `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
 
 ## 9. Redis backup automation
 

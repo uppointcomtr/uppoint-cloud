@@ -29,6 +29,7 @@ const ALLOWED_ORIGINS = resolveAllowedOrigins({
   configuredOrigins: process.env.UPPOINT_ALLOWED_ORIGINS,
 });
 const INTERNAL_AUDIT_TOKEN = process.env.INTERNAL_AUDIT_TOKEN;
+const INTERNAL_AUDIT_SIGNING_SECRET = process.env.INTERNAL_AUDIT_SIGNING_SECRET;
 const INTERNAL_AUDIT_URL = (() => {
   if (!process.env.NEXT_PUBLIC_APP_URL) {
     return null;
@@ -40,6 +41,31 @@ const INTERNAL_AUDIT_URL = (() => {
     return null;
   }
 })();
+
+const EDGE_TEXT_ENCODER = new TextEncoder();
+
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", EDGE_TEXT_ENCODER.encode(value));
+  return toHex(digest);
+}
+
+async function hmacSha256Hex(secret: string, value: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    EDGE_TEXT_ENCODER.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, EDGE_TEXT_ENCODER.encode(value));
+  return toHex(signature);
+}
 const INTERNAL_AUDIT_ORIGIN = (() => {
   if (!process.env.NEXT_PUBLIC_APP_URL) {
     return null;
@@ -123,28 +149,40 @@ interface EdgeSecurityAuditEvent {
 }
 
 function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
-  if (!IS_PRODUCTION || !INTERNAL_AUDIT_URL || !INTERNAL_AUDIT_TOKEN || !INTERNAL_AUDIT_ORIGIN) {
+  if (!IS_PRODUCTION || !INTERNAL_AUDIT_URL || !INTERNAL_AUDIT_TOKEN || !INTERNAL_AUDIT_SIGNING_SECRET || !INTERNAL_AUDIT_ORIGIN) {
     return;
   }
 
-  void fetch(INTERNAL_AUDIT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      origin: INTERNAL_AUDIT_ORIGIN,
-      "x-internal-audit-token": INTERNAL_AUDIT_TOKEN,
-    },
-    body: JSON.stringify({
-      action: event.action,
-      requestId: event.requestId,
-      path: event.path,
-      method: event.method,
-      host: event.host ?? undefined,
-      forwardedHost: event.forwardedHost ?? undefined,
-      origin: event.origin ?? undefined,
-      reason: event.reason,
-    }),
-  }).catch(() => {
+  const payload = {
+    action: event.action,
+    requestId: event.requestId,
+    path: event.path,
+    method: event.method,
+    host: event.host ?? undefined,
+    forwardedHost: event.forwardedHost ?? undefined,
+    origin: event.origin ?? undefined,
+    reason: event.reason,
+  };
+  const body = JSON.stringify(payload);
+
+  void (async () => {
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const bodySha = await sha256Hex(body);
+    const canonical = `POST\n/api/internal/audit/security-event\n${timestamp}\n${bodySha}`;
+    const signature = await hmacSha256Hex(INTERNAL_AUDIT_SIGNING_SECRET, canonical);
+
+    await fetch(INTERNAL_AUDIT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        origin: INTERNAL_AUDIT_ORIGIN,
+        "x-internal-audit-token": INTERNAL_AUDIT_TOKEN,
+        "x-internal-request-ts": timestamp,
+        "x-internal-request-signature": signature,
+      },
+      body,
+    });
+  })().catch(() => {
     // Security telemetry must never block user-facing responses.
   });
 }

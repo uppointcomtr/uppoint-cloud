@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-03-02 (security closure batch: internal request signing, workflow recovery, audit archive retention)
+
+### Fixed
+- Restored canonical nightly remote smoke workflow inside repository root:
+  - added `.github/workflows/remote-auth-smoke.yml`
+  - nightly schedule (`00:15 UTC`) + `workflow_dispatch` preserved
+  - workflow now runs from repository root (`package-lock.json` cache path fixed)
+- Hardened locale error boundary logging:
+  - `app/[locale]/error.tsx` now avoids printing raw runtime errors in production browser consoles.
+- Added audit archive-before-delete retention path:
+  - `scripts/cleanup-db.sh` now archives old `AuditLog` rows to compressed JSONL under `/opt/backups/audit` (configurable) before retention deletion.
+
+### Changed
+- Internal endpoint hardening expanded:
+  - `app/api/internal/audit/security-event/route.ts` and `app/api/internal/notifications/dispatch/route.ts` now require token + signed request headers and apply IP + identifier limiter layers.
+  - `proxy.ts` now emits signed edge security-audit events.
+  - `scripts/dispatch-notifications.sh` now signs dispatch requests (`x-internal-request-ts`, `x-internal-request-signature`).
+- Notification outbox payload-at-rest protection:
+  - `modules/notifications/server/outbox.ts` now seals stored body payloads and decrypts on dispatch.
+  - new helper: `modules/notifications/server/payload-crypto.ts`.
+- Route protection policy tightened:
+  - `modules/auth/server/route-access.ts` treats unknown non-explicit pages as protected by default.
+
+### Added
+- New internal request authentication helper:
+  - `lib/security/internal-request-auth.ts`
+- New tests:
+  - `tests/security/internal-request-auth.test.ts`
+  - `tests/auth/payload-crypto.test.ts`
+  - extended `tests/auth/route-access.test.ts` for secure-by-default behavior
+
+### Documentation
+- Updated workflow path and internal signed-endpoint documentation:
+  - `README.md`
+  - `ops/README.md`
+
 ## 2026-03-02 (ops runbook: internal token rotation)
 
 ### Documentation

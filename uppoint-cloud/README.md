@@ -63,6 +63,8 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_OTP_PEPPER` (required in production; must be distinct from `AUTH_SECRET`)
 - `INTERNAL_AUDIT_TOKEN` (required in production; secures internal edge-audit ingest route)
 - `INTERNAL_DISPATCH_TOKEN` (required in production; secures internal notification dispatcher route)
+- `INTERNAL_AUDIT_SIGNING_SECRET` (required in production; HMAC signing key for internal audit ingest requests)
+- `INTERNAL_DISPATCH_SIGNING_SECRET` (required in production; HMAC signing key for notification dispatch requests)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)
@@ -90,7 +92,10 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_DATACODING`
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 - `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
+- `NOTIFICATION_PAYLOAD_SECRET` (required in production; encrypts notification outbox payload at rest)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
+- `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
+- `AUDIT_LOG_ARCHIVE_DIR` (optional, default `/opt/backups/audit`; archive path used by `cleanup-db.sh`)
 - `UPPOINT_ALERT_SLACK_WEBHOOK` (optional, ops alert channel for nginx drift failures)
 - `UPPOINT_ALERT_EMAIL_TO` (optional, ops alert recipient; enqueued via `NotificationOutbox`)
 - `UPPOINT_NGINX_DRIFT_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
@@ -241,9 +246,11 @@ E2E_BASE_URL=https://cloud.uppoint.com.tr npm run test:e2e:remote
 
 GitHub Actions nightly/ondemand remote smoke:
 
-- Workflow file: [remote-auth-smoke.yml](/opt/.github/workflows/remote-auth-smoke.yml)
+- Workflow file: [remote-auth-smoke.yml](/opt/uppoint-cloud/.github/workflows/remote-auth-smoke.yml)
 - Schedule: every night at `00:15 UTC` (`03:15 Europe/Istanbul`)
 - Manual run: `Actions -> Remote Auth Smoke -> Run workflow`
+- Optional manual input:
+  - `allow_mutations=1` (only for isolated non-production environments)
 - Optional secret:
   - `E2E_HEALTHCHECK_TOKEN` (only needed if remote `/api/health` requires token)
 - Optional repository variable:
@@ -278,8 +285,15 @@ Run this checklist after deployment or UI-affecting changes:
   - in production, if `HEALTHCHECK_TOKEN` is set, callers must send `x-health-token`
   - local Nginx probe endpoint `/healthz` is loopback-only and injects token via snippet (`/etc/nginx/snippets/uppoint-health-token.conf`)
 - Internal operational endpoints are token-isolated:
-  - `/api/internal/audit/security-event` requires `x-internal-audit-token` matching `INTERNAL_AUDIT_TOKEN`
-  - `/api/internal/notifications/dispatch` requires `x-internal-dispatch-token` matching `INTERNAL_DISPATCH_TOKEN`
+  - `/api/internal/audit/security-event` requires:
+    - `x-internal-audit-token` matching `INTERNAL_AUDIT_TOKEN`
+    - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
+    - shared signing secret: `INTERNAL_AUDIT_SIGNING_SECRET`
+  - `/api/internal/notifications/dispatch` requires:
+    - `x-internal-dispatch-token` matching `INTERNAL_DISPATCH_TOKEN`
+    - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
+    - shared signing secret: `INTERNAL_DISPATCH_SIGNING_SECRET`
+- Notification outbox payloads are encrypted at rest with `NOTIFICATION_PAYLOAD_SECRET`.
 - Backup scripts now enforce restrictive filesystem permissions (`umask 077`, directories `700`, files `600`).
 - Backup scripts now create `*.sha256` checksum sidecars, and restore scripts verify checksums by default.
 

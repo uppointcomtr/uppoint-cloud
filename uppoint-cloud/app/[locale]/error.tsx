@@ -15,7 +15,9 @@ interface ErrorPageProps {
 // Catches runtime errors thrown in any page or layout within app/[locale]/.
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    console.error("[ErrorBoundary]", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[ErrorBoundary]", error);
+    }
   }, [error]);
 
   const pathname = usePathname();

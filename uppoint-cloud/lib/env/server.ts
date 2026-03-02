@@ -31,6 +31,8 @@ const serverEnvSchema = z.object({
   AUTH_OTP_PEPPER: z.string().min(32).optional(),
   INTERNAL_AUDIT_TOKEN: z.string().min(32).optional(),
   INTERNAL_DISPATCH_TOKEN: z.string().min(32).optional(),
+  INTERNAL_AUDIT_SIGNING_SECRET: z.string().min(32).optional(),
+  INTERNAL_DISPATCH_SIGNING_SECRET: z.string().min(32).optional(),
   AUTH_TRUST_HOST: booleanFromString.default(false),
   AUTH_BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   AUTH_SESSION_REVALIDATE_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
@@ -58,6 +60,7 @@ const serverEnvSchema = z.object({
   UPPOINT_SMS_VALID_FOR: z.string().regex(/^\d{1,2}:\d{2}$/).default("48:00"),
   UPPOINT_SMS_DATACODING: z.coerce.number().int().min(0).max(2).default(2),
   UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS: booleanFromString.default(false),
+  NOTIFICATION_PAYLOAD_SECRET: z.string().min(32).optional(),
 }).superRefine((input, context) => {
   let appUrl: URL | null = null;
   let databaseUrl: URL | null = null;
@@ -120,6 +123,30 @@ const serverEnvSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ["INTERNAL_DISPATCH_TOKEN"],
         message: "INTERNAL_DISPATCH_TOKEN must be set in production",
+      });
+    }
+
+    if (!input.INTERNAL_AUDIT_SIGNING_SECRET) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["INTERNAL_AUDIT_SIGNING_SECRET"],
+        message: "INTERNAL_AUDIT_SIGNING_SECRET must be set in production",
+      });
+    }
+
+    if (!input.INTERNAL_DISPATCH_SIGNING_SECRET) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["INTERNAL_DISPATCH_SIGNING_SECRET"],
+        message: "INTERNAL_DISPATCH_SIGNING_SECRET must be set in production",
+      });
+    }
+
+    if (!input.NOTIFICATION_PAYLOAD_SECRET) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["NOTIFICATION_PAYLOAD_SECRET"],
+        message: "NOTIFICATION_PAYLOAD_SECRET must be set in production",
       });
     }
 
@@ -243,6 +270,8 @@ const parsedEnv = serverEnvSchema.safeParse({
   AUTH_OTP_PEPPER: process.env.AUTH_OTP_PEPPER,
   INTERNAL_AUDIT_TOKEN: process.env.INTERNAL_AUDIT_TOKEN,
   INTERNAL_DISPATCH_TOKEN: process.env.INTERNAL_DISPATCH_TOKEN,
+  INTERNAL_AUDIT_SIGNING_SECRET: process.env.INTERNAL_AUDIT_SIGNING_SECRET,
+  INTERNAL_DISPATCH_SIGNING_SECRET: process.env.INTERNAL_DISPATCH_SIGNING_SECRET,
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
   AUTH_BCRYPT_ROUNDS: process.env.AUTH_BCRYPT_ROUNDS,
   AUTH_SESSION_REVALIDATE_SECONDS: process.env.AUTH_SESSION_REVALIDATE_SECONDS,
@@ -270,6 +299,7 @@ const parsedEnv = serverEnvSchema.safeParse({
   UPPOINT_SMS_VALID_FOR: process.env.UPPOINT_SMS_VALID_FOR,
   UPPOINT_SMS_DATACODING: process.env.UPPOINT_SMS_DATACODING,
   UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS: process.env.UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS,
+  NOTIFICATION_PAYLOAD_SECRET: process.env.NOTIFICATION_PAYLOAD_SECRET,
 });
 
 if (!parsedEnv.success) {

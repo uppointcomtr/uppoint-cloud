@@ -1,26 +1,42 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
+import { withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { verifyInternalRequestAuth } from "@/lib/security/internal-request-auth";
 import { dispatchNotificationOutboxBatch } from "@/modules/notifications/server/outbox";
 
-function matchesToken(provided: string | null, expected: string): boolean {
-  const providedBuffer = Buffer.from(provided ?? "");
-  const expectedBuffer = Buffer.from(expected);
-
-  return (
-    providedBuffer.length === expectedBuffer.length
-    && timingSafeEqual(providedBuffer, expectedBuffer)
-  );
-}
-
 export async function POST(request: Request) {
-  if (
-    !env.INTERNAL_DISPATCH_TOKEN
-    || !matchesToken(request.headers.get("x-internal-dispatch-token"), env.INTERNAL_DISPATCH_TOKEN)
-  ) {
+  const ipRateLimitResponse = await withRateLimit("internal-notification-dispatch", 120, 60);
+  if (ipRateLimitResponse) {
+    return ipRateLimitResponse;
+  }
+
+  const verifiedRequest = await verifyInternalRequestAuth({
+    request,
+    expectedPath: "/api/internal/notifications/dispatch",
+    tokenHeaderName: "x-internal-dispatch-token",
+    expectedToken: env.INTERNAL_DISPATCH_TOKEN ?? "",
+    signingSecret: env.INTERNAL_DISPATCH_SIGNING_SECRET ?? "",
+  });
+
+  if (!verifiedRequest) {
     return NextResponse.json(fail("UNAUTHORIZED"), { status: 401 });
+  }
+
+  if (verifiedRequest.rawBody.trim().length > 0) {
+    return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+  }
+
+  const requestId = request.headers.get("x-request-id")?.trim() || "unknown";
+  const identifierRateLimitResponse = await withRateLimitByIdentifier(
+    "internal-notification-dispatch-request",
+    requestId,
+    30,
+    60,
+  );
+  if (identifierRateLimitResponse) {
+    return identifierRateLimitResponse;
   }
 
   const result = await dispatchNotificationOutboxBatch({
