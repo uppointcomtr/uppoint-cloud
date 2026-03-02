@@ -593,8 +593,11 @@ const defaultCompleteChallengeDependencies: CompleteChallengeDependencies = {
         return false;
       }
 
-      await tx.user.update({
-        where: { id: input.userId },
+      const updatedUser = await tx.user.updateMany({
+        where: {
+          id: input.userId,
+          deletedAt: null,
+        },
         data: {
           passwordHash: input.passwordHash,
           tokenVersion: {
@@ -602,6 +605,10 @@ const defaultCompleteChallengeDependencies: CompleteChallengeDependencies = {
           },
         },
       });
+
+      if (updatedUser.count !== 1) {
+        throw new Error("PASSWORD_RESET_USER_NOT_ACTIVE");
+      }
 
       await tx.passwordResetChallenge.deleteMany({
         where: {

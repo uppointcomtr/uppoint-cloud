@@ -183,8 +183,11 @@ const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
   verifyPassword,
   registerFailedPasswordAttempt: registerFailedPasswordAttemptAtomic,
   clearFailedPasswordAttempts: async (userId) => {
-    await prisma.user.update({
-      where: { id: userId },
+    await prisma.user.updateMany({
+      where: {
+        id: userId,
+        deletedAt: null,
+      },
       data: {
         failedLoginAttempts: 0,
         lockedUntil: null,
@@ -343,8 +346,11 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
   verifyPassword,
   registerFailedPasswordAttempt: registerFailedPasswordAttemptAtomic,
   clearFailedPasswordAttempts: async (userId) => {
-    await prisma.user.update({
-      where: { id: userId },
+    await prisma.user.updateMany({
+      where: {
+        id: userId,
+        deletedAt: null,
+      },
       data: {
         failedLoginAttempts: 0,
         lockedUntil: null,
@@ -657,14 +663,21 @@ const defaultConsumeLoginTokenDependencies: ConsumeLoginTokenDependencies = {
         return false;
       }
 
-      await tx.user.update({
-        where: { id: input.userId },
+      const updatedUser = await tx.user.updateMany({
+        where: {
+          id: input.userId,
+          deletedAt: null,
+        },
         data: {
           lastLoginAt: input.now,
           failedLoginAttempts: 0,
           lockedUntil: null,
         },
       });
+
+      if (updatedUser.count !== 1) {
+        throw new Error("LOGIN_TOKEN_USER_NOT_ACTIVE");
+      }
 
       await tx.loginChallenge.deleteMany({
         where: {

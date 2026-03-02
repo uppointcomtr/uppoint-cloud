@@ -170,6 +170,9 @@ export async function enqueueEmailNotification(
   dependencies: Pick<OutboxDependencies, "createOutboxRecord"> = defaultOutboxDependencies,
 ): Promise<void> {
   if (env.UPPOINT_EMAIL_BACKEND === "disabled") {
+    if (env.NODE_ENV === "production") {
+      throw new Error("EMAIL_BACKEND_DISABLED");
+    }
     return;
   }
 
@@ -191,6 +194,9 @@ export async function enqueueSmsNotification(
   dependencies: Pick<OutboxDependencies, "createOutboxRecord"> = defaultOutboxDependencies,
 ): Promise<void> {
   if (!env.UPPOINT_SMS_ENABLED) {
+    if (env.NODE_ENV === "production") {
+      throw new Error("SMS_BACKEND_DISABLED");
+    }
     return;
   }
 

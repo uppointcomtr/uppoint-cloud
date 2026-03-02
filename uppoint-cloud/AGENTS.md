@@ -138,14 +138,14 @@ Do not jump straight into changes without first confirming the local context and
 
 This section applies when the user asks things such as:
 
-* “tüm yapı doğru mu?”
-* “system-wide kontrol”
+* “is the whole system structurally correct?”
+* “system-wide review”
 * “production readiness”
 * “security audit”
-* “zero trust denetim”
-* “logging/audit eksikleri”
-* “büyüyünce kırılır mı?”
-* “sadece auth değil tüm sistemi denetle”
+* “zero-trust assessment”
+* “logging/audit gaps”
+* “will this break as the system scales?”
+* “audit the entire system, not only auth”
 
 ### Zero Trust principles
 
@@ -501,6 +501,15 @@ After every meaningful change:
 * run type checks: `npx tsc --noEmit` or the repository-defined type-check script if one exists
 * run tests: `npm test`
 * run production build verification: `npm run build`
+
+### Verification matrix
+
+| Context | Required command set | Notes |
+| --- | --- | --- |
+| Local code change (pre-commit) | `npm run lint` → `npx tsc --noEmit` → `npm test` → `npm run build` | Baseline verification for all meaningful changes |
+| Deployment on production host | `npm run lint` → `npx tsc --noEmit` → `npm test` → `npm run build` → `npm run build:deploy` | `build:deploy` is deploy/restart, not standard verification |
+| Nightly/remote smoke | GitHub Actions `remote-auth-smoke.yml` (`schedule` + `workflow_dispatch`) | Default target: `https://cloud.uppoint.com.tr`; keep token-gated health support active |
+| Incident/hotfix validation | Same as local baseline + targeted smoke for changed surface | Do not skip full baseline unless owner explicitly approves |
 
 Rules:
 

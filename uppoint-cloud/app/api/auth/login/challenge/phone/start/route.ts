@@ -56,7 +56,13 @@ export async function POST(request: Request) {
   try {
     const result = await startPhoneLoginChallenge(payload);
 
-    if (!result.challengeId) {
+    if (result.challengeId) {
+      await logAudit("login_challenge_started", ip, undefined, {
+        mode: "phone",
+        challengeId: result.challengeId,
+        result: "SUCCESS",
+      });
+    } else {
       await logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "phone",
         reason: "INVALID_CREDENTIALS",

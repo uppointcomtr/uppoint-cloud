@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createAuditLog, findFirstAuditLog, headersMock } = vi.hoisted(() => ({
+const { createAuditLog, findFirstAuditLog, executeRawMock, transactionMock, headersMock } = vi.hoisted(() => ({
   createAuditLog: vi.fn().mockResolvedValue(undefined),
   findFirstAuditLog: vi.fn().mockResolvedValue(null),
+  executeRawMock: vi.fn().mockResolvedValue(undefined),
+  transactionMock: vi.fn(),
   headersMock: vi.fn(),
 }));
 
@@ -12,16 +14,31 @@ vi.mock("next/headers", () => ({
 
 vi.mock("@/db/client", () => ({
   prisma: {
-    auditLog: {
-      create: createAuditLog,
-      findFirst: findFirstAuditLog,
-    },
+    $transaction: transactionMock,
   },
 }));
 
 import { logAudit } from "@/lib/audit-log";
 
 describe("logAudit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    findFirstAuditLog.mockResolvedValue(null);
+    transactionMock.mockImplementation(async (callback: (tx: {
+      $executeRaw: typeof executeRawMock;
+      auditLog: {
+        create: typeof createAuditLog;
+        findFirst: typeof findFirstAuditLog;
+      };
+    }) => Promise<unknown>) => callback({
+      $executeRaw: executeRawMock,
+      auditLog: {
+        create: createAuditLog,
+        findFirst: findFirstAuditLog,
+      },
+    }));
+  });
+
   it("persists normalized audit columns and redacts sensitive metadata", async () => {
     headersMock.mockResolvedValueOnce(
       new Headers({
@@ -55,6 +72,16 @@ describe("logAudit", () => {
         userAgent: "Vitest-UA",
         forwardedFor: "198.51.100.1, 203.0.113.10",
         metadata: expect.objectContaining({
+          audit: expect.objectContaining({
+            schemaVersion: "audit/v1",
+            action: "password_reset_failed",
+            result: "FAILURE",
+            reason: "INVALID_CODE",
+            requestId: "req-123",
+          }),
+          request: expect.objectContaining({
+            requestId: "req-123",
+          }),
           token: "[REDACTED]",
           integrity: expect.objectContaining({
             version: "v1",
@@ -74,6 +101,14 @@ describe("logAudit", () => {
       data: expect.objectContaining({
         action: "login_success",
         result: "SUCCESS",
+        metadata: expect.objectContaining({
+          audit: expect.objectContaining({
+            schemaVersion: "audit/v1",
+            action: "login_success",
+            result: "SUCCESS",
+            reason: null,
+          }),
+        }),
       }),
     });
   });

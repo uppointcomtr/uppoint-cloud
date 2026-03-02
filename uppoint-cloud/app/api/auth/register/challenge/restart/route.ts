@@ -55,6 +55,11 @@ export async function POST(request: Request) {
 
   try {
     const result = await restartRegisterVerificationChallenge(payload);
+    await logAudit("register_verification_restarted", ip, undefined, {
+      step: "restart",
+      challengeId: result.challengeId,
+      result: "SUCCESS",
+    });
 
     return NextResponse.json(ok({
       challengeId: result.challengeId,

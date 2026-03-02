@@ -56,7 +56,13 @@ export async function POST(request: Request) {
   try {
     const result = await startEmailLoginChallenge(payload);
 
-    if (!result.challengeId) {
+    if (result.challengeId) {
+      await logAudit("login_challenge_started", ip, undefined, {
+        mode: "email",
+        challengeId: result.challengeId,
+        result: "SUCCESS",
+      });
+    } else {
       await logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "email",
         reason: "INVALID_CREDENTIALS",

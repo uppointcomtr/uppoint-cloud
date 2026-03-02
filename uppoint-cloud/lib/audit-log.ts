@@ -15,6 +15,8 @@ export type AuditAction =
   | "register_verified"
   | "register_verification_restarted"
   | "register_verification_failed"
+  | "login_challenge_started"
+  | "login_challenge_verified"
   | "login_success"
   | "login_otp_failed"
   | "login_challenge_start_failed"
@@ -62,9 +64,38 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
 const AUDIT_INTEGRITY_VERSION = "v1";
 const AUDIT_INTEGRITY_SECRET = env.AUDIT_LOG_SIGNING_SECRET ?? env.AUTH_SECRET;
+const AUDIT_CHAIN_LOCK_KEY_ONE = 2_147_483_647;
+const AUDIT_CHAIN_LOCK_KEY_TWO = 4_242;
 
 let auditFallbackPathChecked = false;
 let auditFallbackPathReady = false;
+
+interface AuditRequestContext {
+  requestId: string;
+  userAgent: string | null;
+  ip: string | null;
+  forwardedFor: string | null;
+}
+
+interface AuditEnvelopeMetadata {
+  schemaVersion: "audit/v1";
+  action: AuditAction;
+  result: string;
+  reason: string | null;
+  requestId: string;
+}
+
+interface AuditIntegrityMetadata {
+  version: string;
+  previousHash: string | null;
+  hash: string;
+}
+
+type AuditStoredMetadata = Record<string, unknown> & {
+  audit: AuditEnvelopeMetadata;
+  request: AuditRequestContext;
+  integrity: AuditIntegrityMetadata;
+};
 
 async function ensureAuditFallbackPath(): Promise<boolean> {
   if (auditFallbackPathChecked) {
@@ -124,7 +155,7 @@ function redactSensitiveMetadata(metadata: Record<string, unknown>): Record<stri
   return output;
 }
 
-async function resolveRequestAuditContext(): Promise<Record<string, unknown>> {
+async function resolveRequestAuditContext(): Promise<AuditRequestContext> {
   try {
     const headersList = await headers();
     const requestId = headersList.get("x-request-id")?.trim() || randomUUID();
@@ -158,7 +189,7 @@ function pickString(input: unknown): string | undefined {
   return typeof input === "string" && input.trim().length > 0 ? input.trim() : undefined;
 }
 
-function resolveStoredIp(inputIp: string, requestContextIp: unknown): string | null {
+function resolveStoredIp(inputIp: string, requestContextIp: string | null): string | null {
   const explicitIp = pickString(inputIp);
   if (explicitIp && explicitIp !== "unknown") {
     return explicitIp;
@@ -232,23 +263,6 @@ function pickIntegrityHash(metadata: unknown): string | null {
   return /^[a-f0-9]{64}$/.test(normalized) ? normalized : null;
 }
 
-async function resolvePreviousIntegrityHash(): Promise<string | null> {
-  try {
-    const previous = await prisma.auditLog.findFirst({
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: {
-        metadata: true,
-      },
-    });
-
-    return pickIntegrityHash(previous?.metadata) ?? null;
-  } catch {
-    return null;
-  }
-}
-
 function computeIntegrityHash(input: {
   action: AuditAction;
   ip: string | null;
@@ -306,45 +320,33 @@ export async function logAudit(
   const actorId = pickString(safeMetadata.actorId);
   const targetId = pickString(safeMetadata.targetId) ?? pickString(safeMetadata.targetUserId);
   const resolvedTenantId = pickString(tenantId) ?? pickString(safeMetadata.tenantId);
-  const requestId = pickString(requestContext.requestId);
+  const requestId = pickString(requestContext.requestId) ?? randomUUID();
   const userAgent = pickString(requestContext.userAgent);
   const forwardedFor = pickString(requestContext.forwardedFor);
   const storedIp = resolveStoredIp(ip, requestContext.ip);
   const createdAt = new Date();
-  const previousIntegrityHash = await resolvePreviousIntegrityHash();
-  const integrityHash = computeIntegrityHash({
-    action,
-    ip: storedIp,
-    userId,
-    actorId,
-    targetId,
-    tenantId: resolvedTenantId,
-    result,
-    reason,
-    requestId,
-    userAgent,
-    forwardedFor,
-    metadata: safeMetadata,
-    createdAt,
-    previousHash: previousIntegrityHash,
-  });
-
-  const composedMetadata = {
-    ...safeMetadata,
-    request: requestContext,
-    integrity: {
-      version: AUDIT_INTEGRITY_VERSION,
-      previousHash: previousIntegrityHash,
-      hash: integrityHash,
-    },
-  };
 
   try {
-    await prisma.auditLog.create({
-      data: {
+    await prisma.$transaction(async (tx) => {
+      // Security-sensitive: serialize integrity-chain writes to prevent concurrent hash-branching.
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK_KEY_ONE}, ${AUDIT_CHAIN_LOCK_KEY_TWO})
+      `;
+
+      const previous = await tx.auditLog.findFirst({
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        select: {
+          metadata: true,
+        },
+      });
+      const previousIntegrityHash = pickIntegrityHash(previous?.metadata) ?? null;
+      const integrityHash = computeIntegrityHash({
         action,
         ip: storedIp,
-        userId: userId ?? undefined,
+        userId,
         actorId,
         targetId,
         tenantId: resolvedTenantId,
@@ -353,9 +355,45 @@ export async function logAudit(
         requestId,
         userAgent,
         forwardedFor,
+        metadata: safeMetadata,
         createdAt,
-        metadata: composedMetadata as Prisma.InputJsonValue,
-      },
+        previousHash: previousIntegrityHash,
+      });
+
+      const composedMetadata: AuditStoredMetadata = {
+        ...safeMetadata,
+        audit: {
+          schemaVersion: "audit/v1",
+          action,
+          result,
+          reason: reason ?? null,
+          requestId,
+        },
+        request: requestContext,
+        integrity: {
+          version: AUDIT_INTEGRITY_VERSION,
+          previousHash: previousIntegrityHash,
+          hash: integrityHash,
+        },
+      };
+
+      await tx.auditLog.create({
+        data: {
+          action,
+          ip: storedIp,
+          userId: userId ?? undefined,
+          actorId,
+          targetId,
+          tenantId: resolvedTenantId,
+          result,
+          reason,
+          requestId,
+          userAgent,
+          forwardedFor,
+          createdAt,
+          metadata: composedMetadata as Prisma.InputJsonValue,
+        },
+      });
     });
 
     emitSecuritySignal({

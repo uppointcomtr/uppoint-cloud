@@ -4,13 +4,56 @@ import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/db/client";
+import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { generateSessionJti, isSessionJtiRevoked } from "@/lib/session-revocation";
 import { consumeLoginToken } from "@/modules/auth/server/login-challenge";
 import { defaultLocale } from "@/modules/i18n/config";
 import { withLocale } from "@/modules/i18n/paths";
+import { resolveTrustedClientIp } from "@/lib/security/client-ip";
 
 const SESSION_REVALIDATE_WINDOW_MS = env.AUTH_SESSION_REVALIDATE_SECONDS * 1000;
+
+function pickAuthHeader(
+  headersInput: unknown,
+  name: string,
+): string | null {
+  if (!headersInput || typeof headersInput !== "object") {
+    return null;
+  }
+
+  if (headersInput instanceof Headers) {
+    const value = headersInput.get(name);
+    return value && value.trim().length > 0 ? value.trim() : null;
+  }
+
+  const record = headersInput as Record<string, string | string[] | undefined>;
+  const value = record[name] ?? record[name.toLowerCase()] ?? record[name.toUpperCase()];
+  if (Array.isArray(value)) {
+    const joined = value.join(",").trim();
+    return joined.length > 0 ? joined : null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  return null;
+}
+
+function resolveAuthorizeAuditIp(requestInput: unknown): string {
+  const requestRecord = requestInput as { headers?: unknown } | undefined;
+  const realIpHeader = pickAuthHeader(requestRecord?.headers, "x-real-ip");
+  const forwardedForHeader = pickAuthHeader(requestRecord?.headers, "x-forwarded-for");
+
+  const trustedIp = resolveTrustedClientIp({
+    realIpHeader,
+    forwardedForHeader,
+    isProduction: env.NODE_ENV === "production",
+  });
+
+  return trustedIp ?? "unknown";
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -32,7 +75,18 @@ export const authOptions: NextAuthOptions = {
           type: "text",
         },
       },
-      authorize: async (credentials) => consumeLoginToken(credentials),
+      authorize: async (credentials, request) => {
+        const user = await consumeLoginToken(credentials);
+
+        if (user) {
+          await logAudit("login_success", resolveAuthorizeAuditIp(request), user.id, {
+            mode: "credentials",
+            result: "SUCCESS",
+          });
+        }
+
+        return user;
+      },
     }),
   ],
   callbacks: {

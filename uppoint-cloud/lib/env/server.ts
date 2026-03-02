@@ -151,6 +151,22 @@ const serverEnvSchema = z.object({
       });
     }
 
+    if (input.UPPOINT_EMAIL_BACKEND !== "smtp") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["UPPOINT_EMAIL_BACKEND"],
+        message: "UPPOINT_EMAIL_BACKEND must be smtp in production for OTP delivery",
+      });
+    }
+
+    if (!input.UPPOINT_SMS_ENABLED) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["UPPOINT_SMS_ENABLED"],
+        message: "UPPOINT_SMS_ENABLED must be true in production for OTP delivery",
+      });
+    }
+
     if (databaseUrl) {
       const isLocalDatabaseHost = ["localhost", "127.0.0.1", "::1"].includes(databaseUrl.hostname);
       const sslMode = databaseUrl.searchParams.get("sslmode");

@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-03-02 (audit hardening follow-up: login IP context + metadata schema + verification matrix)
+
+### Fixed
+- Added trusted client-IP resolution for real `login_success` audit events in `auth.ts` Credentials authorize flow (uses `x-real-ip`/`x-forwarded-for` with production fail-closed semantics).
+- Strengthened audit metadata contract in `lib/audit-log.ts`:
+  - every record now includes `metadata.audit` envelope with required fields: `schemaVersion`, `action`, `result`, `reason`, `requestId`
+  - retained tamper-evident chain fields under `metadata.integrity`.
+- Expanded audit guardrail tests in `tests/auth/audit-log.test.ts` to assert required metadata envelope fields.
+
+### Changed
+- Added explicit **Verification matrix** in `AGENTS.md` to separate:
+  - baseline local verification,
+  - production deploy verification (`build` + `build:deploy`),
+  - nightly remote smoke expectations.
+
 ## 2026-03-02 (governance update: AGENTS.md policy refresh)
 
 ### Changed
