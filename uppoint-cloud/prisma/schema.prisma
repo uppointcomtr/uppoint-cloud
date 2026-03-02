@@ -128,6 +128,7 @@ model PasswordResetToken {
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([userId, expiresAt])
 }
 
 model PasswordResetChallenge {
@@ -173,6 +174,7 @@ model AuditLog {
   userId    String?
   actorId   String?
   targetId  String?
+  tenantId  String?
   result    String?
   reason    String?
   requestId String?
@@ -185,6 +187,7 @@ model AuditLog {
   @@index([action, createdAt])
   @@index([requestId])
   @@index([result, createdAt])
+  @@index([tenantId, createdAt])
   @@index([createdAt])
 }
 

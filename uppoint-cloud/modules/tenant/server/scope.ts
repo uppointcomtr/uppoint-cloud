@@ -62,7 +62,7 @@ export async function assertTenantAccess(
       targetId: input.tenantId,
       reason: "TENANT_ACCESS_DENIED",
       result: "FAILURE",
-    });
+    }, input.tenantId);
     throw new Error("TENANT_ACCESS_DENIED");
   }
 
@@ -75,7 +75,7 @@ export async function assertTenantAccess(
       minimumRole,
       role: membership.role,
       result: "FAILURE",
-    });
+    }, membership.tenantId);
     throw new Error("TENANT_ROLE_INSUFFICIENT");
   }
 

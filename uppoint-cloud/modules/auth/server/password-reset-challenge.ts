@@ -628,7 +628,7 @@ const defaultCompleteChallengeDependencies: CompleteChallengeDependencies = {
 export async function completePasswordResetChallenge(
   rawInput: unknown,
   dependencies: CompleteChallengeDependencies = defaultCompleteChallengeDependencies,
-): Promise<void> {
+): Promise<{ userId: string }> {
   const input = completeChallengeSchema.parse(rawInput);
   const now = dependencies.now();
   const challenge = await dependencies.findChallengeById(input.challengeId);
@@ -675,6 +675,8 @@ export async function completePasswordResetChallenge(
         "Reset token is invalid or expired",
       );
     }
+
+    return { userId: challenge.userId };
   } catch (error) {
     if (error instanceof PasswordResetChallengeError) {
       throw error;

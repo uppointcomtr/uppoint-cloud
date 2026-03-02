@@ -97,6 +97,14 @@ const serverEnvSchema = z.object({
       });
     }
 
+    if (!input.AUTH_OTP_PEPPER) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AUTH_OTP_PEPPER"],
+        message: "AUTH_OTP_PEPPER must be set in production",
+      });
+    }
+
     if (databaseUrl) {
       const isLocalDatabaseHost = ["localhost", "127.0.0.1", "::1"].includes(databaseUrl.hostname);
       const sslMode = databaseUrl.searchParams.get("sslmode");

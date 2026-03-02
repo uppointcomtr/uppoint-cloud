@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-03-02 (security closure: G2/G3/G5/G6/G7)
+
+### Fixed
+- Password reset completion audit now records the affected `userId`:
+  - `app/api/auth/forgot-password/challenge/complete/route.ts`
+  - `modules/auth/server/password-reset-challenge.ts` now returns `{ userId }` on successful completion
+- Production environment validation now requires dedicated OTP pepper:
+  - `lib/env/server.ts` enforces `AUTH_OTP_PEPPER` in production
+  - prevents implicit fallback to `AUTH_SECRET` in hardened deployments
+
+### Changed
+- Audit schema and logger now support tenant-scoped forensics:
+  - added nullable `tenantId` column + index to `AuditLog`
+  - `logAudit(...)` accepts optional tenant context and persists it in first-class column
+  - tenant access-denied/insufficient-role paths now pass tenant context explicitly
+- `actorId` is no longer auto-mirrored from `userId`:
+  - `actorId` is now explicit (`metadata.actorId`) to avoid redundant storage and keep actor/subject separation clear
+- Added compound index for password-reset token lifecycle queries:
+  - `PasswordResetToken`: `@@index([userId, expiresAt])`
+
+### Added
+- Migration:
+  - `prisma/migrations/20260302095000_add_audit_tenant_and_password_reset_compound_index/migration.sql`
+
+### Tests
+- Updated audit log unit expectations for explicit actor/tenant columns:
+  - `tests/auth/audit-log.test.ts`
+- Updated password reset completion unit test for returned `userId`:
+  - `tests/auth/password-reset-challenge.test.ts`
+
 ## 2026-03-02 (security closure: F1–F11 hardening batch)
 
 ### Fixed

@@ -46,6 +46,7 @@ NODE_ENV=production
 NEXT_PUBLIC_APP_URL=https://cloud.uppoint.com.tr
 DATABASE_URL=postgresql://...
 AUTH_SECRET=replace-with-strong-random-secret
+AUTH_OTP_PEPPER=replace-with-separate-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
 HEALTHCHECK_TOKEN=replace-with-strong-random-token

@@ -130,7 +130,7 @@ describe("completePasswordResetChallenge", () => {
   it("updates password for valid challenge", async () => {
     const completePasswordUpdate = vi.fn().mockResolvedValue(true);
 
-    await completePasswordResetChallenge(
+    const result = await completePasswordResetChallenge(
       {
         challengeId: "challenge-1",
         resetToken: "x".repeat(64),
@@ -151,6 +151,8 @@ describe("completePasswordResetChallenge", () => {
         now: vi.fn(() => new Date("2026-02-28T12:02:00.000Z")),
       },
     );
+
+    expect(result).toEqual({ userId: "u1" });
 
     expect(completePasswordUpdate).toHaveBeenCalledWith({
       challengeId: "challenge-1",

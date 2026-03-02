@@ -48,9 +48,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    await completePasswordResetChallenge(payload);
+    const completion = await completePasswordResetChallenge(payload);
 
-    await logAudit("password_reset_success", ip);
+    await logAudit("password_reset_success", ip, completion.userId);
 
     return NextResponse.json(ok({ reset: true }), { status: 200 });
   } catch (error) {

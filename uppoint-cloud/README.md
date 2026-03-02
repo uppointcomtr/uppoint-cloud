@@ -60,6 +60,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `NEXT_PUBLIC_APP_URL`
 - `DATABASE_URL`
 - `AUTH_SECRET`
+- `AUTH_OTP_PEPPER` (required in production; must be distinct from `AUTH_SECRET`)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)

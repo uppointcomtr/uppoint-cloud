@@ -209,12 +209,15 @@ export async function logAudit(
   ip: string,
   userId?: string,
   metadata?: Record<string, unknown>,
+  tenantId?: string,
 ): Promise<void> {
   const requestContext = await resolveRequestAuditContext();
   const safeMetadata = metadata ? redactSensitiveMetadata(metadata) : {};
   const result = resolveAuditResult(action, safeMetadata);
   const reason = pickString(safeMetadata.reason);
+  const actorId = pickString(safeMetadata.actorId);
   const targetId = pickString(safeMetadata.targetId) ?? pickString(safeMetadata.targetUserId);
+  const resolvedTenantId = pickString(tenantId) ?? pickString(safeMetadata.tenantId);
   const requestId = pickString(requestContext.requestId);
   const userAgent = pickString(requestContext.userAgent);
   const forwardedFor = pickString(requestContext.forwardedFor);
@@ -231,8 +234,9 @@ export async function logAudit(
         action,
         ip: storedIp,
         userId: userId ?? undefined,
-        actorId: userId ?? undefined,
+        actorId,
         targetId,
+        tenantId: resolvedTenantId,
         result,
         reason,
         requestId,

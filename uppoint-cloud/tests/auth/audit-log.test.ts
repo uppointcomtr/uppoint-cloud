@@ -31,6 +31,8 @@ describe("logAudit", () => {
     );
 
     await logAudit("password_reset_failed", "203.0.113.10", "user_1", {
+      actorId: "actor_1",
+      tenantId: "tenant_1",
       reason: "INVALID_CODE",
       targetUserId: "target_42",
       token: "plaintext-value",
@@ -42,8 +44,9 @@ describe("logAudit", () => {
         action: "password_reset_failed",
         ip: "203.0.113.10",
         userId: "user_1",
-        actorId: "user_1",
+        actorId: "actor_1",
         targetId: "target_42",
+        tenantId: "tenant_1",
         result: "FAILURE",
         reason: "INVALID_CODE",
         requestId: "req-123",
