@@ -245,7 +245,8 @@ Install cron entries:
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-backup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -258,6 +259,7 @@ Run manual tests:
 sudo /opt/uppoint-cloud/scripts/backup-db.sh
 sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
+sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
 ls -lah /opt/backups/postgres
 ```
 
@@ -273,6 +275,11 @@ ls -lah /opt/backups/postgres
 - `x-internal-dispatch-token`
 - `x-internal-request-ts`
 - `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
+
+`verify-audit-integrity.sh` performs read-only continuity validation for `AuditLog.metadata.integrity` chain:
+- allows legacy rows before first integrity-enabled record
+- requires contiguous `previousHash -> hash` linkage once integrity chain starts
+- fails on missing/invalid chain metadata after cutover
 
 ## 9. Redis backup automation
 
@@ -353,6 +360,7 @@ Covered logs:
 - `/var/log/uppoint-health-probe.log`
 - `/var/log/uppoint-cloud/dispatch-notifications.log`
 - `/var/log/uppoint-nginx-drift-check.log`
+- `/var/log/uppoint-audit-integrity-check.log`
 - `/var/log/uppoint-cloud/audit-fallback.log`
 - `/var/log/postgresql/*.log`
 

@@ -34,6 +34,9 @@ fi
 if [ -z "$DATABASE_URL" ]; then
   DATABASE_URL="$(read_env_value "$ENV_FILE" "DATABASE_URL")"
 fi
+if [ -n "$DATABASE_URL" ]; then
+  configure_postgres_connection "$DATABASE_URL"
+fi
 
 if [ -z "$NOTIFICATION_PAYLOAD_SECRET" ]; then
   NOTIFICATION_PAYLOAD_SECRET="$(read_env_value "$ENV_FILE" "NOTIFICATION_PAYLOAD_SECRET")"
@@ -52,11 +55,10 @@ seal_notification_payload() {
     return 0
   fi
 
-  printf '%s' "$plain_text" | NOTIFICATION_PAYLOAD_SECRET="$NOTIFICATION_PAYLOAD_SECRET" node -e '
-const { createCipheriv, createHash, randomBytes } = require("crypto");
-const fs = require("fs");
+  printf '%s' "$plain_text" | NOTIFICATION_PAYLOAD_SECRET="$NOTIFICATION_PAYLOAD_SECRET" node --input-type=module -e '
+import fs from "fs";
+import { sealNotificationPayloadWithSecret } from "/opt/uppoint-cloud/modules/notifications/server/payload-crypto-core.mjs";
 
-const PAYLOAD_PREFIX = "enc:v1";
 const secret = process.env.NOTIFICATION_PAYLOAD_SECRET || "";
 const plainText = fs.readFileSync(0, "utf8");
 
@@ -65,26 +67,7 @@ if (!secret) {
   process.exit(0);
 }
 
-function toBase64Url(buffer) {
-  return buffer
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-const iv = randomBytes(12);
-const key = createHash("sha256").update(secret).digest();
-const cipher = createCipheriv("aes-256-gcm", key, iv);
-const ciphertext = Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
-const authTag = cipher.getAuthTag();
-
-process.stdout.write([
-  PAYLOAD_PREFIX,
-  toBase64Url(iv),
-  toBase64Url(authTag),
-  toBase64Url(ciphertext),
-].join(":"));
+process.stdout.write(sealNotificationPayloadWithSecret(plainText, secret));
 '
 }
 
@@ -129,11 +112,13 @@ fi
 
 if [ -n "$UPPOINT_ALERT_EMAIL_TO" ] && [ -n "$DATABASE_URL" ]; then
   ALERT_ID="ops_drift_alert_$(date +%s%N)"
+  SEALED_RECIPIENT="$(seal_notification_payload "$UPPOINT_ALERT_EMAIL_TO")"
+  SEALED_SUBJECT="$(seal_notification_payload "$SUBJECT")"
   SEALED_BODY="$(seal_notification_payload "$BODY")"
-  if psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q \
+  if psql -v ON_ERROR_STOP=1 -q \
     --set=alert_id="$ALERT_ID" \
-    --set=recipient="$UPPOINT_ALERT_EMAIL_TO" \
-    --set=subject="$SUBJECT" \
+    --set=recipient="$SEALED_RECIPIENT" \
+    --set=subject="$SEALED_SUBJECT" \
     --set=body="$SEALED_BODY" \
     -c "INSERT INTO \"NotificationOutbox\" (\"id\", \"channel\", \"recipient\", \"subject\", \"body\", \"metadata\", \"status\", \"nextAttemptAt\", \"updatedAt\") VALUES (:'alert_id', 'EMAIL'::\"NotificationChannel\", :'recipient', :'subject', :'body', jsonb_build_object('scope','ops-nginx-drift-alert','severity','critical'), 'PENDING'::\"NotificationOutboxStatus\", NOW(), NOW());"; then
     CHANNEL_DELIVERED=1

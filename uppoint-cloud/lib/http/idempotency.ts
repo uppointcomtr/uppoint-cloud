@@ -361,8 +361,16 @@ export async function withIdempotency(
   try {
     slotAcquired = await reservePendingSlot(action, key, subjectHash, ttlSeconds);
   } catch {
-    // Idempotency storage failures must not block the primary request path.
-    return handler();
+    // Security-sensitive: fail closed when idempotency storage is unavailable.
+    return Response.json(
+      { success: false, error: "IDEMPOTENCY_STORAGE_UNAVAILABLE" },
+      {
+        status: 503,
+        headers: {
+          "Retry-After": "1",
+        },
+      },
+    );
   }
 
   if (!slotAcquired) {

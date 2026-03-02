@@ -141,4 +141,27 @@ describe("withIdempotency", () => {
     expect(handler).not.toHaveBeenCalled();
     expect(mocks.findUnique).not.toHaveBeenCalled();
   });
+
+  it("fails closed when idempotency storage is unavailable", async () => {
+    mocks.headersMock.mockResolvedValue(
+      new Headers({
+        "idempotency-key": "key-12345678",
+        "x-real-ip": "203.0.113.10",
+        "user-agent": "vitest-agent",
+      }),
+    );
+    mocks.findUnique.mockResolvedValue(null);
+    mocks.create.mockRejectedValue(new Error("storage unavailable"));
+
+    const { withIdempotency } = await loadIdempotencyModule();
+    const handler = vi.fn().mockResolvedValue(new Response("{\"ok\":true}", { status: 200 }));
+
+    const response = await withIdempotency("auth:test", handler);
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: "IDEMPOTENCY_STORAGE_UNAVAILABLE",
+    });
+    expect(handler).not.toHaveBeenCalled();
+  });
 });

@@ -94,7 +94,6 @@ export const trMessages = {
     errors: {
       unavailable: "Şu anda giriş yapılamıyor",
       invalidCredentials: "E-posta veya şifre hatalı",
-      emailNotVerified: "E-posta adresiniz henüz doğrulanmamış. Gelen kutunuzu kontrol edin.",
       invalidCode: "Doğrulama kodu hatalı",
       expiredCode: "Kod geçersiz veya süresi dolmuş",
       maxAttempts: "Çok fazla hatalı deneme yapıldı. Yeniden deneyin.",

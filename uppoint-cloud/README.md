@@ -92,6 +92,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_DATACODING`
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 - `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
+- `AUDIT_LOG_SIGNING_SECRET` (optional, min 32 chars; defaults to `AUTH_SECRET` when unset)
 - `NOTIFICATION_PAYLOAD_SECRET` (required in production; encrypts notification outbox payload at rest)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
@@ -166,6 +167,7 @@ npm run test
 npm run test:e2e
 npm run build:deploy
 npm run verify:nginx-drift
+npm run verify:audit-integrity
 ```
 
 Nginx rate-limit drift policy:
@@ -258,6 +260,17 @@ GitHub Actions nightly/ondemand remote smoke:
 - Manual run: `Actions -> Remote Auth Smoke -> Run workflow`
 - Optional manual input:
   - `allow_mutations=1` (only for isolated non-production environments)
+
+Nightly mutation coverage guard:
+- scheduled run now requires repository variable `E2E_ALLOW_MUTATIONS=1`.
+- verify with:
+```bash
+gh variable list -R uppointcomtr/uppoint-cloud | rg '^E2E_ALLOW_MUTATIONS'
+```
+
+Optional CI audit-integrity check:
+- set repository secret `AUDIT_INTEGRITY_DATABASE_URL` (read-only DB URL recommended).
+- workflow runs `npm run verify:audit-integrity` when this secret is configured.
 - Optional secret:
   - `E2E_HEALTHCHECK_TOKEN` (only needed if remote `/api/health` requires token)
 - Optional repository variable:

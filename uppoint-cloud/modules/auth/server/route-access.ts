@@ -38,7 +38,7 @@ export function isProtectedRoute(pathname: string): boolean {
     return false;
   }
 
-  return hasExplicitProtectedRouteRule(pathname) || pathname.startsWith("/");
+  return hasExplicitProtectedRouteRule(pathname);
 }
 
 export function shouldPreserveCallbackUrl(pathname: string): boolean {
@@ -50,7 +50,7 @@ export function shouldPreserveCallbackUrl(pathname: string): boolean {
     ({ prefix, preserveCallbackUrl }) =>
       Boolean(preserveCallbackUrl)
       && (pathname === prefix || pathname.startsWith(`${prefix}/`)),
-  ) || pathname !== "/";
+  );
 }
 
 export function resolveAuthRedirect(

@@ -58,6 +58,8 @@ const defaultOutboxDependencies: OutboxDependencies = {
   now: () => new Date(),
   createOutboxRecord: async (input) => {
     const metadata = input.metadata ? JSON.stringify(input.metadata) : null;
+    const sealedRecipient = sealNotificationPayload(input.recipient);
+    const sealedSubject = input.subject ? sealNotificationPayload(input.subject) : null;
     const sealedBody = sealNotificationPayload(input.body);
     await prisma.$executeRaw`
       INSERT INTO "NotificationOutbox" (
@@ -66,8 +68,8 @@ const defaultOutboxDependencies: OutboxDependencies = {
       VALUES (
         ${randomUUID()},
         ${input.channel}::"NotificationChannel",
-        ${input.recipient},
-        ${input.subject ?? null},
+        ${sealedRecipient},
+        ${sealedSubject},
         ${sealedBody},
         ${metadata ? metadata : null}::jsonb,
         'PENDING'::"NotificationOutboxStatus",
@@ -233,16 +235,19 @@ export async function dispatchNotificationOutboxBatch(
 
     try {
       if (record.channel === "EMAIL") {
+        const resolvedRecipient = openNotificationPayload(record.recipient);
+        const resolvedSubject = record.subject ? openNotificationPayload(record.subject) : "";
         const resolvedBody = openNotificationPayload(record.body);
         await dependencies.sendEmail({
-          to: record.recipient,
-          subject: record.subject ?? "",
+          to: resolvedRecipient,
+          subject: resolvedSubject,
           text: resolvedBody,
         });
       } else {
+        const resolvedRecipient = openNotificationPayload(record.recipient);
         const resolvedBody = openNotificationPayload(record.body);
         await dependencies.sendSms({
-          to: record.recipient,
+          to: resolvedRecipient,
           message: resolvedBody,
         });
       }

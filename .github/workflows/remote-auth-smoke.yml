@@ -34,6 +34,7 @@ jobs:
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
       E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || vars.E2E_ALLOW_MUTATIONS || '0' }}
       E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '0' }}
+      AUDIT_INTEGRITY_DATABASE_URL: ${{ secrets.AUDIT_INTEGRITY_DATABASE_URL }}
     defaults:
       run:
         working-directory: uppoint-cloud
@@ -55,8 +56,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Enforce mutation coverage for nightly schedule
+        if: github.event_name == 'schedule'
+        env:
+          E2E_MUTATIONS_ENABLED: ${{ env.E2E_ALLOW_MUTATIONS }}
+        run: |
+          set -euo pipefail
+          if [ "${E2E_MUTATIONS_ENABLED}" != "1" ]; then
+            echo "Nightly run requires E2E_ALLOW_MUTATIONS=1 for mutation-path coverage."
+            echo "Set repository variable E2E_ALLOW_MUTATIONS=1 (or run workflow_dispatch with allow_mutations=1 in a safe environment)."
+            exit 1
+          fi
+
       - name: Run remote smoke suite
         run: npm run test:e2e:remote
+
+      - name: Verify audit integrity chain (optional)
+        id: audit_integrity
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -z "${AUDIT_INTEGRITY_DATABASE_URL:-}" ]; then
+            echo "state=skipped" >> "${GITHUB_OUTPUT}"
+            echo "Audit integrity check skipped: AUDIT_INTEGRITY_DATABASE_URL secret is not configured."
+            exit 0
+          fi
+
+          DATABASE_URL="${AUDIT_INTEGRITY_DATABASE_URL}" npm run verify:audit-integrity
+          echo "state=passed" >> "${GITHUB_OUTPUT}"
 
       - name: Probe health endpoint
         id: health
@@ -121,6 +148,7 @@ jobs:
           START_EPOCH: ${{ steps.timing.outputs.start_epoch }}
           HEALTH_RESULT: ${{ steps.health.outputs.health_result }}
           HEALTH_GUARD: ${{ env.E2E_ENFORCE_HEALTH_200 }}
+          AUDIT_INTEGRITY_STATE: ${{ steps.audit_integrity.outputs.state }}
         run: |
           set -euo pipefail
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -149,4 +177,5 @@ jobs:
             echo "- E2E_HEALTHCHECK_TOKEN: ${health_token_state}"
             echo "- Health endpoint: ${HEALTH_RESULT:-unknown}"
             echo "- Health guard: ${HEALTH_GUARD}"
+            echo "- Audit integrity check: ${AUDIT_INTEGRITY_STATE:-not-run}"
           } >> "${GITHUB_STEP_SUMMARY}"

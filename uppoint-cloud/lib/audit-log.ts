@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomUUID } from "crypto";
+import { createHmac, randomUUID } from "crypto";
 import { appendFile, mkdir } from "fs/promises";
 import { dirname } from "path";
 import type { Prisma } from "@prisma/client";
@@ -32,6 +32,9 @@ export type AuditAction =
   | "internal_dispatch_success"
   | "internal_dispatch_failed"
   | "internal_dispatch_replay_blocked"
+  | "internal_dispatch_unauthorized"
+  | "internal_audit_security_event_unauthorized"
+  | "internal_audit_security_event_replay_blocked"
   | "tenant_access_denied"
   | "tenant_role_insufficient"
   | "tenant_context_missing"
@@ -50,10 +53,15 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "edge_origin_rejected",
   "internal_dispatch_failed",
   "internal_dispatch_replay_blocked",
+  "internal_dispatch_unauthorized",
+  "internal_audit_security_event_unauthorized",
+  "internal_audit_security_event_replay_blocked",
   "tenant_access_denied",
   "tenant_role_insufficient",
 ]);
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
+const AUDIT_INTEGRITY_VERSION = "v1";
+const AUDIT_INTEGRITY_SECRET = env.AUDIT_LOG_SIGNING_SECRET ?? env.AUTH_SECRET;
 
 let auditFallbackPathChecked = false;
 let auditFallbackPathReady = false;
@@ -205,6 +213,81 @@ function emitSecuritySignal(input: {
   console.warn("[security-signal]", JSON.stringify(signal));
 }
 
+function pickIntegrityHash(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const integrity = (metadata as Record<string, unknown>).integrity;
+  if (!integrity || typeof integrity !== "object" || Array.isArray(integrity)) {
+    return null;
+  }
+
+  const hash = (integrity as Record<string, unknown>).hash;
+  if (typeof hash !== "string") {
+    return null;
+  }
+
+  const normalized = hash.trim().toLowerCase();
+  return /^[a-f0-9]{64}$/.test(normalized) ? normalized : null;
+}
+
+async function resolvePreviousIntegrityHash(): Promise<string | null> {
+  try {
+    const previous = await prisma.auditLog.findFirst({
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        metadata: true,
+      },
+    });
+
+    return pickIntegrityHash(previous?.metadata) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function computeIntegrityHash(input: {
+  action: AuditAction;
+  ip: string | null;
+  userId?: string;
+  actorId?: string;
+  targetId?: string;
+  tenantId?: string;
+  result: string;
+  reason?: string;
+  requestId?: string;
+  userAgent?: string;
+  forwardedFor?: string;
+  metadata: Record<string, unknown>;
+  createdAt: Date;
+  previousHash: string | null;
+}): string {
+  const canonicalPayload = JSON.stringify({
+    action: input.action,
+    ip: input.ip,
+    userId: input.userId ?? null,
+    actorId: input.actorId ?? null,
+    targetId: input.targetId ?? null,
+    tenantId: input.tenantId ?? null,
+    result: input.result,
+    reason: input.reason ?? null,
+    requestId: input.requestId ?? null,
+    userAgent: input.userAgent ?? null,
+    forwardedFor: input.forwardedFor ?? null,
+    createdAt: input.createdAt.toISOString(),
+    previousHash: input.previousHash,
+    metadata: input.metadata,
+    version: AUDIT_INTEGRITY_VERSION,
+  });
+
+  return createHmac("sha256", AUDIT_INTEGRITY_SECRET)
+    .update(canonicalPayload)
+    .digest("hex");
+}
+
 /**
  * Records a security-relevant event for forensic analysis.
  * Never throws to callers; DB errors are captured via fallback sink.
@@ -227,10 +310,33 @@ export async function logAudit(
   const userAgent = pickString(requestContext.userAgent);
   const forwardedFor = pickString(requestContext.forwardedFor);
   const storedIp = resolveStoredIp(ip, requestContext.ip);
+  const createdAt = new Date();
+  const previousIntegrityHash = await resolvePreviousIntegrityHash();
+  const integrityHash = computeIntegrityHash({
+    action,
+    ip: storedIp,
+    userId,
+    actorId,
+    targetId,
+    tenantId: resolvedTenantId,
+    result,
+    reason,
+    requestId,
+    userAgent,
+    forwardedFor,
+    metadata: safeMetadata,
+    createdAt,
+    previousHash: previousIntegrityHash,
+  });
 
   const composedMetadata = {
     ...safeMetadata,
     request: requestContext,
+    integrity: {
+      version: AUDIT_INTEGRITY_VERSION,
+      previousHash: previousIntegrityHash,
+      hash: integrityHash,
+    },
   };
 
   try {
@@ -247,6 +353,7 @@ export async function logAudit(
         requestId,
         userAgent,
         forwardedFor,
+        createdAt,
         metadata: composedMetadata as Prisma.InputJsonValue,
       },
     });

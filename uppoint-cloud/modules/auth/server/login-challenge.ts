@@ -131,7 +131,6 @@ export class LoginChallengeError extends Error {
       | "INVALID_CODE"
       | "MAX_ATTEMPTS_REACHED"
       | "SMS_NOT_ENABLED"
-      | "EMAIL_NOT_VERIFIED"
       | "INVALID_OR_EXPIRED_LOGIN_TOKEN"
       | "UNKNOWN",
     message: string,
@@ -252,10 +251,7 @@ export async function startEmailLoginChallenge(
   }
 
   if (!user.emailVerified) {
-    throw new LoginChallengeError(
-      "EMAIL_NOT_VERIFIED",
-      "Email address must be verified before sign-in",
-    );
+    return { challengeId: null, codeExpiresAt: null };
   }
 
   await dependencies.clearFailedPasswordAttempts(user.id);
@@ -413,10 +409,7 @@ export async function startPhoneLoginChallenge(
   }
 
   if (!user.emailVerified) {
-    throw new LoginChallengeError(
-      "EMAIL_NOT_VERIFIED",
-      "Email address must be verified before sign-in",
-    );
+    return { challengeId: null, codeExpiresAt: null };
   }
 
   await dependencies.clearFailedPasswordAttempts(user.id);

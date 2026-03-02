@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-03-02 (finding closure: internal audit coverage, idempotency fail-closed, workflow/ops hardening)
+
+### Fixed
+- Closed internal endpoint unauthorized/replay audit gaps:
+  - `app/api/internal/notifications/dispatch/route.ts` now logs `internal_dispatch_unauthorized` on failed internal auth.
+  - `app/api/internal/audit/security-event/route.ts` now logs `internal_audit_security_event_unauthorized` and `internal_audit_security_event_replay_blocked`.
+  - Added regression tests:
+    - `tests/internal/notifications-dispatch-route.test.ts`
+    - `tests/internal/security-event-route.test.ts`
+- Closed idempotency storage fail-open behavior:
+  - `lib/http/idempotency.ts` now fails closed with `503 IDEMPOTENCY_STORAGE_UNAVAILABLE` when storage reservation fails.
+  - Added unit coverage in `tests/http/idempotency.test.ts`.
+- Closed route protection default-catch-all drift risk:
+  - `modules/auth/server/route-access.ts` no longer auto-protects unknown paths; only explicit protected registry is enforced.
+  - Updated tests in `tests/auth/route-access.test.ts`.
+- Closed stale login error semantics for OTP-only onboarding:
+  - `modules/auth/server/login-challenge.ts` no longer throws `EMAIL_NOT_VERIFIED`; returns neutral no-challenge response.
+  - Removed stale `EMAIL_NOT_VERIFIED` mapping in `modules/auth/components/login-form.tsx` and dictionaries (`messages/tr.ts`, `messages/en.ts`).
+  - Updated `tests/auth/login-challenge.test.ts`.
+
+### Changed
+- Added workflow location guardrail:
+  - new script: `scripts/check-remote-smoke-workflow-location.sh`
+  - new npm command: `npm run verify:workflow-layout`
+- Tightened nightly remote smoke coverage policy:
+  - `.github/workflows/remote-auth-smoke.yml` now enforces `E2E_ALLOW_MUTATIONS=1` for scheduled/nightly runs.
+- Added optional CI audit-integrity verification hook:
+  - `.github/workflows/remote-auth-smoke.yml` now runs `npm run verify:audit-integrity` when secret `AUDIT_INTEGRITY_DATABASE_URL` is configured.
+  - workflow summary now reports audit-integrity check state (`passed|skipped`).
+- Updated verify pipeline contract:
+  - `package.json` `verify` now uses `npm run build:deploy` instead of `npm run build`.
+- Added audit-integrity operational automation:
+  - new scripts: `scripts/verify-audit-integrity.sh`, `scripts/verify-audit-integrity.mjs`
+  - new npm command: `npm run verify:audit-integrity`
+  - new cron template: `ops/cron/uppoint-audit-integrity-check`
+  - updated logrotate coverage for `/var/log/uppoint-audit-integrity-check.log`
+
+### Security Hardening
+- Reduced secrets exposure risk in ops scripts:
+  - `scripts/lib/env-reader.sh` now provides PostgreSQL URL parsing + `PG*` environment export helper.
+  - `scripts/backup-db.sh`, `scripts/cleanup-db.sh`, `scripts/restore-db.sh`, and `scripts/alert-nginx-drift.sh` now use `PG*` env connection settings instead of passing `DATABASE_URL` in `psql/pg_dump` argv.
+  - `scripts/dispatch-notifications.sh` no longer passes signing secret via `openssl -hmac` argv.
+- Removed crypto duplication between app and ops alert path:
+  - added shared core module `modules/notifications/server/payload-crypto-core.mjs` (+ `.d.ts`).
+  - `modules/notifications/server/payload-crypto.ts` and `scripts/alert-nginx-drift.sh` now use the same encryption core.
+- Encrypted outbox PII-at-rest for alerts and app notifications:
+  - `modules/notifications/server/outbox.ts` now seals `recipient`, `subject`, and `body`.
+  - `scripts/alert-nginx-drift.sh` now inserts sealed `recipient` and `subject`.
+- Added tamper-evident audit metadata chain:
+  - `lib/audit-log.ts` now writes `metadata.integrity` (`version`, `previousHash`, `hash`) using HMAC-SHA256.
+  - Added optional env support `AUDIT_LOG_SIGNING_SECRET` in `lib/env/server.ts`.
+  - Updated unit coverage in `tests/auth/audit-log.test.ts`.
+- Strengthened tenant-scale guardrail:
+  - `tests/tenant/tenant-guardrail.test.ts` now blocks direct `prisma.tenantMembership`/`prisma.tenant` usage in app entry points without tenant guard helpers.
+
 ## 2026-03-02 (finding closure: 2-8 follow-up + stack clarification)
 
 ### Changed

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-const { createAuditLog, headersMock } = vi.hoisted(() => ({
+const { createAuditLog, findFirstAuditLog, headersMock } = vi.hoisted(() => ({
   createAuditLog: vi.fn().mockResolvedValue(undefined),
+  findFirstAuditLog: vi.fn().mockResolvedValue(null),
   headersMock: vi.fn(),
 }));
 
@@ -13,6 +14,7 @@ vi.mock("@/db/client", () => ({
   prisma: {
     auditLog: {
       create: createAuditLog,
+      findFirst: findFirstAuditLog,
     },
   },
 }));
@@ -54,6 +56,10 @@ describe("logAudit", () => {
         forwardedFor: "198.51.100.1, 203.0.113.10",
         metadata: expect.objectContaining({
           token: "[REDACTED]",
+          integrity: expect.objectContaining({
+            version: "v1",
+            hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+          }),
         }),
       }),
     });

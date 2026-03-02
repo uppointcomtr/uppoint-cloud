@@ -28,8 +28,8 @@ describe("resolveAuthRedirect", () => {
     expect(resolveAuthRedirect("/en/reset-password", true)).toBeNull();
   });
 
-  it("treats unknown pages as protected by default", () => {
-    expect(resolveAuthRedirect("/tr/settings", false)).toBe("/tr/login");
+  it("keeps unknown pages public until explicitly registered", () => {
+    expect(resolveAuthRedirect("/tr/settings", false)).toBeNull();
   });
 });
 
@@ -45,8 +45,8 @@ describe("shouldPreserveCallbackUrl", () => {
     expect(shouldPreserveCallbackUrl("/")).toBe(false);
   });
 
-  it("preserves callback for non-public protected routes", () => {
-    expect(shouldPreserveCallbackUrl("/settings")).toBe(true);
+  it("does not preserve callback for unknown non-protected routes", () => {
+    expect(shouldPreserveCallbackUrl("/settings")).toBe(false);
   });
 });
 
@@ -56,7 +56,7 @@ describe("protected route intent", () => {
     expect(hasExplicitProtectedRouteRule("/dashboard/instances")).toBe(true);
   });
 
-  it("keeps unknown paths protected while requiring explicit registry for route intent", () => {
+  it("does not auto-protect unknown paths without explicit registry", () => {
     expect(hasExplicitProtectedRouteRule("/settings")).toBe(false);
   });
 });

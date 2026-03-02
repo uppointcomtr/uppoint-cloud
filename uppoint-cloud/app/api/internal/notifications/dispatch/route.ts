@@ -22,6 +22,12 @@ export async function POST(request: Request) {
   });
 
   if (!verifiedRequest) {
+    const requestId = request.headers.get("x-internal-request-id")?.trim();
+    await logAudit("internal_dispatch_unauthorized", "unknown", undefined, {
+      requestId: requestId && requestId.length > 0 ? requestId.slice(0, 128) : undefined,
+      result: "FAILURE",
+      reason: "INVALID_INTERNAL_REQUEST_AUTH",
+    });
     return NextResponse.json(fail("UNAUTHORIZED"), { status: 401 });
   }
 

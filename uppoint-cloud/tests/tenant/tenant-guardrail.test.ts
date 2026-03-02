@@ -82,4 +82,34 @@ describe("tenant authorization guardrail", () => {
 
     expect(violations).toEqual([]);
   });
+
+  it("blocks direct tenant membership queries in app entry points without tenant scope guards", () => {
+    const appDir = path.join(process.cwd(), "app");
+    const entryFiles = collectFilesRecursively(appDir).filter((filePath) =>
+      /(?:route\.ts|page\.tsx|actions\.ts)$/.test(filePath),
+    );
+
+    const violations: string[] = [];
+
+    for (const filePath of entryFiles) {
+      const source = readFileSync(filePath, "utf8");
+      const hasDirectTenantQuery =
+        /prisma\.tenantMembership\./.test(source)
+        || /prisma\.tenant\./.test(source);
+
+      if (!hasDirectTenantQuery) {
+        continue;
+      }
+
+      const hasTenantGuard =
+        /assertTenantAccess\(/.test(source)
+        || /resolveUserTenantContext\(/.test(source);
+
+      if (!hasTenantGuard) {
+        violations.push(path.relative(process.cwd(), filePath));
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
 });

@@ -1,0 +1,6 @@
+# Uppoint Cloud audit integrity chain verification (daily at 03:20)
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Runs as root with root-owned lock/log destination. Script performs read-only verification.
+20 3 * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-audit-integrity-check.lock /opt/uppoint-cloud/scripts/verify-audit-integrity.sh >> /var/log/uppoint-audit-integrity-check.log 2>&1

@@ -38,6 +38,7 @@ if [ -z "${DATABASE_URL:-}" ]; then
   echo "[cleanup] HATA: DATABASE_URL tanımlı değil." >&2
   exit 1
 fi
+configure_postgres_connection "$DATABASE_URL"
 
 if ! [[ "$AUDIT_LOG_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$AUDIT_LOG_RETENTION_DAYS" -lt 30 ]; then
   echo "[cleanup] HATA: AUDIT_LOG_RETENTION_DAYS geçersiz (>=30 olmalı)." >&2
@@ -63,7 +64,7 @@ case "$AUDIT_LOG_ARCHIVE_BEFORE_DELETE" in
 esac
 
 # -A: hizalama yok, -t: başlık yok, -q: sessiz mod
-PSQL=(psql "$DATABASE_URL" -A -t -q)
+PSQL=(psql -A -t -q)
 
 echo "[cleanup] Başlıyor: $(date)"
 

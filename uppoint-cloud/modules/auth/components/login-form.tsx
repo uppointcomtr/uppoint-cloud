@@ -53,8 +53,6 @@ function mapLoginChallengeError(
       return dictionary.errors.expiredCode;
     case "MAX_ATTEMPTS_REACHED":
       return dictionary.errors.maxAttempts;
-    case "EMAIL_NOT_VERIFIED":
-      return dictionary.errors.emailNotVerified;
     case "SMS_NOT_ENABLED":
       return dictionary.errors.smsDisabled;
     case "EMAIL_DELIVERY_FAILED":

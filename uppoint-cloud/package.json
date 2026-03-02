@@ -13,8 +13,10 @@
     "test": "vitest run",
     "test:e2e": "bash ./scripts/run-e2e-smoke-local.sh",
     "test:e2e:remote": "E2E_BASE_URL=${E2E_BASE_URL:-https://cloud.uppoint.com.tr} RUN_E2E=1 vitest run tests/e2e --testTimeout=30000",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:e2e && npm run build",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:e2e && npm run build:deploy",
+    "verify:workflow-layout": "bash ./scripts/check-remote-smoke-workflow-location.sh",
     "verify:nginx-drift": "bash ./scripts/check-nginx-config-drift.sh",
+    "verify:audit-integrity": "bash ./scripts/verify-audit-integrity.sh",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:migrate:status": "prisma migrate status",
     "service:restart": "if [ \"${NEXT_SKIP_SERVICE_RESTART:-0}\" = \"1\" ]; then echo \"Skipping service restart (NEXT_SKIP_SERVICE_RESTART=1)\"; elif command -v systemctl >/dev/null 2>&1 && systemctl cat uppoint-cloud.service >/dev/null 2>&1; then systemctl restart uppoint-cloud.service && systemctl is-active --quiet uppoint-cloud.service && echo \"uppoint-cloud.service restarted\"; else echo \"Skipping service restart (systemd or uppoint-cloud.service unavailable)\"; fi"

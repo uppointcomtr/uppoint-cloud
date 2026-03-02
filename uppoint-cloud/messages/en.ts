@@ -94,7 +94,6 @@ export const enMessages = {
     errors: {
       unavailable: "Unable to sign in right now",
       invalidCredentials: "Invalid email or password",
-      emailNotVerified: "Your email address is not verified yet. Please check your inbox.",
       invalidCode: "Verification code is invalid",
       expiredCode: "Code is invalid or expired",
       maxAttempts: "Too many invalid attempts. Please try again.",

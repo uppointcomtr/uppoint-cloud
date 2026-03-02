@@ -40,36 +40,36 @@ describe("startEmailLoginChallenge", () => {
     expect(result).toEqual({ challengeId: null, codeExpiresAt: null });
   });
 
-  it("rejects login when email is not verified", async () => {
-    await expect(
-      startEmailLoginChallenge(
-        {
+  it("returns neutral response when email is not verified", async () => {
+    const result = await startEmailLoginChallenge(
+      {
+        email: "user@example.com",
+        password: "StrongPass!123",
+        locale: "tr",
+      },
+      {
+        findUserByEmail: vi.fn().mockResolvedValue({
+          id: "u1",
           email: "user@example.com",
-          password: "StrongPass!123",
-          locale: "tr",
-        },
-        {
-          findUserByEmail: vi.fn().mockResolvedValue({
-            id: "u1",
-            email: "user@example.com",
-            name: "User",
-            passwordHash: "hash",
-            emailVerified: null,
-            failedLoginAttempts: 0,
-            lockedUntil: null,
-          }),
-          verifyPassword: vi.fn().mockResolvedValue(true),
-          registerFailedPasswordAttempt: vi.fn().mockResolvedValue(undefined),
-          clearFailedPasswordAttempts: vi.fn().mockResolvedValue(undefined),
-          deleteChallengesForUserAndMode: vi.fn(),
-          createChallenge: vi.fn(),
-          sendEmailOtp: vi.fn(),
-          now: vi.fn(() => new Date("2026-02-28T17:00:00.000Z")),
-          generateCode: vi.fn(() => "123456"),
-          hashValue: vi.fn(() => "hash"),
-        },
-      ),
-    ).rejects.toMatchObject({ code: "EMAIL_NOT_VERIFIED" });
+          name: "User",
+          passwordHash: "hash",
+          emailVerified: null,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        }),
+        verifyPassword: vi.fn().mockResolvedValue(true),
+        registerFailedPasswordAttempt: vi.fn().mockResolvedValue(undefined),
+        clearFailedPasswordAttempts: vi.fn().mockResolvedValue(undefined),
+        deleteChallengesForUserAndMode: vi.fn(),
+        createChallenge: vi.fn(),
+        sendEmailOtp: vi.fn(),
+        now: vi.fn(() => new Date("2026-02-28T17:00:00.000Z")),
+        generateCode: vi.fn(() => "123456"),
+        hashValue: vi.fn(() => "hash"),
+      },
+    );
+
+    expect(result).toEqual({ challengeId: null, codeExpiresAt: null });
   });
 
   it("does not start challenge for locked accounts", async () => {

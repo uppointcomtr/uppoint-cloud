@@ -21,8 +21,8 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-DB_NAME_FROM_URL="$(printf '%s' "$DATABASE_URL" | sed -E 's#^[^:]+://[^/]+/([^?]+).*$#\1#')"
-DB_NAME="${DB_NAME_FROM_URL:-database}"
+configure_postgres_connection "$DATABASE_URL"
+DB_NAME="${PGDATABASE:-database}"
 BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_${TIMESTAMP}.sql.gz"
 TMP_FILE="${BACKUP_FILE}.tmp"
 CHECKSUM_FILE="${BACKUP_FILE}.sha256"
@@ -30,8 +30,9 @@ CHECKSUM_FILE="${BACKUP_FILE}.sha256"
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 
-# pg_dump ile yedek al; önce geçici dosyaya yaz
-pg_dump "$DATABASE_URL" \
+# pg_dump ile yedek al; önce geçici dosyaya yaz.
+# Security-sensitive: use PG* env vars to avoid exposing connection secrets in argv.
+pg_dump \
   --format=plain \
   --no-owner \
   --no-acl \

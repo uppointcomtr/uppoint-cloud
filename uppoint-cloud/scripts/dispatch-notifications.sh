@@ -45,7 +45,20 @@ CANONICAL_REQUEST="POST
 ${REQUEST_ID}
 ${REQUEST_TS}
 ${BODY_SHA256}"
-REQUEST_SIGNATURE="$(printf '%s' "$CANONICAL_REQUEST" | openssl dgst -sha256 -hmac "$INTERNAL_DISPATCH_SIGNING_SECRET" -binary | xxd -p -c 256)"
+REQUEST_SIGNATURE="$(
+  printf '%s' "$CANONICAL_REQUEST" | INTERNAL_DISPATCH_SIGNING_SECRET="$INTERNAL_DISPATCH_SIGNING_SECRET" node -e '
+const { createHmac } = require("crypto");
+const fs = require("fs");
+
+const secret = process.env.INTERNAL_DISPATCH_SIGNING_SECRET || "";
+if (!secret) {
+  process.exit(1);
+}
+
+const canonical = fs.readFileSync(0, "utf8");
+process.stdout.write(createHmac("sha256", secret).update(canonical).digest("hex"));
+'
+)"
 
 {
   printf 'x-request-id: %s\n' "$REQUEST_ID"
