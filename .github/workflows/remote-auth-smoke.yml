@@ -13,7 +13,6 @@ on:
       allow_mutations:
         description: "Run mutating smoke cases (use only on isolated non-production env)"
         required: false
-        default: "0"
       enforce_health_200:
         description: "Fail workflow when /api/health final status is not 200 (0/1)"
         required: false
@@ -33,7 +32,7 @@ jobs:
     env:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
-      E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || '0' }}
+      E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || vars.E2E_ALLOW_MUTATIONS || '0' }}
       E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '0' }}
     defaults:
       run:

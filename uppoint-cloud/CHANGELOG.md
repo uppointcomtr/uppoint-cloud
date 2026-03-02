@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-02 (ci bugfix: allow_mutations input no longer overrides repo variable)
+
+### Fixed
+- Removed `workflow_dispatch.inputs.allow_mutations.default: "0"` from `.github/workflows/remote-auth-smoke.yml`.
+- Updated `E2E_ALLOW_MUTATIONS` env binding to `inputs.allow_mutations || vars.E2E_ALLOW_MUTATIONS || '0'`.
+- Manual dispatch runs now honor repository variable fallback when `allow_mutations` is not explicitly provided.
+
 ## 2026-03-02 (ci bugfix: enforce_health_200 input no longer overrides repo variable)
 
 ### Fixed
