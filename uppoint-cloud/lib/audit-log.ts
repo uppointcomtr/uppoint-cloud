@@ -352,7 +352,10 @@ export async function logAudit(
     await prisma.$transaction(async (tx) => {
       // Security-sensitive: serialize integrity-chain writes to prevent concurrent hash-branching.
       await tx.$executeRaw`
-        SELECT pg_advisory_xact_lock(${AUDIT_CHAIN_LOCK_KEY_ONE}, ${AUDIT_CHAIN_LOCK_KEY_TWO})
+        SELECT pg_advisory_xact_lock(
+          CAST(${AUDIT_CHAIN_LOCK_KEY_ONE} AS integer),
+          CAST(${AUDIT_CHAIN_LOCK_KEY_TWO} AS integer)
+        )
       `;
 
       const previous = await tx.auditLog.findFirst({

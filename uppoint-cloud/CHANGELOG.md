@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-02 (hotfix: audit advisory lock signature portability)
+
+### Fixed
+- Fixed PostgreSQL function signature mismatch in audit-chain lock acquisition:
+  - `lib/audit-log.ts` now casts advisory lock keys to `integer` when calling `pg_advisory_xact_lock(...)`.
+  - This prevents runtime fallback logging caused by `pg_advisory_xact_lock(bigint, bigint)` mismatch and restores normal DB-backed audit writes.
+
 ## 2026-03-02 (finding closure: audit hash verification + deprecated endpoint telemetry + outbox scope columns)
 
 ### Fixed
