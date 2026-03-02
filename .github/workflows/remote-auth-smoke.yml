@@ -10,6 +10,10 @@ on:
         description: "Remote base URL (e.g. https://cloud.uppoint.com.tr)"
         required: false
         default: "https://cloud.uppoint.com.tr"
+      allow_mutations:
+        description: "Run mutating smoke cases (use only on isolated non-production env)"
+        required: false
+        default: "0"
 
 permissions:
   contents: read
@@ -26,7 +30,7 @@ jobs:
     env:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
-      E2E_ALLOW_MUTATIONS: "0"
+      E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || '0' }}
     defaults:
       run:
         working-directory: uppoint-cloud

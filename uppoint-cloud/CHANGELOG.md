@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-02 (ci sync: root remote smoke workflow allow_mutations input)
+
+### Fixed
+- Updated canonical GitHub Actions workflow at repository root:
+  - `.github/workflows/remote-auth-smoke.yml`
+- Added `workflow_dispatch` input:
+  - `allow_mutations` (default `0`)
+- `E2E_ALLOW_MUTATIONS` is now sourced from workflow dispatch input to keep remote/manual smoke behavior configurable and synchronized with expected API contract.
+
 ## 2026-03-02 (security closure batch: internal request signing, workflow recovery, audit archive retention)
 
 ### Fixed
