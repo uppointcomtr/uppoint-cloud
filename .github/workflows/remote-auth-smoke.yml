@@ -17,7 +17,6 @@ on:
       enforce_health_200:
         description: "Fail workflow when /api/health final status is not 200 (0/1)"
         required: false
-        default: "0"
 
 permissions:
   contents: read

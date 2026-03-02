@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-03-02 (ci bugfix: enforce_health_200 input no longer overrides repo variable)
+
+### Fixed
+- Removed `workflow_dispatch.inputs.enforce_health_200.default: "0"` from `.github/workflows/remote-auth-smoke.yml`.
+- This restores intended fallback behavior so repo variable `E2E_ENFORCE_HEALTH_200` is honored when the dispatch input is not explicitly provided.
+
 ## 2026-03-02 (ci observability: optional health guard for remote smoke)
 
 ### Changed
