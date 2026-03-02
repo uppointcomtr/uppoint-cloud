@@ -484,3 +484,64 @@ redis-cli -s "$TMP_DIR/redis-drill.sock" ping
 redis-cli -s "$TMP_DIR/redis-drill.sock" shutdown nosave
 rm -rf "$TMP_DIR"
 ```
+
+## 16. Internal token rotation runbook (`INTERNAL_AUDIT_TOKEN`, `INTERNAL_DISPATCH_TOKEN`)
+
+These tokens secure internal-only endpoints:
+
+- `INTERNAL_AUDIT_TOKEN` -> `POST /api/internal/audit/security-event`
+- `INTERNAL_DISPATCH_TOKEN` -> `POST /api/internal/notifications/dispatch`
+
+Current implementation is single-active-token (no dual-token grace window), so rotation is a direct cutover.
+
+### 16.1 Prepare new tokens
+
+```bash
+NEW_INTERNAL_AUDIT_TOKEN="$(openssl rand -hex 32)"
+NEW_INTERNAL_DISPATCH_TOKEN="$(openssl rand -hex 32)"
+```
+
+### 16.2 Back up and update `.env`
+
+```bash
+sudo cp /opt/uppoint-cloud/.env "/opt/uppoint-cloud/.env.bak.$(date +%Y%m%d%H%M%S)"
+sudo sed -i "s#^INTERNAL_AUDIT_TOKEN=.*#INTERNAL_AUDIT_TOKEN=${NEW_INTERNAL_AUDIT_TOKEN}#" /opt/uppoint-cloud/.env
+sudo sed -i "s#^INTERNAL_DISPATCH_TOKEN=.*#INTERNAL_DISPATCH_TOKEN=${NEW_INTERNAL_DISPATCH_TOKEN}#" /opt/uppoint-cloud/.env
+```
+
+If keys do not exist yet, append once:
+
+```bash
+grep -q '^INTERNAL_AUDIT_TOKEN=' /opt/uppoint-cloud/.env || echo "INTERNAL_AUDIT_TOKEN=${NEW_INTERNAL_AUDIT_TOKEN}" | sudo tee -a /opt/uppoint-cloud/.env
+grep -q '^INTERNAL_DISPATCH_TOKEN=' /opt/uppoint-cloud/.env || echo "INTERNAL_DISPATCH_TOKEN=${NEW_INTERNAL_DISPATCH_TOKEN}" | sudo tee -a /opt/uppoint-cloud/.env
+```
+
+### 16.3 Restart service and verify
+
+```bash
+cd /opt/uppoint-cloud
+sudo systemctl restart uppoint-cloud.service
+sudo systemctl is-active --quiet uppoint-cloud.service
+sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
+```
+
+Expected:
+- service is `active`
+- dispatch script returns `OK`
+
+### 16.4 Post-rotation checks
+
+```bash
+journalctl -u uppoint-cloud.service -n 200 --no-pager | rg -n "INTERNAL_AUDIT_TOKEN|INTERNAL_DISPATCH_TOKEN|UNAUTHORIZED|INVALID_BODY" || true
+tail -n 100 /var/log/uppoint-cloud/dispatch-notifications.log
+```
+
+### 16.5 Rollback
+
+If internal calls fail after rotation:
+
+```bash
+sudo cp /opt/uppoint-cloud/.env.bak.<timestamp> /opt/uppoint-cloud/.env
+sudo systemctl restart uppoint-cloud.service
+sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
+```

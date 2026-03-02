@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-02 (ops runbook: internal token rotation)
+
+### Documentation
+- Added production runbook for rotating internal endpoint tokens:
+  - `INTERNAL_AUDIT_TOKEN`
+  - `INTERNAL_DISPATCH_TOKEN`
+- Documented cutover behavior, verification commands, and rollback steps in:
+  - `ops/README.md`
+
 ## 2026-03-02 (security hardening follow-up: internal token isolation, idempotency lock, ops script safety)
 
 ### Fixed
