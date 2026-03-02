@@ -55,11 +55,46 @@ jobs:
       - name: Run remote smoke suite
         run: npm run test:e2e:remote
 
+      - name: Probe health endpoint
+        id: health
+        if: always()
+        run: |
+          set +e
+          health_url="${E2E_BASE_URL%/}/api/health"
+          initial_code="$(curl -sS -o /tmp/remote-auth-health.json -w '%{http_code}' "${health_url}")"
+          final_code="${initial_code}"
+          auth_mode="direct"
+
+          if [ "${initial_code}" = "401" ] && [ -n "${E2E_HEALTHCHECK_TOKEN:-}" ]; then
+            auth_mode="token"
+            final_code="$(curl -sS -o /tmp/remote-auth-health.json -w '%{http_code}' -H "x-health-token: ${E2E_HEALTHCHECK_TOKEN}" "${health_url}")"
+          fi
+
+          rm -f /tmp/remote-auth-health.json
+
+          if [ "${initial_code}" = "401" ] && [ -z "${E2E_HEALTHCHECK_TOKEN:-}" ]; then
+            health_result="401 (token required, token missing)"
+          elif [ "${final_code}" = "200" ] && [ "${auth_mode}" = "token" ]; then
+            health_result="200 (token auth)"
+          elif [ "${final_code}" = "200" ]; then
+            health_result="200"
+          elif [ "${final_code}" = "000" ]; then
+            health_result="network_error"
+          else
+            health_result="${final_code}"
+          fi
+
+          echo "health_result=${health_result}" >> "${GITHUB_OUTPUT}"
+          echo "initial_code=${initial_code}" >> "${GITHUB_OUTPUT}"
+          echo "final_code=${final_code}" >> "${GITHUB_OUTPUT}"
+          echo "Health endpoint probe result: ${health_result} (initial=${initial_code}, final=${final_code})"
+
       - name: Write CI summary
         if: always()
         env:
           JOB_STATUS: ${{ job.status }}
           START_EPOCH: ${{ steps.timing.outputs.start_epoch }}
+          HEALTH_RESULT: ${{ steps.health.outputs.health_result }}
         run: |
           set -euo pipefail
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -86,4 +121,5 @@ jobs:
             echo "- Base URL: ${E2E_BASE_URL}"
             echo "- Mutations enabled: ${E2E_ALLOW_MUTATIONS}"
             echo "- E2E_HEALTHCHECK_TOKEN: ${health_token_state}"
+            echo "- Health endpoint: ${HEALTH_RESULT:-unknown}"
           } >> "${GITHUB_STEP_SUMMARY}"

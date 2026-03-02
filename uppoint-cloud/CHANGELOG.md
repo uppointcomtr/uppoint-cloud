@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-02 (ci observability: remote health status in smoke summary)
+
+### Changed
+- Added `Probe health endpoint` step to `.github/workflows/remote-auth-smoke.yml`.
+- Remote smoke summary now prints `Health endpoint` result with token-aware probing logic:
+  - `200` (open or success)
+  - `200 (token auth)` when first probe is `401` and token-authenticated retry succeeds
+  - `401 (token required, token missing)` for missing secret in token-gated setups
+  - `network_error` fallback on transport-level failures
+
 ## 2026-03-02 (ci observability: robust smoke duration timing)
 
 ### Fixed
