@@ -36,6 +36,16 @@ export async function POST(request: Request) {
     return NextResponse.json(fail("UNAUTHORIZED"), { status: 401 });
   }
 
+  const replayRateLimitResponse = await withRateLimitByIdentifier(
+    "internal-audit-security-event-replay",
+    verifiedRequest.requestId,
+    1,
+    300,
+  );
+  if (replayRateLimitResponse) {
+    return replayRateLimitResponse;
+  }
+
   let payload: unknown;
   try {
     payload = JSON.parse(verifiedRequest.rawBody);

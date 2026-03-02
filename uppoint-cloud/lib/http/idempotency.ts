@@ -72,10 +72,24 @@ function extractSessionCookieFingerprint(rawCookieHeader: string | null): string
   return cookieValue?.trim() || null;
 }
 
-function resolveSubjectHashFromHeaders(headersList: Headers): string {
+interface IdempotencyRequestContext {
+  key: string | null;
+  subjectHash: string;
+  usedGlobalFallback: boolean;
+}
+
+interface ResolvedSubjectHash {
+  value: string;
+  usedGlobalFallback: boolean;
+}
+
+function resolveSubjectHashFromHeaders(headersList: Headers): ResolvedSubjectHash {
   const explicitScope = headersList.get("x-idempotency-scope")?.trim();
   if (explicitScope && explicitScope.length >= 3 && explicitScope.length <= 256) {
-    return normalizeSubjectHash(`scope:${explicitScope}`);
+    return {
+      value: normalizeSubjectHash(`scope:${explicitScope}`),
+      usedGlobalFallback: false,
+    };
   }
 
   const realIp = headersList.get("x-real-ip");
@@ -87,21 +101,22 @@ function resolveSubjectHashFromHeaders(headersList: Headers): string {
   const sessionCookieFingerprint = extractSessionCookieFingerprint(headersList.get("cookie"));
 
   if (!trustedIp && !userAgent && !sessionCookieFingerprint) {
-    return DEFAULT_SUBJECT_HASH;
+    return {
+      value: DEFAULT_SUBJECT_HASH,
+      usedGlobalFallback: true,
+    };
   }
 
-  return normalizeSubjectHash(
-    [
-      `ip:${trustedIp ?? "unknown"}`,
-      `ua:${userAgent.slice(0, 255)}`,
-      `session:${sessionCookieFingerprint ?? "none"}`,
-    ].join("|"),
-  );
-}
-
-interface IdempotencyRequestContext {
-  key: string | null;
-  subjectHash: string;
+  return {
+    value: normalizeSubjectHash(
+      [
+        `ip:${trustedIp ?? "unknown"}`,
+        `ua:${userAgent.slice(0, 255)}`,
+        `session:${sessionCookieFingerprint ?? "none"}`,
+      ].join("|"),
+    ),
+    usedGlobalFallback: false,
+  };
 }
 
 async function getIdempotencyContextFromRequestHeaders(): Promise<IdempotencyRequestContext> {
@@ -112,20 +127,23 @@ async function getIdempotencyContextFromRequestHeaders(): Promise<IdempotencyReq
   if (!idempotencyKey) {
     return {
       key: null,
-      subjectHash,
+      subjectHash: subjectHash.value,
+      usedGlobalFallback: subjectHash.usedGlobalFallback,
     };
   }
 
   if (idempotencyKey.length < 8 || idempotencyKey.length > 256) {
     return {
       key: null,
-      subjectHash,
+      subjectHash: subjectHash.value,
+      usedGlobalFallback: subjectHash.usedGlobalFallback,
     };
   }
 
   return {
     key: normalizeIdempotencyKey(idempotencyKey),
-    subjectHash,
+    subjectHash: subjectHash.value,
+    usedGlobalFallback: subjectHash.usedGlobalFallback,
   };
 }
 
@@ -320,10 +338,18 @@ export async function withIdempotency(
   handler: () => Promise<Response>,
   ttlSeconds = DEFAULT_TTL_SECONDS,
 ): Promise<Response> {
-  const { key, subjectHash } = await getIdempotencyContextFromRequestHeaders();
+  const { key, subjectHash, usedGlobalFallback } = await getIdempotencyContextFromRequestHeaders();
 
   if (!key) {
     return handler();
+  }
+
+  if (process.env.NODE_ENV === "production" && usedGlobalFallback) {
+    // Security-sensitive: reject cross-client ambiguous idempotency scope in production.
+    return Response.json(
+      { success: false, error: "IDEMPOTENCY_SCOPE_UNRESOLVED" },
+      { status: 400 },
+    );
   }
 
   const cachedResponse = await getCachedResponse(action, key, subjectHash);

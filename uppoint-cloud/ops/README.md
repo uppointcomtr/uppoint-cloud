@@ -265,6 +265,7 @@ ls -lah /opt/backups/postgres
 `dispatch-notifications.sh` reads `INTERNAL_DISPATCH_TOKEN` and
 `INTERNAL_DISPATCH_SIGNING_SECRET` from `/opt/uppoint-cloud/.env` and sends:
 
+- `x-internal-request-id` (single-use request nonce)
 - `x-internal-dispatch-token`
 - `x-internal-request-ts`
 - `x-internal-request-signature` (HMAC-SHA256 canonical request signature)

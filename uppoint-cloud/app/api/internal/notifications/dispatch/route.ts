@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
 import { withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
@@ -28,22 +29,44 @@ export async function POST(request: Request) {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 
-  const requestId = request.headers.get("x-request-id")?.trim() || "unknown";
-  const identifierRateLimitResponse = await withRateLimitByIdentifier(
-    "internal-notification-dispatch-request",
-    requestId,
-    30,
-    60,
+  const replayRateLimitResponse = await withRateLimitByIdentifier(
+    "internal-notification-dispatch-replay",
+    verifiedRequest.requestId,
+    1,
+    300,
   );
-  if (identifierRateLimitResponse) {
-    return identifierRateLimitResponse;
+  if (replayRateLimitResponse) {
+    await logAudit("internal_dispatch_replay_blocked", "unknown", undefined, {
+      requestId: verifiedRequest.requestId,
+      result: "FAILURE",
+      reason: "REPLAY_OR_DUPLICATE_REQUEST_ID",
+    });
+    return replayRateLimitResponse;
   }
 
-  const result = await dispatchNotificationOutboxBatch({
-    batchSize: 50,
-  });
+  try {
+    const result = await dispatchNotificationOutboxBatch({
+      batchSize: 50,
+    });
 
-  return NextResponse.json(ok(result), { status: 200 });
+    await logAudit("internal_dispatch_success", "unknown", undefined, {
+      requestId: verifiedRequest.requestId,
+      inspected: result.inspected,
+      sent: result.sent,
+      failed: result.failed,
+      result: "SUCCESS",
+    });
+
+    return NextResponse.json(ok(result), { status: 200 });
+  } catch (error) {
+    await logAudit("internal_dispatch_failed", "unknown", undefined, {
+      requestId: verifiedRequest.requestId,
+      result: "FAILURE",
+      reason: "DISPATCH_FAILED",
+    });
+    console.error("Failed to dispatch notification outbox batch", error);
+    return NextResponse.json(fail("DISPATCH_FAILED"), { status: 500 });
+  }
 }
 
 export async function GET() {

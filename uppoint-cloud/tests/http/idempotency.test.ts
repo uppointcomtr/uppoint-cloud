@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   headersMock: vi.fn(),
@@ -31,13 +31,21 @@ async function loadIdempotencyModule() {
 }
 
 describe("withIdempotency", () => {
+  const mutableEnv = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = process.env.NODE_ENV;
+
   beforeEach(() => {
+    mutableEnv.NODE_ENV = originalNodeEnv;
     mocks.headersMock.mockReset();
     mocks.findUnique.mockReset();
     mocks.create.mockReset();
     mocks.updateMany.mockReset();
     mocks.upsert.mockReset();
     mocks.deleteMany.mockReset();
+  });
+
+  afterEach(() => {
+    mutableEnv.NODE_ENV = originalNodeEnv;
   });
 
   it("returns cached response for identical idempotency key and subject", async () => {
@@ -111,5 +119,26 @@ describe("withIdempotency", () => {
     expect(firstSubjectHash).toBeTruthy();
     expect(secondSubjectHash).toBeTruthy();
     expect(firstSubjectHash).not.toBe(secondSubjectHash);
+  });
+
+  it("rejects ambiguous global idempotency scope in production", async () => {
+    mutableEnv.NODE_ENV = "production";
+    mocks.headersMock.mockResolvedValue(
+      new Headers({
+        "idempotency-key": "key-12345678",
+      }),
+    );
+
+    const { withIdempotency } = await loadIdempotencyModule();
+    const handler = vi.fn().mockResolvedValue(new Response("{\"ok\":true}", { status: 200 }));
+
+    const response = await withIdempotency("auth:test", handler);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: "IDEMPOTENCY_SCOPE_UNRESOLVED",
+    });
+    expect(handler).not.toHaveBeenCalled();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
   });
 });

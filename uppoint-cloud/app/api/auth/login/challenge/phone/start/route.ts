@@ -10,6 +10,13 @@ import {
   startPhoneLoginChallenge,
 } from "@/modules/auth/server/login-challenge";
 
+function buildNeutralStartResponse() {
+  return NextResponse.json(
+    ok({ hasChallenge: false, challengeId: null, codeExpiresAt: null }),
+    { status: 200 },
+  );
+}
+
 export async function POST(request: Request) {
   return withIdempotency("auth:login-phone-start", async () => {
   // Rate limit: 10 attempts per 15 minutes per IP
@@ -70,36 +77,19 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof LoginChallengeError) {
-      if (error.code === "SMS_NOT_ENABLED") {
-        await logAudit("login_challenge_start_failed", ip, undefined, {
-          mode: "phone",
-          reason: error.code,
-        });
-        return NextResponse.json(fail("SMS_NOT_ENABLED"), { status: 400 });
-      }
-
-      if (error.code === "EMAIL_NOT_VERIFIED") {
-        // Return the same shape as "no account found" to prevent phone number enumeration.
-        // The real reason is logged internally for forensic purposes.
-        await logAudit("login_challenge_start_failed", ip, undefined, {
-          mode: "phone",
-          reason: error.code,
-        });
-        return NextResponse.json(
-          ok({ hasChallenge: false, challengeId: null, codeExpiresAt: null }),
-          { status: 200 },
-        );
-      }
+      // Security-sensitive: avoid leaking account/provider state from challenge start endpoint.
+      await logAudit("login_challenge_start_failed", ip, undefined, {
+        mode: "phone",
+        reason: error.code,
+      });
+      return buildNeutralStartResponse();
     }
 
     await logAudit("login_challenge_start_failed", ip, undefined, {
       mode: "phone",
       reason: "LOGIN_CHALLENGE_START_FAILED",
     });
-    console.error("Failed to start phone login challenge", error);
-    return NextResponse.json(fail("LOGIN_CHALLENGE_START_FAILED"), {
-      status: 500,
-    });
+    return buildNeutralStartResponse();
   }
   });
 }

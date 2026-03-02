@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-03-02 (security closure: findings 1-7 follow-up)
+
+### Fixed
+- Closed login challenge start enumeration leaks:
+  - `app/api/auth/login/challenge/email/start/route.ts`
+  - `app/api/auth/login/challenge/phone/start/route.ts`
+  - non-validation failures now return neutral `200` challenge shape; detailed reasons remain audit-only.
+- Removed duplicate remote smoke workflow copy to eliminate CI drift:
+  - deleted `uppoint-cloud/.github/workflows/remote-auth-smoke.yml`
+  - canonical workflow remains repository root: `.github/workflows/remote-auth-smoke.yml`
+- Added replay resistance requirements to internal signed requests:
+  - `lib/security/internal-request-auth.ts` now requires signed `x-internal-request-id` in canonical signature verification.
+  - internal audit/dispatch routes now enforce single-use replay window via identifier limiter.
+- Improved internal dispatch observability/audit coverage:
+  - `app/api/internal/notifications/dispatch/route.ts` now emits `internal_dispatch_success`, `internal_dispatch_failed`, and `internal_dispatch_replay_blocked` audit events.
+  - `scripts/dispatch-notifications.sh` now sends `x-request-id` + `x-internal-request-id`.
+- Hardened idempotency fallback scope behavior:
+  - `lib/http/idempotency.ts` now rejects ambiguous production requests with `IDEMPOTENCY_SCOPE_UNRESOLVED` when only global fallback subject is available.
+- Reduced health endpoint log detail leakage:
+  - `app/api/health/route.ts` now logs sanitized error reason instead of raw error objects.
+- Added tenant-scope guardrail test for app entry points:
+  - `tests/tenant/tenant-guardrail.test.ts` enforces explicit `assertTenantAccess()` or `resolveUserTenantContext()` usage when tenant scope is referenced.
+
+### Documentation
+- Updated internal endpoint security header documentation:
+  - `README.md`
+  - `ops/README.md`
+
+### Tests
+- Updated/added:
+  - `tests/security/internal-request-auth.test.ts`
+  - `tests/http/idempotency.test.ts`
+  - `tests/tenant/tenant-guardrail.test.ts`
+
 ## 2026-03-02 (ci sync: root remote smoke workflow allow_mutations input)
 
 ### Fixed

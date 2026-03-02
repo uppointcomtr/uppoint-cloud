@@ -10,6 +10,13 @@ import {
   startEmailLoginChallenge,
 } from "@/modules/auth/server/login-challenge";
 
+function buildNeutralStartResponse() {
+  return NextResponse.json(
+    ok({ hasChallenge: false, challengeId: null, codeExpiresAt: null }),
+    { status: 200 },
+  );
+}
+
 export async function POST(request: Request) {
   return withIdempotency("auth:login-email-start", async () => {
   // Rate limit: 10 attempts per 15 minutes per IP
@@ -69,40 +76,20 @@ export async function POST(request: Request) {
       return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
     }
 
-    if (error instanceof LoginChallengeError && error.code === "EMAIL_NOT_VERIFIED") {
-      // Return the same shape as "no account found" to prevent email/account-state enumeration.
-      // The real reason is logged internally for forensic purposes.
+    if (error instanceof LoginChallengeError) {
+      // Security-sensitive: avoid leaking account/provider state from challenge start endpoint.
       await logAudit("login_challenge_start_failed", ip, undefined, {
         mode: "email",
         reason: error.code,
       });
-      return NextResponse.json(
-        ok({ hasChallenge: false, challengeId: null, codeExpiresAt: null }),
-        { status: 200 },
-      );
-    }
-
-    if (
-      error instanceof Error &&
-      /recipients were rejected|recipient address reserved/i.test(error.message)
-    ) {
-      await logAudit("login_challenge_start_failed", ip, undefined, {
-        mode: "email",
-        reason: "EMAIL_DELIVERY_FAILED",
-      });
-      return NextResponse.json(fail("EMAIL_DELIVERY_FAILED"), {
-        status: 400,
-      });
+      return buildNeutralStartResponse();
     }
 
     await logAudit("login_challenge_start_failed", ip, undefined, {
       mode: "email",
       reason: "LOGIN_CHALLENGE_START_FAILED",
     });
-    console.error("Failed to start email login challenge", error);
-    return NextResponse.json(fail("LOGIN_CHALLENGE_START_FAILED"), {
-      status: 500,
-    });
+    return buildNeutralStartResponse();
   }
   });
 }

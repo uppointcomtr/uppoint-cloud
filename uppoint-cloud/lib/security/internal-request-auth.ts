@@ -18,10 +18,11 @@ function toSha256Hex(value: string): string {
 function buildCanonicalString(input: {
   method: string;
   path: string;
+  requestId: string;
   timestamp: string;
   bodySha256Hex: string;
 }): string {
-  return `${input.method}\n${input.path}\n${input.timestamp}\n${input.bodySha256Hex}`;
+  return `${input.method}\n${input.path}\n${input.requestId}\n${input.timestamp}\n${input.bodySha256Hex}`;
 }
 
 function buildHmacSignature(secret: string, canonical: string): string {
@@ -45,10 +46,29 @@ export interface VerifyInternalRequestInput {
   expectedToken: string;
   signingSecret: string;
   maxSkewSeconds?: number;
+  requestIdHeaderName?: string;
 }
 
 export interface VerifiedInternalRequest {
+  requestId: string;
   rawBody: string;
+}
+
+function parseRequestId(rawRequestId: string | null): string | null {
+  if (!rawRequestId) {
+    return null;
+  }
+
+  const requestId = rawRequestId.trim();
+  if (requestId.length < 12 || requestId.length > 128) {
+    return null;
+  }
+
+  if (!/^[A-Za-z0-9._:-]+$/.test(requestId)) {
+    return null;
+  }
+
+  return requestId;
 }
 
 export async function verifyInternalRequestAuth(
@@ -69,7 +89,13 @@ export async function verifyInternalRequestAuth(
 
   const timestamp = input.request.headers.get("x-internal-request-ts");
   const signature = input.request.headers.get("x-internal-request-signature");
+  const requestId = parseRequestId(
+    input.request.headers.get(input.requestIdHeaderName ?? "x-internal-request-id"),
+  );
   if (!timestamp || !signature) {
+    return null;
+  }
+  if (!requestId) {
     return null;
   }
 
@@ -82,6 +108,7 @@ export async function verifyInternalRequestAuth(
   const canonical = buildCanonicalString({
     method: input.request.method.toUpperCase(),
     path: input.expectedPath,
+    requestId,
     timestamp,
     bodySha256Hex,
   });
@@ -91,5 +118,5 @@ export async function verifyInternalRequestAuth(
     return null;
   }
 
-  return { rawBody };
+  return { requestId, rawBody };
 }

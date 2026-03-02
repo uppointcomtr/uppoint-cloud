@@ -166,9 +166,10 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
   const body = JSON.stringify(payload);
 
   void (async () => {
+    const internalRequestId = `edge-${event.requestId}`;
     const timestamp = String(Math.floor(Date.now() / 1000));
     const bodySha = await sha256Hex(body);
-    const canonical = `POST\n/api/internal/audit/security-event\n${timestamp}\n${bodySha}`;
+    const canonical = `POST\n/api/internal/audit/security-event\n${internalRequestId}\n${timestamp}\n${bodySha}`;
     const signature = await hmacSha256Hex(INTERNAL_AUDIT_SIGNING_SECRET, canonical);
 
     await fetch(INTERNAL_AUDIT_URL, {
@@ -176,6 +177,8 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
       headers: {
         "Content-Type": "application/json",
         origin: INTERNAL_AUDIT_ORIGIN,
+        "x-request-id": internalRequestId,
+        "x-internal-request-id": internalRequestId,
         "x-internal-audit-token": INTERNAL_AUDIT_TOKEN,
         "x-internal-request-ts": timestamp,
         "x-internal-request-signature": signature,

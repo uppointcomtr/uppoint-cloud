@@ -38,14 +38,18 @@ if [ -z "$INTERNAL_DISPATCH_SIGNING_SECRET" ]; then
 fi
 
 REQUEST_TS="$(date -u +%s)"
+REQUEST_ID="dispatch-$(date -u +%s)-$(openssl rand -hex 8)"
 BODY_SHA256="$(printf '' | sha256sum | awk '{print $1}')"
 CANONICAL_REQUEST="POST
 /api/internal/notifications/dispatch
+${REQUEST_ID}
 ${REQUEST_TS}
 ${BODY_SHA256}"
 REQUEST_SIGNATURE="$(printf '%s' "$CANONICAL_REQUEST" | openssl dgst -sha256 -hmac "$INTERNAL_DISPATCH_SIGNING_SECRET" -binary | xxd -p -c 256)"
 
 {
+  printf 'x-request-id: %s\n' "$REQUEST_ID"
+  printf 'x-internal-request-id: %s\n' "$REQUEST_ID"
   printf 'x-internal-dispatch-token: %s\n' "$INTERNAL_DISPATCH_TOKEN"
   printf 'x-internal-request-ts: %s\n' "$REQUEST_TS"
   printf 'x-internal-request-signature: %s\n' "$REQUEST_SIGNATURE"

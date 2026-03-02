@@ -246,7 +246,7 @@ E2E_BASE_URL=https://cloud.uppoint.com.tr npm run test:e2e:remote
 
 GitHub Actions nightly/ondemand remote smoke:
 
-- Workflow file: [remote-auth-smoke.yml](/opt/uppoint-cloud/.github/workflows/remote-auth-smoke.yml)
+- Workflow file: [remote-auth-smoke.yml](/opt/.github/workflows/remote-auth-smoke.yml)
 - Schedule: every night at `00:15 UTC` (`03:15 Europe/Istanbul`)
 - Manual run: `Actions -> Remote Auth Smoke -> Run workflow`
 - Optional manual input:
@@ -287,10 +287,12 @@ Run this checklist after deployment or UI-affecting changes:
 - Internal operational endpoints are token-isolated:
   - `/api/internal/audit/security-event` requires:
     - `x-internal-audit-token` matching `INTERNAL_AUDIT_TOKEN`
+    - `x-internal-request-id` (single-use request nonce)
     - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
     - shared signing secret: `INTERNAL_AUDIT_SIGNING_SECRET`
   - `/api/internal/notifications/dispatch` requires:
     - `x-internal-dispatch-token` matching `INTERNAL_DISPATCH_TOKEN`
+    - `x-internal-request-id` (single-use request nonce)
     - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
     - shared signing secret: `INTERNAL_DISPATCH_SIGNING_SECRET`
 - Notification outbox payloads are encrypted at rest with `NOTIFICATION_PAYLOAD_SECRET`.

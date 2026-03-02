@@ -29,6 +29,9 @@ export type AuditAction =
   | "email_verification_failed"
   | "edge_host_rejected"
   | "edge_origin_rejected"
+  | "internal_dispatch_success"
+  | "internal_dispatch_failed"
+  | "internal_dispatch_replay_blocked"
   | "tenant_access_denied"
   | "tenant_role_insufficient"
   | "tenant_context_missing"
@@ -45,6 +48,8 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "session_revoked",
   "edge_host_rejected",
   "edge_origin_rejected",
+  "internal_dispatch_failed",
+  "internal_dispatch_replay_blocked",
   "tenant_access_denied",
   "tenant_role_insufficient",
 ]);

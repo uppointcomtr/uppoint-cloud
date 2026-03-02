@@ -33,7 +33,8 @@ export async function GET(request: Request) {
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   } catch (err) {
-    console.error("[health] DB check failed:", err);
+    const reason = err instanceof Error ? err.name : "UNKNOWN";
+    console.error("[health] DB check failed:", reason);
     return NextResponse.json(
       fail("HEALTHCHECK_FAILED"),
       { status: 503, headers: { "Cache-Control": "no-store" } },
