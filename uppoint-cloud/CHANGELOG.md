@@ -63,6 +63,8 @@
 - New tests:
   - `tests/security/client-ip.test.ts`
   - `tests/auth/notification-outbox.test.ts`
+- New periodic nginx drift enforcement cron template:
+  - `ops/cron/uppoint-nginx-drift-check` (`RATE_LIMIT_DRIFT_POLICY=enforce-baseline`)
 
 ### Documentation
 - Updated:

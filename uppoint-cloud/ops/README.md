@@ -406,6 +406,34 @@ Rate-limit file note:
 - Set `RATE_LIMIT_DRIFT_POLICY=enforce-baseline` to require match against `/etc/uppoint-cloud/uppoint-rate-limit.conf.sha256`.
 - Set `RATE_LIMIT_DRIFT_POLICY=strict-template` (or legacy `STRICT_RATE_LIMIT_TEMPLATE=1`) to treat template divergence as hard failure.
 
+Periodic enforcement (`enforce-baseline`, every 30 min):
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-nginx-drift-check /etc/cron.d/uppoint-nginx-drift-check
+sudo chmod 644 /etc/cron.d/uppoint-nginx-drift-check
+```
+
+Log path:
+- `/var/log/uppoint-nginx-drift-check.log`
+
+Incident/playbook (drift check fail):
+1. Confirm current and baseline hash mismatch:
+```bash
+sha256sum /etc/nginx/conf.d/uppoint-rate-limit.conf
+cat /etc/uppoint-cloud/uppoint-rate-limit.conf.sha256
+```
+2. If change is approved tuning, refresh baseline:
+```bash
+sudo sha256sum /etc/nginx/conf.d/uppoint-rate-limit.conf | sudo tee /etc/uppoint-cloud/uppoint-rate-limit.conf.sha256 >/dev/null
+RATE_LIMIT_DRIFT_POLICY=enforce-baseline /opt/uppoint-cloud/scripts/check-nginx-config-drift.sh
+```
+3. If change is unapproved, rollback from repo template and reload:
+```bash
+sudo cp /opt/uppoint-cloud/ops/nginx/uppoint-rate-limit.conf /etc/nginx/conf.d/uppoint-rate-limit.conf
+sudo nginx -t && sudo systemctl reload nginx
+RATE_LIMIT_DRIFT_POLICY=enforce-baseline /opt/uppoint-cloud/scripts/check-nginx-config-drift.sh
+```
+
 ## 15. Restore drill (staging rehearsal)
 
 PostgreSQL drill (recommended on staging or temporary drill database):

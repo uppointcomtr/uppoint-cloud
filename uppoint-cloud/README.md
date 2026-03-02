@@ -177,6 +177,13 @@ cd /opt/uppoint-cloud
 RATE_LIMIT_DRIFT_POLICY=enforce-baseline npm run verify:nginx-drift
 ```
 
+Periodic server-side drift enforcement:
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-nginx-drift-check /etc/cron.d/uppoint-nginx-drift-check
+sudo chmod 644 /etc/cron.d/uppoint-nginx-drift-check
+```
+
 One-shot full gate:
 
 ```bash
