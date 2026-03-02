@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-02 (ci observability: remote auth smoke summary step)
+
+### Changed
+- Added a dedicated GitHub Actions step to publish a concise per-run summary to job summary output:
+  - file: `.github/workflows/remote-auth-smoke.yml`
+  - fields: run URL, pass/fail status, duration, target base URL, mutation mode, and `E2E_HEALTHCHECK_TOKEN` presence state.
+
+### Notes
+- Production health endpoint is token-gated when `HEALTHCHECK_TOKEN` is set.
+- Repository secret existence check via `GET /actions/secrets` requires a PAT with repository administration scope; current token cannot list secrets (`Resource not accessible by personal access token`), so secret validation was performed via workflow runtime behavior.
+
 ## 2026-03-02 (security closure: findings 1-7 follow-up)
 
 ### Fixed

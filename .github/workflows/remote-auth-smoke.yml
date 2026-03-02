@@ -50,3 +50,33 @@ jobs:
 
       - name: Run remote smoke suite
         run: npm run test:e2e:remote
+
+      - name: Write CI summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          RUN_STARTED_AT: ${{ github.run_started_at }}
+        run: |
+          set -euo pipefail
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          end_epoch="$(date -u +%s)"
+          start_epoch="$(date -u -d "${RUN_STARTED_AT}" +%s)"
+          duration_sec="$((end_epoch - start_epoch))"
+          duration_hms="$(printf '%02d:%02d:%02d' "$((duration_sec / 3600))" "$(((duration_sec % 3600) / 60))" "$((duration_sec % 60))")"
+
+          if [ -n "${E2E_HEALTHCHECK_TOKEN:-}" ]; then
+            health_token_state="configured"
+          else
+            health_token_state="missing"
+          fi
+
+          {
+            echo "## Remote Auth Smoke Summary"
+            echo "- Run URL: ${run_url}"
+            echo "- Result: ${JOB_STATUS}"
+            echo "- Duration: ${duration_hms} (${duration_sec}s)"
+            echo "- Base URL: ${E2E_BASE_URL}"
+            echo "- Mutations enabled: ${E2E_ALLOW_MUTATIONS}"
+            echo "- E2E_HEALTHCHECK_TOKEN: ${health_token_state}"
+          } >> "${GITHUB_STEP_SUMMARY}"
