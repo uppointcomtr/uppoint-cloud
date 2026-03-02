@@ -18,7 +18,10 @@ const securityEventSchema = z.object({
 });
 
 function matchesInternalAuditToken(providedToken: string | null): boolean {
-  const expectedToken = env.AUTH_SECRET;
+  const expectedToken = env.INTERNAL_AUDIT_TOKEN ?? "";
+  if (expectedToken.length === 0) {
+    return false;
+  }
   const providedBuffer = Buffer.from(providedToken ?? "");
   const expectedBuffer = Buffer.from(expectedToken);
 

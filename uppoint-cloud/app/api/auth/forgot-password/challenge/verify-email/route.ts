@@ -12,89 +12,95 @@ import {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:forgot-password-verify-email", async () => {
-  // Rate limit: 10 attempts per 15 minutes per IP
-  const rateLimitResponse = await withRateLimit("forgot-password-verify-email", 10, 900);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "forgot-password-verify-email",
-      scope: "ip",
-    });
-    return rateLimitResponse;
-  }
-  const ip = await getClientIp();
-
-  let payload: unknown;
-
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
-  }
-
-  const rawPayload = payload as Record<string, unknown>;
-  const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
-
-  if (challengeId) {
-    const identifierRateLimit = await withRateLimitByIdentifier("forgot-password-verify-email-challenge", challengeId, 8, 900);
-    if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
+    // Rate limit: 10 attempts per 15 minutes per IP
+    const rateLimitResponse = await withRateLimit("forgot-password-verify-email", 10, 900);
+    if (rateLimitResponse) {
+      const limitedIp = await getClientIp();
+      await logAudit("rate_limit_exceeded", limitedIp, undefined, {
         action: "forgot-password-verify-email",
-        scope: "challenge",
+        scope: "ip",
       });
-      return identifierRateLimit;
+      return rateLimitResponse;
     }
-  }
+    const ip = await getClientIp();
 
-  try {
-    const result = await verifyPasswordResetEmailCode(payload);
+    let payload: unknown;
 
-    return NextResponse.json(
-      ok({
-        smsCodeExpiresAt: result.smsCodeExpiresAt.toISOString(),
-        maskedPhone: result.maskedPhone,
-      }),
-      { status: 200 },
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      await logAudit("password_reset_failed", ip, undefined, {
-        step: "verify_email",
-        reason: "VALIDATION_FAILED",
-      });
-      return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
+    try {
+      payload = await request.json();
+    } catch {
+      return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
     }
 
-    if (error instanceof PasswordResetChallengeError) {
-      const neutralizedChallengeCode =
-        error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "INVALID_EMAIL_CODE";
-      const status =
-        neutralizedChallengeCode ||
-        error.code === "PHONE_NOT_AVAILABLE" ||
-        error.code === "SMS_NOT_ENABLED" ||
-        error.code === "MAX_ATTEMPTS_REACHED"
-          ? 400
-          : 500;
+    const rawPayload = payload as Record<string, unknown>;
+    const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
 
-      await logAudit("password_reset_failed", ip, undefined, {
+    if (challengeId) {
+      const identifierRateLimit = await withRateLimitByIdentifier("forgot-password-verify-email-challenge", challengeId, 8, 900);
+      if (identifierRateLimit) {
+        await logAudit("rate_limit_exceeded", ip, undefined, {
+          action: "forgot-password-verify-email",
+          scope: "challenge",
+        });
+        return identifierRateLimit;
+      }
+    }
+
+    try {
+      const result = await verifyPasswordResetEmailCode(payload);
+
+      await logAudit("password_reset_requested", ip, undefined, {
         step: "verify_email",
-        reason: neutralizedChallengeCode ? "VERIFICATION_CODE_REJECTED" : error.code,
+        challengeId,
+        result: "SUCCESS",
       });
+
       return NextResponse.json(
-        fail(neutralizedChallengeCode ? "INVALID_OR_EXPIRED_CHALLENGE" : error.code),
-        { status },
+        ok({
+          smsCodeExpiresAt: result.smsCodeExpiresAt.toISOString(),
+          maskedPhone: result.maskedPhone,
+        }),
+        { status: 200 },
       );
-    }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        await logAudit("password_reset_failed", ip, undefined, {
+          step: "verify_email",
+          reason: "VALIDATION_FAILED",
+        });
+        return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
+      }
 
-    await logAudit("password_reset_failed", ip, undefined, {
-      step: "verify_email",
-      reason: "FORGOT_PASSWORD_VERIFY_EMAIL_FAILED",
-    });
-    console.error("Failed to verify forgot-password email code", error);
-    return NextResponse.json(fail("FORGOT_PASSWORD_VERIFY_EMAIL_FAILED"), {
-      status: 500,
-    });
-  }
+      if (error instanceof PasswordResetChallengeError) {
+        const neutralizedChallengeCode =
+          error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "INVALID_EMAIL_CODE";
+        const status =
+          neutralizedChallengeCode ||
+          error.code === "PHONE_NOT_AVAILABLE" ||
+          error.code === "SMS_NOT_ENABLED" ||
+          error.code === "MAX_ATTEMPTS_REACHED"
+            ? 400
+            : 500;
+
+        await logAudit("password_reset_failed", ip, undefined, {
+          step: "verify_email",
+          reason: neutralizedChallengeCode ? "VERIFICATION_CODE_REJECTED" : error.code,
+        });
+        return NextResponse.json(
+          fail(neutralizedChallengeCode ? "INVALID_OR_EXPIRED_CHALLENGE" : error.code),
+          { status },
+        );
+      }
+
+      await logAudit("password_reset_failed", ip, undefined, {
+        step: "verify_email",
+        reason: "FORGOT_PASSWORD_VERIFY_EMAIL_FAILED",
+      });
+      console.error("Failed to verify forgot-password email code", error);
+      return NextResponse.json(fail("FORGOT_PASSWORD_VERIFY_EMAIL_FAILED"), {
+        status: 500,
+      });
+    }
   });
 }
 

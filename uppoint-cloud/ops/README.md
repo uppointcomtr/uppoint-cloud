@@ -47,6 +47,8 @@ NEXT_PUBLIC_APP_URL=https://cloud.uppoint.com.tr
 DATABASE_URL=postgresql://...
 AUTH_SECRET=replace-with-strong-random-secret
 AUTH_OTP_PEPPER=replace-with-separate-strong-random-secret
+INTERNAL_AUDIT_TOKEN=replace-with-strong-random-token
+INTERNAL_DISPATCH_TOKEN=replace-with-strong-random-token
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
 HEALTHCHECK_TOKEN=replace-with-strong-random-token
@@ -252,6 +254,9 @@ sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
 ls -lah /opt/backups/postgres
 ```
 
+`dispatch-notifications.sh` reads `INTERNAL_DISPATCH_TOKEN` from `/opt/uppoint-cloud/.env`
+and sends `x-internal-dispatch-token` to `/api/internal/notifications/dispatch`.
+
 ## 9. Redis backup automation
 
 Install cron entry:
@@ -329,6 +334,7 @@ Covered logs:
 - `/var/log/uppoint-redis-backup.log`
 - `/var/log/uppoint-auth-rate-limit-tune.log`
 - `/var/log/uppoint-health-probe.log`
+- `/var/log/uppoint-cloud/dispatch-notifications.log`
 - `/var/log/uppoint-nginx-drift-check.log`
 - `/var/log/uppoint-cloud/audit-fallback.log`
 - `/var/log/postgresql/*.log`

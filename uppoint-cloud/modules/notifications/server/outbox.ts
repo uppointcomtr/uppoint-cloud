@@ -59,7 +59,7 @@ const defaultOutboxDependencies: OutboxDependencies = {
     const metadata = input.metadata ? JSON.stringify(input.metadata) : null;
     await prisma.$executeRaw`
       INSERT INTO "NotificationOutbox" (
-        "id", "channel", "recipient", "subject", "body", "metadata", "status", "nextAttemptAt"
+        "id", "channel", "recipient", "subject", "body", "metadata", "status", "nextAttemptAt", "updatedAt"
       )
       VALUES (
         ${randomUUID()},
@@ -69,6 +69,7 @@ const defaultOutboxDependencies: OutboxDependencies = {
         ${input.body},
         ${metadata ? metadata : null}::jsonb,
         'PENDING'::"NotificationOutboxStatus",
+        NOW(),
         NOW()
       )
     `;
@@ -92,7 +93,7 @@ const defaultOutboxDependencies: OutboxDependencies = {
   acquireLock: async ({ id, now, lockOwner, staleBefore }) => {
     const updated = await prisma.$executeRaw`
       UPDATE "NotificationOutbox"
-      SET "lockedAt" = ${now}, "lockedBy" = ${lockOwner}
+      SET "lockedAt" = ${now}, "lockedBy" = ${lockOwner}, "updatedAt" = ${now}
       WHERE "id" = ${id}
         AND "status" = 'PENDING'::"NotificationOutboxStatus"
         AND ("lockedAt" IS NULL OR "lockedAt" < ${staleBefore})
@@ -109,7 +110,8 @@ const defaultOutboxDependencies: OutboxDependencies = {
         "attemptCount" = "attemptCount" + 1,
         "lockedAt" = NULL,
         "lockedBy" = NULL,
-        "lastError" = NULL
+        "lastError" = NULL,
+        "updatedAt" = ${now}
       WHERE "id" = ${id}
         AND "lockedBy" = ${lockOwner}
     `;
@@ -123,7 +125,8 @@ const defaultOutboxDependencies: OutboxDependencies = {
         "nextAttemptAt" = ${nextAttemptAt},
         "lastError" = ${errorMessage},
         "lockedAt" = NULL,
-        "lockedBy" = NULL
+        "lockedBy" = NULL,
+        "updatedAt" = NOW()
       WHERE "id" = ${id}
         AND "lockedBy" = ${lockOwner}
     `;

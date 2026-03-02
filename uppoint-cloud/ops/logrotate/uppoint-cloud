@@ -56,6 +56,16 @@ su root adm
     create 640 root adm
 }
 
+/var/log/uppoint-cloud/dispatch-notifications.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
 /var/log/uppoint-nginx-drift-check.log {
     daily
     rotate 30

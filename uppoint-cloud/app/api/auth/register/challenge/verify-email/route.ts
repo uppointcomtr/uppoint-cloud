@@ -12,86 +12,92 @@ import {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:register-verify-email", async () => {
-  // Rate limit: 10 attempts per 15 minutes per IP
-  const rateLimitResponse = await withRateLimit("register-verify-email", 10, 900);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "register-verify-email",
-      scope: "ip",
-    });
-    return rateLimitResponse;
-  }
-
-  const ip = await getClientIp();
-
-  let payload: unknown;
-
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
-  }
-
-  const rawPayload = payload as Record<string, unknown>;
-  const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
-
-  if (challengeId) {
-    const identifierRateLimit = await withRateLimitByIdentifier("register-verify-email-challenge", challengeId, 8, 900);
-    if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
+    // Rate limit: 10 attempts per 15 minutes per IP
+    const rateLimitResponse = await withRateLimit("register-verify-email", 10, 900);
+    if (rateLimitResponse) {
+      const limitedIp = await getClientIp();
+      await logAudit("rate_limit_exceeded", limitedIp, undefined, {
         action: "register-verify-email",
-        scope: "challenge",
+        scope: "ip",
       });
-      return identifierRateLimit;
+      return rateLimitResponse;
     }
-  }
 
-  try {
-    const result = await verifyRegisterEmailCode(payload);
+    const ip = await getClientIp();
 
-    return NextResponse.json(ok({
-      smsCodeExpiresAt: result.smsCodeExpiresAt.toISOString(),
-      maskedPhone: result.maskedPhone,
-    }), { status: 200 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    let payload: unknown;
+
+    try {
+      payload = await request.json();
+    } catch {
+      return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
+    }
+
+    const rawPayload = payload as Record<string, unknown>;
+    const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
+
+    if (challengeId) {
+      const identifierRateLimit = await withRateLimitByIdentifier("register-verify-email-challenge", challengeId, 8, 900);
+      if (identifierRateLimit) {
+        await logAudit("rate_limit_exceeded", ip, undefined, {
+          action: "register-verify-email",
+          scope: "challenge",
+        });
+        return identifierRateLimit;
+      }
+    }
+
+    try {
+      const result = await verifyRegisterEmailCode(payload);
+
+      await logAudit("register_verified", ip, undefined, {
+        step: "verify_email",
+        challengeId,
+        result: "SUCCESS",
+      });
+
+      return NextResponse.json(ok({
+        smsCodeExpiresAt: result.smsCodeExpiresAt.toISOString(),
+        maskedPhone: result.maskedPhone,
+      }), { status: 200 });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        await logAudit("register_verification_failed", ip, undefined, {
+          step: "verify_email",
+          reason: "VALIDATION_FAILED",
+        });
+        return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
+      }
+
+      if (error instanceof RegisterVerificationChallengeError) {
+        const neutralizedChallengeCode =
+          error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "INVALID_EMAIL_CODE";
+        const status =
+          neutralizedChallengeCode ||
+          error.code === "PHONE_NOT_AVAILABLE" ||
+          error.code === "SMS_NOT_ENABLED" ||
+          error.code === "SMS_DELIVERY_FAILED" ||
+          error.code === "MAX_ATTEMPTS_REACHED"
+            ? 400
+            : 500;
+
+        await logAudit("register_verification_failed", ip, undefined, {
+          step: "verify_email",
+          reason: neutralizedChallengeCode ? "VERIFICATION_CODE_REJECTED" : error.code,
+        });
+        return NextResponse.json(
+          fail(neutralizedChallengeCode ? "INVALID_OR_EXPIRED_CHALLENGE" : error.code),
+          { status },
+        );
+      }
+
       await logAudit("register_verification_failed", ip, undefined, {
         step: "verify_email",
-        reason: "VALIDATION_FAILED",
+        reason: "REGISTER_VERIFY_EMAIL_FAILED",
       });
-      return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
+      console.error("Failed to verify register email code", error);
+      return NextResponse.json(fail("REGISTER_VERIFY_EMAIL_FAILED"), { status: 500 });
     }
-
-    if (error instanceof RegisterVerificationChallengeError) {
-      const neutralizedChallengeCode =
-        error.code === "INVALID_OR_EXPIRED_CHALLENGE" || error.code === "INVALID_EMAIL_CODE";
-      const status =
-        neutralizedChallengeCode ||
-        error.code === "PHONE_NOT_AVAILABLE" ||
-        error.code === "SMS_NOT_ENABLED" ||
-        error.code === "SMS_DELIVERY_FAILED" ||
-        error.code === "MAX_ATTEMPTS_REACHED"
-          ? 400
-          : 500;
-
-      await logAudit("register_verification_failed", ip, undefined, {
-        step: "verify_email",
-        reason: neutralizedChallengeCode ? "VERIFICATION_CODE_REJECTED" : error.code,
-      });
-      return NextResponse.json(
-        fail(neutralizedChallengeCode ? "INVALID_OR_EXPIRED_CHALLENGE" : error.code),
-        { status },
-      );
-    }
-
-    await logAudit("register_verification_failed", ip, undefined, {
-      step: "verify_email",
-      reason: "REGISTER_VERIFY_EMAIL_FAILED",
-    });
-    console.error("Failed to verify register email code", error);
-    return NextResponse.json(fail("REGISTER_VERIFY_EMAIL_FAILED"), { status: 500 });
-  }
   });
 }
 

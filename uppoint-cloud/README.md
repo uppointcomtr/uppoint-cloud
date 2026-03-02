@@ -61,12 +61,14 @@ Create and maintain `.env` with real values (do not commit it):
 - `DATABASE_URL`
 - `AUTH_SECRET`
 - `AUTH_OTP_PEPPER` (required in production; must be distinct from `AUTH_SECRET`)
+- `INTERNAL_AUDIT_TOKEN` (required in production; secures internal edge-audit ingest route)
+- `INTERNAL_DISPATCH_TOKEN` (required in production; secures internal notification dispatcher route)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
 - `AUDIT_LOG_RETENTION_DAYS` (optional, default `180`, min `30`)
-- `HEALTHCHECK_TOKEN` (optional but recommended in production; required as `x-health-token` when set)
+- `HEALTHCHECK_TOKEN` (required in production; callers must send `x-health-token`)
 - `UPPOINT_ALLOWED_HOSTS` (optional, comma-separated host allowlist for production request host validation)
 - `UPPOINT_ALLOWED_ORIGINS` (optional, comma-separated origin allowlist for production API mutation origin validation)
 - `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
@@ -275,6 +277,9 @@ Run this checklist after deployment or UI-affecting changes:
   - `/api/health` returns minimal status payload only
   - in production, if `HEALTHCHECK_TOKEN` is set, callers must send `x-health-token`
   - local Nginx probe endpoint `/healthz` is loopback-only and injects token via snippet (`/etc/nginx/snippets/uppoint-health-token.conf`)
+- Internal operational endpoints are token-isolated:
+  - `/api/internal/audit/security-event` requires `x-internal-audit-token` matching `INTERNAL_AUDIT_TOKEN`
+  - `/api/internal/notifications/dispatch` requires `x-internal-dispatch-token` matching `INTERNAL_DISPATCH_TOKEN`
 - Backup scripts now enforce restrictive filesystem permissions (`umask 077`, directories `700`, files `600`).
 - Backup scripts now create `*.sha256` checksum sidecars, and restore scripts verify checksums by default.
 

@@ -47,6 +47,12 @@ export async function POST(request: Request) {
   try {
     const result = await verifyPasswordResetSmsCode(payload);
 
+    await logAudit("password_reset_requested", ip, undefined, {
+      step: "verify_sms",
+      challengeId,
+      result: "SUCCESS",
+    });
+
     return NextResponse.json(
       ok({
         resetToken: result.resetToken,

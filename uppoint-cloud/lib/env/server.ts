@@ -29,6 +29,8 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
   AUTH_SECRET: z.string().min(32),
   AUTH_OTP_PEPPER: z.string().min(32).optional(),
+  INTERNAL_AUDIT_TOKEN: z.string().min(32).optional(),
+  INTERNAL_DISPATCH_TOKEN: z.string().min(32).optional(),
   AUTH_TRUST_HOST: booleanFromString.default(false),
   AUTH_BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   AUTH_SESSION_REVALIDATE_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
@@ -102,6 +104,22 @@ const serverEnvSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ["AUTH_OTP_PEPPER"],
         message: "AUTH_OTP_PEPPER must be set in production",
+      });
+    }
+
+    if (!input.INTERNAL_AUDIT_TOKEN) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["INTERNAL_AUDIT_TOKEN"],
+        message: "INTERNAL_AUDIT_TOKEN must be set in production",
+      });
+    }
+
+    if (!input.INTERNAL_DISPATCH_TOKEN) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["INTERNAL_DISPATCH_TOKEN"],
+        message: "INTERNAL_DISPATCH_TOKEN must be set in production",
       });
     }
 
@@ -223,6 +241,8 @@ const parsedEnv = serverEnvSchema.safeParse({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   AUTH_SECRET: process.env.AUTH_SECRET,
   AUTH_OTP_PEPPER: process.env.AUTH_OTP_PEPPER,
+  INTERNAL_AUDIT_TOKEN: process.env.INTERNAL_AUDIT_TOKEN,
+  INTERNAL_DISPATCH_TOKEN: process.env.INTERNAL_DISPATCH_TOKEN,
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
   AUTH_BCRYPT_ROUNDS: process.env.AUTH_BCRYPT_ROUNDS,
   AUTH_SESSION_REVALIDATE_SECONDS: process.env.AUTH_SESSION_REVALIDATE_SECONDS,

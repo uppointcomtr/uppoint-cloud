@@ -53,15 +53,6 @@ export const authOptions: NextAuthOptions = {
       }
 
       const nowMs = Date.now();
-      const tokenValidatedAt = typeof token.validatedAt === "number" ? token.validatedAt : 0;
-      if (
-        token.revoked !== true
-        && tokenValidatedAt > 0
-        && nowMs - tokenValidatedAt < SESSION_REVALIDATE_WINDOW_MS
-      ) {
-        return token;
-      }
-
       const revokedByJti = await isSessionJtiRevoked(
         typeof token.sessionJti === "string" ? token.sessionJti : undefined,
       );
@@ -73,6 +64,15 @@ export const authOptions: NextAuthOptions = {
         token.tokenVersion = undefined;
         token.revoked = true;
         token.validatedAt = nowMs;
+        return token;
+      }
+
+      const tokenValidatedAt = typeof token.validatedAt === "number" ? token.validatedAt : 0;
+      if (
+        token.revoked !== true
+        && tokenValidatedAt > 0
+        && nowMs - tokenValidatedAt < SESSION_REVALIDATE_WINDOW_MS
+      ) {
         return token;
       }
 

@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-03-02 (security hardening follow-up: internal token isolation, idempotency lock, ops script safety)
+
+### Fixed
+- Hardened internal audit ingest authentication:
+  - `app/api/internal/audit/security-event/route.ts` now fails closed when `INTERNAL_AUDIT_TOKEN` is missing (empty expected token no longer authenticates).
+- Reduced idempotency race risk with explicit pending-slot reservation:
+  - `lib/http/idempotency.ts` now creates a pending record, waits briefly for in-flight completion, and returns `409 IDEMPOTENCY_IN_PROGRESS` when a concurrent request is still processing.
+  - updated test coverage in `tests/http/idempotency.test.ts`.
+- Closed notification outbox `updatedAt` insert/default drift:
+  - raw outbox insert/update paths now always set `updatedAt` in `modules/notifications/server/outbox.ts`.
+  - added migration `prisma/migrations/20260302113000_set_notification_outbox_updated_at_default/migration.sql`.
+- Added missing success audit events for auth verification steps:
+  - `app/api/auth/register/challenge/verify-email/route.ts`
+  - `app/api/auth/forgot-password/challenge/verify-email/route.ts`
+  - `app/api/auth/forgot-password/challenge/verify-sms/route.ts`
+- Improved JWT revocation freshness:
+  - `auth.ts` now checks session-JTI revocation before returning early via revalidation window.
+- Removed unused legacy module:
+  - deleted `modules/auth/server/email-verification.ts` (link-based verification surface is deprecated).
+
+### Changed
+- Internal dispatcher endpoint token isolation:
+  - `app/api/internal/notifications/dispatch/route.ts` now requires `x-internal-dispatch-token` (`INTERNAL_DISPATCH_TOKEN`) instead of `HEALTHCHECK_TOKEN`.
+  - `proxy.ts` now reads `INTERNAL_AUDIT_TOKEN` instead of reusing `AUTH_SECRET`.
+  - `lib/env/server.ts` now validates `INTERNAL_AUDIT_TOKEN` and `INTERNAL_DISPATCH_TOKEN` in production.
+
+### Ops / Docs
+- Hardened operational scripts against token/process leakage and temp-file collisions:
+  - `scripts/health-probe.sh`
+  - `scripts/dispatch-notifications.sh`
+  - both now use `mktemp` + cleanup trap; token headers are passed via temporary header files.
+- Added log rotation for notification dispatch cron log:
+  - `ops/logrotate/uppoint-cloud` now rotates `/var/log/uppoint-cloud/dispatch-notifications.log`.
+- Updated operational docs and environment references:
+  - `README.md`
+  - `ops/README.md`
+
 ## 2026-03-02 (auth surface cleanup: OTP-only registration model)
 
 ### Changed

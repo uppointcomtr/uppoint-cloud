@@ -282,6 +282,8 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Every auth endpoint must have two rate-limit layers: (1) IP-based and (2) identifier-based (email/phone/challengeId); omitting either enables credential stuffing
 * All responses that could reveal user existence, account state, or registration status must be neutral — different HTTP status codes or error codes are information leaks
 * In security-critical paths, infrastructure failure must be fail-closed (reject, do not pass); fail-open is only acceptable where explicitly documented for business continuity
+* Registration verification is OTP-only: create the user account only after required OTP challenges are verified; do not rely on email-link verification for registration
+* Keep legacy email-link verification surface deprecated by default: `GET /api/auth/verify-email` and `POST /api/auth/verify-email` must remain `410 ENDPOINT_DEPRECATED` unless explicit owner approval is given
 
 ## Authorization and RBAC rules
 

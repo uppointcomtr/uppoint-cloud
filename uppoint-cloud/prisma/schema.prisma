@@ -280,7 +280,7 @@ model NotificationOutbox {
   lastError    String?
   metadata     Json?
   createdAt    DateTime                @default(now())
-  updatedAt    DateTime                @updatedAt
+  updatedAt    DateTime                @default(now()) @updatedAt
 
   @@index([status, nextAttemptAt])
   @@index([createdAt])

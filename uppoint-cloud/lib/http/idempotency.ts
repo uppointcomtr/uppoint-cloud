@@ -2,12 +2,17 @@ import "server-only";
 
 import { createHash } from "crypto";
 import { isIP } from "net";
+import { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
 
 import { prisma } from "@/db/client";
 
 const DEFAULT_TTL_SECONDS = 10 * 60;
 const DEFAULT_SUBJECT_HASH = "global";
+const PENDING_STATUS_CODE = -1;
+const PENDING_CONTENT_TYPE = "application/x-idempotency-pending";
+const WAIT_FOR_PENDING_MAX_MS = 3_000;
+const WAIT_FOR_PENDING_POLL_MS = 100;
 
 function normalizeIpAddress(value: string): string | null {
   const trimmed = value.trim();
@@ -124,8 +129,19 @@ async function getIdempotencyContextFromRequestHeaders(): Promise<IdempotencyReq
   };
 }
 
-async function getCachedResponse(action: string, key: string, subjectHash: string): Promise<Response | null> {
-  const cached = await prisma.idempotencyRecord.findUnique({
+interface StoredIdempotencyRecord {
+  statusCode: number;
+  contentType: string | null;
+  body: string;
+  expiresAt: Date;
+}
+
+async function readStoredRecord(
+  action: string,
+  key: string,
+  subjectHash: string,
+): Promise<StoredIdempotencyRecord | null> {
+  return prisma.idempotencyRecord.findUnique({
     where: {
       action_key_subjectHash: {
         action,
@@ -140,6 +156,20 @@ async function getCachedResponse(action: string, key: string, subjectHash: strin
       expiresAt: true,
     },
   });
+}
+
+function toReplayResponse(cached: StoredIdempotencyRecord): Response {
+  return new Response(cached.body, {
+    status: cached.statusCode,
+    headers: {
+      "Content-Type": cached.contentType ?? "application/json",
+      "X-Idempotency-Replayed": "true",
+    },
+  });
+}
+
+async function getCachedResponse(action: string, key: string, subjectHash: string): Promise<Response | null> {
+  const cached = await readStoredRecord(action, key, subjectHash);
 
   if (!cached) {
     return null;
@@ -156,13 +186,76 @@ async function getCachedResponse(action: string, key: string, subjectHash: strin
     return null;
   }
 
-  return new Response(cached.body, {
-    status: cached.statusCode,
-    headers: {
-      "Content-Type": cached.contentType ?? "application/json",
-      "X-Idempotency-Replayed": "true",
-    },
-  });
+  if (cached.statusCode === PENDING_STATUS_CODE) {
+    return null;
+  }
+
+  return toReplayResponse(cached);
+}
+
+async function reservePendingSlot(
+  action: string,
+  key: string,
+  subjectHash: string,
+  ttlSeconds: number,
+): Promise<boolean> {
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+  try {
+    await prisma.idempotencyRecord.create({
+      data: {
+        action,
+        key,
+        subjectHash,
+        statusCode: PENDING_STATUS_CODE,
+        contentType: PENDING_CONTENT_TYPE,
+        body: "",
+        expiresAt,
+      },
+    });
+    return true;
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function waitForCompletedResponse(
+  action: string,
+  key: string,
+  subjectHash: string,
+): Promise<Response | null> {
+  const deadline = Date.now() + WAIT_FOR_PENDING_MAX_MS;
+
+  while (Date.now() < deadline) {
+    const cached = await readStoredRecord(action, key, subjectHash);
+    if (!cached) {
+      return null;
+    }
+
+    if (cached.expiresAt <= new Date()) {
+      await prisma.idempotencyRecord.deleteMany({
+        where: {
+          action,
+          key,
+          subjectHash,
+        },
+      }).catch(() => undefined);
+      return null;
+    }
+
+    if (cached.statusCode !== PENDING_STATUS_CODE) {
+      return toReplayResponse(cached);
+    }
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, WAIT_FOR_PENDING_POLL_MS);
+    });
+  }
+
+  return null;
 }
 
 async function persistResponse(
@@ -176,6 +269,25 @@ async function persistResponse(
   const body = await responseClone.text();
   const contentType = responseClone.headers.get("content-type");
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+
+  const updated = await prisma.idempotencyRecord.updateMany({
+    where: {
+      action,
+      key,
+      subjectHash,
+      statusCode: PENDING_STATUS_CODE,
+    },
+    data: {
+      statusCode: responseClone.status,
+      contentType,
+      body,
+      expiresAt,
+    },
+  });
+
+  if (updated.count > 0) {
+    return;
+  }
 
   await prisma.idempotencyRecord.upsert({
     where: {
@@ -217,6 +329,31 @@ export async function withIdempotency(
   const cachedResponse = await getCachedResponse(action, key, subjectHash);
   if (cachedResponse) {
     return cachedResponse;
+  }
+
+  let slotAcquired = false;
+  try {
+    slotAcquired = await reservePendingSlot(action, key, subjectHash, ttlSeconds);
+  } catch {
+    // Idempotency storage failures must not block the primary request path.
+    return handler();
+  }
+
+  if (!slotAcquired) {
+    const completed = await waitForCompletedResponse(action, key, subjectHash);
+    if (completed) {
+      return completed;
+    }
+
+    return Response.json(
+      { success: false, error: "IDEMPOTENCY_IN_PROGRESS" },
+      {
+        status: 409,
+        headers: {
+          "Retry-After": "1",
+        },
+      },
+    );
   }
 
   const response = await handler();

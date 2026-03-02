@@ -16,7 +16,10 @@ function matchesToken(provided: string | null, expected: string): boolean {
 }
 
 export async function POST(request: Request) {
-  if (!env.HEALTHCHECK_TOKEN || !matchesToken(request.headers.get("x-health-token"), env.HEALTHCHECK_TOKEN)) {
+  if (
+    !env.INTERNAL_DISPATCH_TOKEN
+    || !matchesToken(request.headers.get("x-internal-dispatch-token"), env.INTERNAL_DISPATCH_TOKEN)
+  ) {
     return NextResponse.json(fail("UNAUTHORIZED"), { status: 401 });
   }
 

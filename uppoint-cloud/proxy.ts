@@ -28,7 +28,7 @@ const ALLOWED_ORIGINS = resolveAllowedOrigins({
   appUrl: process.env.NEXT_PUBLIC_APP_URL,
   configuredOrigins: process.env.UPPOINT_ALLOWED_ORIGINS,
 });
-const INTERNAL_AUDIT_TOKEN = process.env.AUTH_SECRET;
+const INTERNAL_AUDIT_TOKEN = process.env.INTERNAL_AUDIT_TOKEN;
 const INTERNAL_AUDIT_URL = (() => {
   if (!process.env.NEXT_PUBLIC_APP_URL) {
     return null;

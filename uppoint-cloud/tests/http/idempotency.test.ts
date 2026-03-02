@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   headersMock: vi.fn(),
   findUnique: vi.fn(),
+  create: vi.fn(),
+  updateMany: vi.fn(),
   upsert: vi.fn(),
   deleteMany: vi.fn(),
 }));
@@ -15,6 +17,8 @@ vi.mock("@/db/client", () => ({
   prisma: {
     idempotencyRecord: {
       findUnique: mocks.findUnique,
+      create: mocks.create,
+      updateMany: mocks.updateMany,
       upsert: mocks.upsert,
       deleteMany: mocks.deleteMany,
     },
@@ -30,6 +34,8 @@ describe("withIdempotency", () => {
   beforeEach(() => {
     mocks.headersMock.mockReset();
     mocks.findUnique.mockReset();
+    mocks.create.mockReset();
+    mocks.updateMany.mockReset();
     mocks.upsert.mockReset();
     mocks.deleteMany.mockReset();
   });
@@ -67,6 +73,8 @@ describe("withIdempotency", () => {
 
   it("stores separate cache entries when request subject changes", async () => {
     mocks.findUnique.mockResolvedValue(null);
+    mocks.create.mockResolvedValue(undefined);
+    mocks.updateMany.mockResolvedValue({ count: 1 });
     mocks.upsert.mockResolvedValue(undefined);
     const handler = vi.fn().mockResolvedValue(
       new Response("{\"ok\":true}", {
@@ -97,9 +105,9 @@ describe("withIdempotency", () => {
     );
     await withIdempotency("auth:test", handler);
 
-    expect(mocks.upsert).toHaveBeenCalledTimes(2);
-    const firstSubjectHash = mocks.upsert.mock.calls[0]?.[0]?.where?.action_key_subjectHash?.subjectHash;
-    const secondSubjectHash = mocks.upsert.mock.calls[1]?.[0]?.where?.action_key_subjectHash?.subjectHash;
+    expect(mocks.create).toHaveBeenCalledTimes(2);
+    const firstSubjectHash = mocks.create.mock.calls[0]?.[0]?.data?.subjectHash;
+    const secondSubjectHash = mocks.create.mock.calls[1]?.[0]?.data?.subjectHash;
     expect(firstSubjectHash).toBeTruthy();
     expect(secondSubjectHash).toBeTruthy();
     expect(firstSubjectHash).not.toBe(secondSubjectHash);
