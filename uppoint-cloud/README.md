@@ -88,6 +88,9 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 - `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
+- `UPPOINT_ALERT_SLACK_WEBHOOK` (optional, ops alert channel for nginx drift failures)
+- `UPPOINT_ALERT_EMAIL_TO` (optional, ops alert recipient; enqueued via `NotificationOutbox`)
+- `UPPOINT_NGINX_DRIFT_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
 
 ## Upstash rate limit activation
 
@@ -182,6 +185,17 @@ Periodic server-side drift enforcement:
 ```bash
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-nginx-drift-check /etc/cron.d/uppoint-nginx-drift-check
 sudo chmod 644 /etc/cron.d/uppoint-nginx-drift-check
+```
+
+Optional alert channels for drift failures:
+
+```bash
+# Slack webhook (Incoming Webhook URL)
+UPPOINT_ALERT_SLACK_WEBHOOK=https://hooks.slack.com/services/...
+
+# Email recipient (queued to NotificationOutbox)
+UPPOINT_ALERT_EMAIL_TO=ops@uppoint.com.tr
+UPPOINT_NGINX_DRIFT_ALERT_COOLDOWN_MINUTES=60
 ```
 
 One-shot full gate:

@@ -1,5 +1,5 @@
 SHELL=/bin/bash
 PATH=/usr/bin:/bin
 
-# Enforces approved nginx drift baseline continuously.
-*/30 * * * * root /usr/bin/env -i PATH=/usr/bin:/bin RATE_LIMIT_DRIFT_POLICY=enforce-baseline /usr/bin/flock -n /var/lock/uppoint-nginx-drift-check.lock /opt/uppoint-cloud/scripts/check-nginx-config-drift.sh >> /var/log/uppoint-nginx-drift-check.log 2>&1
+# Enforces approved nginx drift baseline continuously and triggers fail-pattern alerts.
+*/30 * * * * root /usr/bin/env -i PATH=/usr/bin:/bin RATE_LIMIT_DRIFT_POLICY=enforce-baseline /usr/bin/flock -n /var/lock/uppoint-nginx-drift-check.lock /opt/uppoint-cloud/scripts/run-nginx-drift-check.sh

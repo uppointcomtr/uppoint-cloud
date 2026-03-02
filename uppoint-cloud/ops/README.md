@@ -328,6 +328,7 @@ Covered logs:
 - `/var/log/uppoint-redis-backup.log`
 - `/var/log/uppoint-auth-rate-limit-tune.log`
 - `/var/log/uppoint-health-probe.log`
+- `/var/log/uppoint-nginx-drift-check.log`
 - `/var/log/uppoint-cloud/audit-fallback.log`
 - `/var/log/postgresql/*.log`
 
@@ -415,6 +416,20 @@ sudo chmod 644 /etc/cron.d/uppoint-nginx-drift-check
 
 Log path:
 - `/var/log/uppoint-nginx-drift-check.log`
+
+Optional alert channels (`/opt/uppoint-cloud/.env`):
+
+```bash
+UPPOINT_ALERT_SLACK_WEBHOOK=https://hooks.slack.com/services/...
+UPPOINT_ALERT_EMAIL_TO=ops@uppoint.com.tr
+UPPOINT_NGINX_DRIFT_ALERT_COOLDOWN_MINUTES=60
+```
+
+Alert behavior:
+- failure output is matched against drift fail patterns and appended to `/var/log/uppoint-nginx-drift-check.log`
+- Slack alert is sent when `UPPOINT_ALERT_SLACK_WEBHOOK` is configured
+- Email alert is queued into `NotificationOutbox` when `UPPOINT_ALERT_EMAIL_TO` is configured
+- repeated identical failures are suppressed during cooldown window
 
 Incident/playbook (drift check fail):
 1. Confirm current and baseline hash mismatch:

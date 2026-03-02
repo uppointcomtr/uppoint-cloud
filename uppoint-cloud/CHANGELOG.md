@@ -65,6 +65,10 @@
   - `tests/auth/notification-outbox.test.ts`
 - New periodic nginx drift enforcement cron template:
   - `ops/cron/uppoint-nginx-drift-check` (`RATE_LIMIT_DRIFT_POLICY=enforce-baseline`)
+- New fail-pattern based nginx drift alert scripts:
+  - `scripts/run-nginx-drift-check.sh`
+  - `scripts/alert-nginx-drift.sh`
+  - supports Slack webhook + NotificationOutbox email alert channels
 
 ### Documentation
 - Updated:
