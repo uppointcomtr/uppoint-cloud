@@ -1,0 +1,1 @@
+* * * * * root /opt/uppoint-cloud/scripts/dispatch-notifications.sh >> /var/log/uppoint-cloud/dispatch-notifications.log 2>&1

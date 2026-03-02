@@ -1,5 +1,74 @@
 # Changelog
 
+## 2026-03-02 (security closure: F1–F11 hardening batch)
+
+### Fixed
+- Closed host-header trust gap by tightening proxy host validation inputs:
+  - `lib/security/request-guards.ts` now treats `Host` as authoritative input.
+  - Added forwarded-host conflict detection and untrusted forwarded-host rejection in `proxy.ts`.
+  - Updated nginx templates to always overwrite upstream `X-Forwarded-Host` with `$host`:
+    - `ops/nginx/cloud.uppoint.com.tr.conf`
+    - `ops/nginx/cloud.uppoint.com.tr.bootstrap.conf`
+- Closed auth notification sync bottleneck with async outbox delivery:
+  - Added `NotificationOutbox` schema/migration.
+  - Added outbox service and batch dispatcher:
+    - `modules/notifications/server/outbox.ts`
+    - `app/api/internal/notifications/dispatch/route.ts`
+  - Auth challenge flows now enqueue instead of direct provider send:
+    - `modules/auth/server/login-challenge.ts`
+    - `modules/auth/server/register-verification-challenge.ts`
+    - `modules/auth/server/password-reset-challenge.ts`
+  - Added dispatch cron/script:
+    - `scripts/dispatch-notifications.sh`
+    - `ops/cron/uppoint-notification-dispatch`
+- Closed verify-email URL token leakage from querystring:
+  - `modules/auth/components/verify-email-status.tsx` now removes `?token=` from browser URL after extraction.
+- Closed audit visibility gap for edge rejections:
+  - Added internal security-event ingest endpoint:
+    - `app/api/internal/audit/security-event/route.ts`
+  - `proxy.ts` now emits `edge_host_rejected` / `edge_origin_rejected` events (best effort).
+  - Extended audit action union in `lib/audit-log.ts`.
+- Closed root-script env execution risk:
+  - Added safe key reader: `scripts/lib/env-reader.sh`.
+  - Removed `.env` shell sourcing from privileged scripts:
+    - `scripts/backup-db.sh`
+    - `scripts/cleanup-db.sh`
+    - `scripts/health-probe.sh`
+    - `scripts/tune-system.sh`
+- Closed API response contract drift on health route:
+  - `app/api/health/route.ts` now uses standard `{ success, data|error }` envelope only.
+
+### Changed
+- Reduced authenticated-request DB pressure in JWT callback:
+  - `auth.ts` now revalidates token/session state on a bounded interval (`AUTH_SESSION_REVALIDATE_SECONDS`, default `300`) instead of full DB checks on every callback cycle.
+  - Added JWT `validatedAt` field (`types/next-auth.d.ts`).
+- Remote smoke suite is now read-only by default:
+  - `tests/e2e/auth-http-smoke.test.ts` gates mutating scenarios behind `E2E_ALLOW_MUTATIONS=1`.
+  - `scripts/run-e2e-smoke-local.sh` defaults to `E2E_ALLOW_MUTATIONS=0`.
+  - `.github/workflows/remote-auth-smoke.yml` explicitly sets read-only mode.
+- Auth UI components were decomposed into smaller reusable parts to reduce coupling:
+  - Added shared request utilities and extracted login/register/password-recovery subcomponents.
+  - Line counts reduced:
+    - `login-form.tsx`: `837 -> 753`
+    - `register-form.tsx`: `698 -> 656`
+    - `forgot-password-modal.tsx`: `646 -> 559`
+- Nginx drift checker now supports explicit rate-limit policy modes:
+  - `RATE_LIMIT_DRIFT_POLICY=warn|enforce-baseline|strict-template`
+  - approved tuned baseline hash file support via `/etc/uppoint-cloud/uppoint-rate-limit.conf.sha256`
+  - legacy `STRICT_RATE_LIMIT_TEMPLATE=1` remains compatible and maps to `strict-template`.
+
+### Added
+- New security/IP helper:
+  - `lib/security/client-ip.ts`
+- New tests:
+  - `tests/security/client-ip.test.ts`
+  - `tests/auth/notification-outbox.test.ts`
+
+### Documentation
+- Updated:
+  - `README.md`
+  - `ops/README.md`
+
 ## 2026-03-01 (hardening follow-up: deprecated auth routes, tenant selection safety, audit fallback sink)
 
 ### Fixed

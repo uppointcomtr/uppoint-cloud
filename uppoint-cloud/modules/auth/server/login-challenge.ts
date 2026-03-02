@@ -7,11 +7,10 @@ import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
 import { getLoginSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
+import { enqueueEmailNotification, enqueueSmsNotification } from "@/modules/notifications/server/outbox";
 
-import { sendAuthEmail } from "./email-service";
 import { hashOtpCode } from "./otp-hash";
 import { verifyPassword } from "./password";
-import { sendAuthSms } from "./sms-service";
 
 const LOGIN_OTP_TTL_MINUTES = 3;
 const LOGIN_TOKEN_TTL_MINUTES = 10;
@@ -206,7 +205,15 @@ const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
       },
       select: { id: true },
     }),
-  sendEmailOtp: async (input) => sendAuthEmail(input),
+  sendEmailOtp: async (input) => enqueueEmailNotification({
+    to: input.to,
+    subject: input.subject,
+    text: input.text,
+    metadata: {
+      scope: "auth-login",
+      channel: "email",
+    },
+  }),
   now: () => new Date(),
   generateCode: generateNumericCode,
   hashValue,
@@ -361,7 +368,14 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
       },
       select: { id: true },
     }),
-  sendSmsOtp: async (input) => sendAuthSms(input),
+  sendSmsOtp: async (input) => enqueueSmsNotification({
+    to: input.to,
+    message: input.message,
+    metadata: {
+      scope: "auth-login",
+      channel: "sms",
+    },
+  }),
   now: () => new Date(),
   generateCode: generateNumericCode,
   hashValue,

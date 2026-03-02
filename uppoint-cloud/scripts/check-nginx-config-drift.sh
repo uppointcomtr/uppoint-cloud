@@ -5,6 +5,8 @@ HAS_DRIFT=0
 
 target_site_file="/etc/nginx/sites-available/cloud.uppoint.com.tr.conf"
 target_rate_limit_file="/etc/nginx/conf.d/uppoint-rate-limit.conf"
+rate_limit_baseline_hash_file="${RATE_LIMIT_BASELINE_HASH_FILE:-/etc/uppoint-cloud/uppoint-rate-limit.conf.sha256}"
+rate_limit_drift_policy="${RATE_LIMIT_DRIFT_POLICY:-warn}"
 
 template_tls="/opt/uppoint-cloud/ops/nginx/cloud.uppoint.com.tr.conf"
 template_bootstrap="/opt/uppoint-cloud/ops/nginx/cloud.uppoint.com.tr.bootstrap.conf"
@@ -20,6 +22,23 @@ hash_of_normalized_site() {
   sed -E 's/(limit_req zone=uppoint_auth_per_ip burst=)[0-9]+( nodelay;)/\1<burst>\2/' "$file_path" \
     | sha256sum \
     | awk '{print $1}'
+}
+
+normalize_rate_limit_policy() {
+  if [ "${STRICT_RATE_LIMIT_TEMPLATE:-0}" = "1" ]; then
+    rate_limit_drift_policy="strict-template"
+    return
+  fi
+
+  case "$rate_limit_drift_policy" in
+    warn|enforce-baseline|strict-template)
+      return
+      ;;
+    *)
+      echo "[drift] invalid RATE_LIMIT_DRIFT_POLICY=${rate_limit_drift_policy} (allowed: warn|enforce-baseline|strict-template)" >&2
+      HAS_DRIFT=1
+      ;;
+  esac
 }
 
 check_site_file() {
@@ -102,15 +121,42 @@ check_rate_limit_file() {
     return
   fi
 
-  if [ "${STRICT_RATE_LIMIT_TEMPLATE:-0}" = "1" ]; then
+  if [ "$rate_limit_drift_policy" = "strict-template" ]; then
     echo "[drift] mismatch: $target_rate_limit_file differs from repo template $template_rate_limit"
     HAS_DRIFT=1
     return
   fi
 
-  echo "[drift] warn: $target_rate_limit_file differs from template (expected after rate-limit tuning); set STRICT_RATE_LIMIT_TEMPLATE=1 to fail"
+  if [ "$rate_limit_drift_policy" = "enforce-baseline" ]; then
+    if [ ! -f "$rate_limit_baseline_hash_file" ]; then
+      echo "[drift] missing baseline hash file: $rate_limit_baseline_hash_file" >&2
+      HAS_DRIFT=1
+      return
+    fi
+
+    local baseline_hash
+    baseline_hash="$(awk '{print $1}' "$rate_limit_baseline_hash_file")"
+
+    if [ -z "$baseline_hash" ]; then
+      echo "[drift] invalid baseline hash file (empty): $rate_limit_baseline_hash_file" >&2
+      HAS_DRIFT=1
+      return
+    fi
+
+    if [ "$target_hash" = "$baseline_hash" ]; then
+      echo "[drift] ok: $target_rate_limit_file matches approved tuned baseline"
+      return
+    fi
+
+    echo "[drift] mismatch: $target_rate_limit_file differs from approved baseline $rate_limit_baseline_hash_file" >&2
+    HAS_DRIFT=1
+    return
+  fi
+
+  echo "[drift] warn: $target_rate_limit_file differs from template (expected after rate-limit tuning); set RATE_LIMIT_DRIFT_POLICY=enforce-baseline (or strict-template) to fail"
 }
 
+normalize_rate_limit_policy
 check_site_file
 check_site_security_directives
 check_rate_limit_file

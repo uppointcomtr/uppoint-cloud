@@ -5,19 +5,24 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/opt/uppoint-cloud/scripts/lib/env-reader.sh
+source "${SCRIPT_DIR}/lib/env-reader.sh"
+
 ENV_FILE="/opt/uppoint-cloud/.env"
+AUDIT_LOG_RETENTION_DAYS="${AUDIT_LOG_RETENTION_DAYS:-}"
+NOTIFICATION_OUTBOX_RETENTION_DAYS="${NOTIFICATION_OUTBOX_RETENTION_DAYS:-}"
+
+DATABASE_URL="${DATABASE_URL:-$(read_env_value "$ENV_FILE" "DATABASE_URL")}"
+if [ -z "${AUDIT_LOG_RETENTION_DAYS:-}" ]; then
+  AUDIT_LOG_RETENTION_DAYS="$(read_env_value "$ENV_FILE" "AUDIT_LOG_RETENTION_DAYS")"
+fi
+if [ -z "${NOTIFICATION_OUTBOX_RETENTION_DAYS:-}" ]; then
+  NOTIFICATION_OUTBOX_RETENTION_DAYS="$(read_env_value "$ENV_FILE" "NOTIFICATION_OUTBOX_RETENTION_DAYS")"
+fi
+
 AUDIT_LOG_RETENTION_DAYS="${AUDIT_LOG_RETENTION_DAYS:-180}"
-
-load_env_file() {
-  if [ -f "$ENV_FILE" ]; then
-    set -a
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    set +a
-  fi
-}
-
-load_env_file
+NOTIFICATION_OUTBOX_RETENTION_DAYS="${NOTIFICATION_OUTBOX_RETENTION_DAYS:-30}"
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "[cleanup] HATA: DATABASE_URL tanımlı değil." >&2
@@ -26,6 +31,11 @@ fi
 
 if ! [[ "$AUDIT_LOG_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$AUDIT_LOG_RETENTION_DAYS" -lt 30 ]; then
   echo "[cleanup] HATA: AUDIT_LOG_RETENTION_DAYS geçersiz (>=30 olmalı)." >&2
+  exit 1
+fi
+
+if ! [[ "$NOTIFICATION_OUTBOX_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$NOTIFICATION_OUTBOX_RETENTION_DAYS" -lt 1 ]; then
+  echo "[cleanup] HATA: NOTIFICATION_OUTBOX_RETENTION_DAYS geçersiz (>=1 olmalı)." >&2
   exit 1
 fi
 
@@ -71,5 +81,9 @@ echo "[cleanup] RevokedSessionToken: ${RST_DELETED} satır silindi"
 # 9. IdempotencyRecord — süresi geçmiş kayıtlar
 IDR_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"IdempotencyRecord\" WHERE \"expiresAt\" < NOW() RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] IdempotencyRecord: ${IDR_DELETED} satır silindi"
+
+# 10. NotificationOutbox — gönderilmiş/kalıcı hataya düşmüş eski kayıtlar
+NO_DELETED=$("${PSQL[@]}" -c "SELECT CASE WHEN to_regclass('\"NotificationOutbox\"') IS NULL THEN 0 ELSE (WITH d AS (DELETE FROM \"NotificationOutbox\" WHERE \"status\" IN ('SENT','FAILED') AND \"updatedAt\" < NOW() - INTERVAL '${NOTIFICATION_OUTBOX_RETENTION_DAYS} days' RETURNING id) SELECT count(*) FROM d) END;")
+echo "[cleanup] NotificationOutbox (>${NOTIFICATION_OUTBOX_RETENTION_DAYS} gün): ${NO_DELETED} satır silindi"
 
 echo "[cleanup] Tamamlandı: $(date)"

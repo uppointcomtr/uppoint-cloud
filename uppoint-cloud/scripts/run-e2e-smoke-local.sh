@@ -9,10 +9,6 @@ STARTUP_TIMEOUT_SECONDS="${E2E_STARTUP_TIMEOUT_SECONDS:-45}"
 
 cd "$ROOT_DIR"
 
-if [ ! -f ".next/BUILD_ID" ]; then
-  NEXT_SKIP_SERVICE_RESTART=1 npm run build >/dev/null
-fi
-
 CURRENT_ALLOWED_HOSTS="$(
   grep -E '^UPPOINT_ALLOWED_HOSTS=' "$ROOT_DIR/.env" 2>/dev/null | tail -n1 | cut -d '=' -f2- || true
 )"
@@ -63,6 +59,14 @@ if [ -n "$CANONICAL_ORIGIN" ]; then
   EFFECTIVE_ALLOWED_ORIGINS="${CANONICAL_ORIGIN},${EFFECTIVE_ALLOWED_ORIGINS}"
 fi
 
+# Proxy allowlist checks are evaluated from build-time env in Next proxy bundles.
+# Rebuild with local allowlists before starting local E2E server.
+NODE_ENV=production \
+UPPOINT_ALLOWED_HOSTS="$EFFECTIVE_ALLOWED_HOSTS" \
+UPPOINT_ALLOWED_ORIGINS="$EFFECTIVE_ALLOWED_ORIGINS" \
+NEXT_SKIP_SERVICE_RESTART=1 \
+npm run build >/dev/null
+
 NODE_ENV=production \
 UPPOINT_ALLOWED_HOSTS="$EFFECTIVE_ALLOWED_HOSTS" \
 UPPOINT_ALLOWED_ORIGINS="$EFFECTIVE_ALLOWED_ORIGINS" \
@@ -93,4 +97,4 @@ if [ "$READY" -ne 1 ]; then
   exit 1
 fi
 
-RUN_E2E=1 E2E_BASE_URL="$BASE_URL" npx vitest run tests/e2e --testTimeout=30000
+RUN_E2E=1 E2E_BASE_URL="$BASE_URL" E2E_ALLOW_MUTATIONS="${E2E_ALLOW_MUTATIONS:-0}" npx vitest run tests/e2e --testTimeout=30000

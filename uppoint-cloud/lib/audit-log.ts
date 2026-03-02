@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { resolveTrustedClientIp } from "@/lib/security/client-ip";
 
 export type AuditAction =
   | "register_success"
@@ -26,6 +27,8 @@ export type AuditAction =
   | "session_revoked"
   | "email_verified"
   | "email_verification_failed"
+  | "edge_host_rejected"
+  | "edge_origin_rejected"
   | "tenant_access_denied"
   | "tenant_role_insufficient"
   | "tenant_context_missing"
@@ -40,6 +43,8 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "login_challenge_start_failed",
   "password_reset_failed",
   "session_revoked",
+  "edge_host_rejected",
+  "edge_origin_rejected",
   "tenant_access_denied",
   "tenant_role_insufficient",
 ]);
@@ -106,26 +111,6 @@ function redactSensitiveMetadata(metadata: Record<string, unknown>): Record<stri
   return output;
 }
 
-function extractRightmostIp(value: string): string | null {
-  // Use the rightmost valid IP from X-Forwarded-For: the nearest trusted proxy appends its
-  // own remote addr, so the rightmost entry is controlled by our infrastructure, not the client.
-  const parts = value
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .reverse();
-
-  for (const part of parts) {
-    // Strip IPv4-mapped IPv6 prefix and port suffix before validation
-    const stripped = part.replace(/^::ffff:/i, "").replace(/:\d+$/, "");
-    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(stripped) || /^[0-9a-f:]+$/i.test(stripped)) {
-      return stripped;
-    }
-  }
-
-  return null;
-}
-
 async function resolveRequestAuditContext(): Promise<Record<string, unknown>> {
   try {
     const headersList = await headers();
@@ -134,10 +119,11 @@ async function resolveRequestAuditContext(): Promise<Record<string, unknown>> {
     const realIp = headersList.get("x-real-ip")?.trim() ?? null;
     const forwardedFor = headersList.get("x-forwarded-for");
 
-    // Prefer X-Real-IP (set by nginx from $remote_addr); fall back to rightmost XFF.
-    const resolvedIp =
-      realIp ||
-      (forwardedFor ? extractRightmostIp(forwardedFor) : null);
+    const resolvedIp = resolveTrustedClientIp({
+      realIpHeader: realIp,
+      forwardedForHeader: forwardedFor,
+      isProduction: env.NODE_ENV === "production",
+    });
 
     return {
       requestId,

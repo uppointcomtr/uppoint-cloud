@@ -5,12 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { signIn } from "next-auth/react";
 
-import { Clock, Mail, Smartphone } from "lucide-react";
+import { Mail, Smartphone } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floating-input";
-import { cn } from "@/lib/utils";
 import {
   getLoginOtpSchema,
   getLoginSchema,
@@ -22,7 +21,11 @@ import { withLocale } from "@/modules/i18n/paths";
 
 import { AuthCard } from "./auth-card";
 import { ForgotPasswordModal } from "./forgot-password-modal";
+import { LoginModeTabs } from "./login/login-mode-tabs";
+import { LoginStepIndicator } from "./login/login-step-indicator";
 import { PhoneInput } from "./phone-input";
+import { fetchWithTimeout, formatCountdown, type ApiResponse } from "./shared/request-utils";
+import { IdentityChip } from "./shared/identity-chip";
 import { VerificationCodeInput } from "./verification-code-input";
 
 type LoginMode = "email" | "phone";
@@ -34,29 +37,6 @@ interface LoginFormProps {
   dictionary: Dictionary["login"];
   passwordRecoveryDictionary: Dictionary["passwordRecovery"];
   validation: Dictionary["validation"];
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
-    window.clearTimeout(timer);
-  });
-}
-
-function formatCountdown(seconds: number): string {
-  const safeSeconds = Math.max(0, seconds);
-  const minutesPart = Math.floor(safeSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const secondsPart = (safeSeconds % 60).toString().padStart(2, "0");
-  return `${minutesPart}:${secondsPart}`;
 }
 
 function mapLoginChallengeError(
@@ -475,68 +455,16 @@ export function LoginForm({
     >
       <div className="space-y-4">
         {/* Mode tabs */}
-        <div className="relative grid grid-cols-2 rounded-xl border border-border/60 bg-muted/30 p-1">
-          <span
-            aria-hidden
-            className={cn(
-              "absolute bottom-1 left-1 top-1 w-[calc(50%-0.25rem)] rounded-lg bg-background shadow-sm transition-transform duration-300",
-              mode === "phone" ? "translate-x-full" : "translate-x-0",
-            )}
-          />
-          <button
-            type="button"
-            className={cn(
-              "relative z-10 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              mode === "email" ? "text-foreground" : "text-muted-foreground",
-            )}
-            onClick={() => resetFlowState("email")}
-          >
-            <Mail className="h-3.5 w-3.5" />
-            {dictionary.tabs.email}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "relative z-10 flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              mode === "phone" ? "text-foreground" : "text-muted-foreground",
-            )}
-            onClick={() => resetFlowState("phone")}
-          >
-            <Smartphone className="h-3.5 w-3.5" />
-            {dictionary.tabs.phone}
-          </button>
-        </div>
+        <LoginModeTabs mode={mode} tabs={dictionary.tabs} onChangeMode={resetFlowState} />
 
         {/* Step indicator */}
-        <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
-            {currentStepIndex + 1}
-          </div>
-          <span className="flex-1 text-sm font-semibold text-foreground">{activeStepLabel}</span>
-          {isOtpStep && countdownSeconds !== null ? (
-            <p className={cn(
-              "flex items-center gap-1 text-xs",
-              isCodeExpired ? "font-medium text-destructive" : "text-muted-foreground",
-            )}>
-              <Clock className="h-3 w-3 shrink-0" />
-              {formatCountdown(countdownSeconds)}
-            </p>
-          ) : (
-            <div className="flex items-center gap-1">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-300",
-                    i === currentStepIndex ? "w-4 bg-primary" :
-                    i < currentStepIndex  ? "w-1.5 bg-primary/50" :
-                                            "w-1.5 bg-muted-foreground/20",
-                  )}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <LoginStepIndicator
+          currentStepIndex={currentStepIndex}
+          activeStepLabel={activeStepLabel}
+          isOtpStep={isOtpStep}
+          countdownSeconds={countdownSeconds}
+          formatCountdown={formatCountdown}
+        />
 
         {submitError ? (
           <Alert variant="destructive">
@@ -585,17 +513,11 @@ export function LoginForm({
 
             {emailStep === "password" ? (
               <>
-                <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                    <Mail className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {dictionary.accountPrefix}
-                    </p>
-                    <p className="truncate text-sm font-semibold text-foreground">{email}</p>
-                  </div>
-                </div>
+                <IdentityChip
+                  label={dictionary.accountPrefix}
+                  value={email}
+                  icon={<Mail className="h-4 w-4 text-primary" />}
+                />
 
                 <FloatingInput
                   id="password"
@@ -724,17 +646,11 @@ export function LoginForm({
 
             {phoneStep === "password" ? (
               <>
-                <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                    <Smartphone className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      {dictionary.accountPrefix}
-                    </p>
-                    <p className="truncate text-sm font-semibold text-foreground">{phone}</p>
-                  </div>
-                </div>
+                <IdentityChip
+                  label={dictionary.accountPrefix}
+                  value={phone}
+                  icon={<Smartphone className="h-4 w-4 text-primary" />}
+                />
 
                 <FloatingInput
                   id="phone-password"

@@ -4,6 +4,7 @@ import { getToken } from "next-auth/jwt";
 
 import {
   getRequestHost,
+  hasConflictingForwardedHost,
   isAllowedHost,
   isAllowedOrigin,
   resolveAllowedHosts,
@@ -27,6 +28,29 @@ const ALLOWED_ORIGINS = resolveAllowedOrigins({
   appUrl: process.env.NEXT_PUBLIC_APP_URL,
   configuredOrigins: process.env.UPPOINT_ALLOWED_ORIGINS,
 });
+const INTERNAL_AUDIT_TOKEN = process.env.AUTH_SECRET;
+const INTERNAL_AUDIT_URL = (() => {
+  if (!process.env.NEXT_PUBLIC_APP_URL) {
+    return null;
+  }
+
+  try {
+    return new URL("/api/internal/audit/security-event", process.env.NEXT_PUBLIC_APP_URL).toString();
+  } catch {
+    return null;
+  }
+})();
+const INTERNAL_AUDIT_ORIGIN = (() => {
+  if (!process.env.NEXT_PUBLIC_APP_URL) {
+    return null;
+  }
+
+  try {
+    return new URL(process.env.NEXT_PUBLIC_APP_URL).origin;
+  } catch {
+    return null;
+  }
+})();
 
 if (IS_PRODUCTION && ALLOWED_HOSTS.size === 0) {
   throw new Error("Production host allowlist is empty; set NEXT_PUBLIC_APP_URL and/or UPPOINT_ALLOWED_HOSTS");
@@ -43,7 +67,12 @@ function getOrCreateRequestId(request: NextRequest): string {
 
 function buildForwardHeaders(request: NextRequest, requestId: string): Headers {
   const headers = new Headers(request.headers);
+  const host = request.headers.get("host");
   headers.set("x-request-id", requestId);
+  if (host) {
+    // Security-sensitive: normalize forwarded host to authoritative Host header.
+    headers.set("x-forwarded-host", host);
+  }
   return headers;
 }
 
@@ -82,13 +111,110 @@ function usesSecureSessionCookie(request: NextRequest): boolean {
   return request.nextUrl.protocol === "https:";
 }
 
+interface EdgeSecurityAuditEvent {
+  action: "edge_host_rejected" | "edge_origin_rejected";
+  requestId: string;
+  path: string;
+  method: string;
+  host?: string | null;
+  forwardedHost?: string | null;
+  origin?: string | null;
+  reason?: string;
+}
+
+function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
+  if (!IS_PRODUCTION || !INTERNAL_AUDIT_URL || !INTERNAL_AUDIT_TOKEN || !INTERNAL_AUDIT_ORIGIN) {
+    return;
+  }
+
+  void fetch(INTERNAL_AUDIT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      origin: INTERNAL_AUDIT_ORIGIN,
+      "x-internal-audit-token": INTERNAL_AUDIT_TOKEN,
+    },
+    body: JSON.stringify({
+      action: event.action,
+      requestId: event.requestId,
+      path: event.path,
+      method: event.method,
+      host: event.host ?? undefined,
+      forwardedHost: event.forwardedHost ?? undefined,
+      origin: event.origin ?? undefined,
+      reason: event.reason,
+    }),
+  }).catch(() => {
+    // Security telemetry must never block user-facing responses.
+  });
+}
+
+interface SessionTokenLike {
+  sub?: unknown;
+  sessionJti?: unknown;
+  tokenVersion?: unknown;
+  revoked?: unknown;
+}
+
+function isValidEdgeSessionToken(token: SessionTokenLike | null): boolean {
+  if (!token) {
+    return false;
+  }
+
+  if (token.revoked === true) {
+    return false;
+  }
+
+  if (typeof token.sub !== "string" || token.sub.trim().length === 0) {
+    return false;
+  }
+
+  if (typeof token.sessionJti !== "string" || token.sessionJti.trim().length < 16) {
+    return false;
+  }
+
+  if (typeof token.tokenVersion !== "number" || !Number.isInteger(token.tokenVersion) || token.tokenVersion < 0) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const requestId = getOrCreateRequestId(request);
   const forwardHeaders = buildForwardHeaders(request, requestId);
   const requestHost = getRequestHost(request);
 
+  if (IS_PRODUCTION && hasConflictingForwardedHost(request)) {
+    emitEdgeSecurityAudit({
+      action: "edge_host_rejected",
+      requestId,
+      path: pathname,
+      method: request.method,
+      host: requestHost,
+      forwardedHost: request.headers.get("x-forwarded-host"),
+      reason: "HOST_FORWARD_CONFLICT",
+    });
+    return withSecurityHeaders(
+      NextResponse.json(
+        { success: false, error: "INVALID_HOST_HEADER" },
+        { status: 400 },
+      ),
+      requestId,
+    );
+  }
+
   if (IS_PRODUCTION && !isAllowedHost(requestHost, ALLOWED_HOSTS)) {
+    emitEdgeSecurityAudit({
+      action: "edge_host_rejected",
+      requestId,
+      path: pathname,
+      method: request.method,
+      host: requestHost,
+      forwardedHost: request.headers.get("x-forwarded-host"),
+      reason: "HOST_NOT_ALLOWLISTED",
+    });
     return withSecurityHeaders(
       NextResponse.json(
         { success: false, error: "INVALID_HOST_HEADER" },
@@ -102,6 +228,15 @@ export async function proxy(request: NextRequest) {
     const origin = request.headers.get("origin");
 
     if (!isAllowedOrigin(origin, ALLOWED_ORIGINS)) {
+      emitEdgeSecurityAudit({
+        action: "edge_origin_rejected",
+        requestId,
+        path: pathname,
+        method: request.method,
+        host: requestHost,
+        origin,
+        reason: "ORIGIN_NOT_ALLOWLISTED",
+      });
       return withSecurityHeaders(
         NextResponse.json(
           { success: false, error: "ORIGIN_NOT_ALLOWED" },
@@ -143,7 +278,7 @@ export async function proxy(request: NextRequest) {
       : "next-auth.session-token",
   });
 
-  const redirectPath = resolveAuthRedirect(pathname, Boolean(token));
+  const redirectPath = resolveAuthRedirect(pathname, isValidEdgeSessionToken(token as SessionTokenLike | null));
 
   if (!redirectPath) {
     return withSecurityHeaders(

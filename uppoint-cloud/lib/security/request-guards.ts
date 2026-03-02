@@ -81,10 +81,19 @@ export function resolveAllowedOrigins(config: AllowedSourceConfig): Set<string> 
 }
 
 export function getRequestHost(request: Request): string | null {
-  return (
-    parseHostFromHeader(request.headers.get("x-forwarded-host"))
-    ?? parseHostFromHeader(request.headers.get("host"))
-  );
+  // Security-sensitive: Host is authoritative at app boundary; do not trust forwarded-host as source of truth.
+  return parseHostFromHeader(request.headers.get("host"));
+}
+
+export function hasConflictingForwardedHost(request: Request): boolean {
+  const directHost = parseHostFromHeader(request.headers.get("host"));
+  const forwardedHost = parseHostFromHeader(request.headers.get("x-forwarded-host"));
+
+  if (!directHost || !forwardedHost) {
+    return false;
+  }
+
+  return normalizeHost(directHost) !== normalizeHost(forwardedHost);
 }
 
 export function isAllowedHost(requestHost: string | null, allowedHosts: Set<string>): boolean {

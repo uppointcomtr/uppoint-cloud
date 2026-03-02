@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createHash, randomUUID } from "crypto";
-import { isIP } from "net";
 import { Prisma } from "@prisma/client";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
@@ -10,6 +9,7 @@ import { createClient, type RedisClientType } from "redis";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { resolveTrustedClientIp } from "@/lib/security/client-ip";
 
 const upstashConfig = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
   ? {
@@ -257,39 +257,6 @@ function schedulePrismaFallbackCleanup(nowMs: number): void {
     });
 }
 
-function normalizeIpAddress(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  // Strip IPv4 port notation when present (e.g. 203.0.113.5:443)
-  const withoutPort = trimmed.match(/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/)
-    ? trimmed.replace(/:\d+$/, "")
-    : trimmed;
-
-  const normalized = withoutPort.startsWith("::ffff:")
-    ? withoutPort.slice("::ffff:".length)
-    : withoutPort;
-
-  return isIP(normalized) ? normalized : null;
-}
-
-function extractTrustedForwardedIp(value: string): string | null {
-  const parts = value
-    .split(",")
-    .map((part) => normalizeIpAddress(part))
-    .filter((part): part is string => Boolean(part));
-
-  if (parts.length === 0) {
-    return null;
-  }
-
-  // With standard reverse-proxy behavior, the nearest trusted proxy appends its own remote addr.
-  // Using the right-most valid IP avoids trusting attacker-controlled left-most values.
-  return parts[parts.length - 1] ?? null;
-}
-
 export function normalizeRateLimitIdentifier(value: string): string {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
 }
@@ -300,24 +267,13 @@ export function normalizeRateLimitIdentifier(value: string): string {
  */
 export async function getClientIp(): Promise<string> {
   const headersList = await headers();
-  const realIp = headersList.get("x-real-ip");
+  const resolvedIp = resolveTrustedClientIp({
+    realIpHeader: headersList.get("x-real-ip"),
+    forwardedForHeader: headersList.get("x-forwarded-for"),
+    isProduction: env.NODE_ENV === "production",
+  });
 
-  if (realIp) {
-    const normalizedRealIp = normalizeIpAddress(realIp);
-    if (normalizedRealIp) {
-      return normalizedRealIp;
-    }
-  }
-
-  const forwarded = headersList.get("x-forwarded-for");
-  if (forwarded) {
-    const forwardedIp = extractTrustedForwardedIp(forwarded);
-    if (forwardedIp) {
-      return forwardedIp;
-    }
-  }
-
-  return "unknown";
+  return resolvedIp ?? "unknown";
 }
 
 /**

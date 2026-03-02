@@ -20,5 +20,6 @@ declare module "next-auth/jwt" {
     tokenVersion?: number;
     revoked?: boolean;
     sessionJti?: string;
+    validatedAt?: number;
   }
 }

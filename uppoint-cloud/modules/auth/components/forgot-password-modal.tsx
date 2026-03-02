@@ -8,11 +8,14 @@ import { AppModal } from "@/components/shared/app-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floating-input";
-import { getLoginSchema, getRegisterSchema } from "@/modules/auth/schemas/auth-schemas";
 import { cn } from "@/lib/utils";
+import { getLoginSchema, getRegisterSchema } from "@/modules/auth/schemas/auth-schemas";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
 import { VerificationCodeInput } from "@/modules/auth/components/verification-code-input";
+
+import { RecoveryStepper, stripStepNumber } from "./password-recovery/recovery-stepper";
+import { fetchWithTimeout, formatCountdown, type ApiResponse } from "./shared/request-utils";
 
 type RecoveryStep = "email" | "emailCode" | "smsCode" | "newPassword" | "success";
 
@@ -25,27 +28,7 @@ interface ForgotPasswordModalProps {
   initialEmail?: string;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
 const codeSchema = z.string().trim().regex(/^\d{6}$/);
-
-const STEP_ORDER: Exclude<RecoveryStep, "success">[] = [
-  "email",
-  "emailCode",
-  "smsCode",
-  "newPassword",
-];
-
-function formatCountdown(seconds: number): string {
-  const safeSeconds = Math.max(0, seconds);
-  const minutesPart = Math.floor(safeSeconds / 60).toString().padStart(2, "0");
-  const secondsPart = (safeSeconds % 60).toString().padStart(2, "0");
-  return `${minutesPart}:${secondsPart}`;
-}
 
 function resolveErrorMessage(
   errorCode: string | undefined,
@@ -80,76 +63,6 @@ function resolveErrorMessage(
   }
 }
 
-function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
-    window.clearTimeout(timer);
-  });
-}
-
-// Strip leading "1. " / "2. " numbering added in dictionary keys
-function stripNumber(label: string): string {
-  return label.replace(/^\d+\.\s*/, "");
-}
-
-interface StepperProps {
-  step: RecoveryStep;
-  labels: string[];
-}
-
-function RecoveryStepper({ step, labels }: StepperProps) {
-  const currentIndex =
-    step === "success"
-      ? STEP_ORDER.length
-      : STEP_ORDER.indexOf(step as Exclude<RecoveryStep, "success">);
-
-  const progressPercent =
-    currentIndex === 0
-      ? 0
-      : Math.min((currentIndex / (labels.length - 1)) * 100, 100);
-
-  return (
-    <div className="relative flex items-center justify-between pb-8">
-      {/* Background connector */}
-      <div className="absolute inset-x-3.5 top-3.5 h-px bg-border/60">
-        <div
-          className="h-full bg-primary transition-all duration-500"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-
-      {labels.map((label, i) => {
-        const completed = i < currentIndex;
-        const active = i === currentIndex;
-        return (
-          <div key={i} className="relative flex flex-col items-center">
-            <div
-              className={cn(
-                "relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all duration-300",
-                completed
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : active
-                    ? "border-2 border-primary bg-background text-primary ring-4 ring-primary/15"
-                    : "border border-border/70 bg-background text-muted-foreground",
-              )}
-            >
-              {completed ? <Check className="h-3 w-3" /> : <span>{i + 1}</span>}
-            </div>
-            <span
-              className={cn(
-                "absolute top-9 whitespace-nowrap text-[10px] font-medium leading-none",
-                completed || active ? "text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {label}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export function ForgotPasswordModal({
   open,
@@ -402,10 +315,10 @@ export function ForgotPasswordModal({
   ];
 
   const stepLabels = [
-    stripNumber(dictionary.steps.email),
-    stripNumber(dictionary.steps.emailCode),
-    stripNumber(dictionary.steps.smsCode),
-    stripNumber(dictionary.steps.newPassword),
+    stripStepNumber(dictionary.steps.email),
+    stripStepNumber(dictionary.steps.emailCode),
+    stripStepNumber(dictionary.steps.smsCode),
+    stripStepNumber(dictionary.steps.newPassword),
   ];
 
   return (

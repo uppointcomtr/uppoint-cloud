@@ -36,6 +36,22 @@ export function VerifyEmailStatus({ locale, tokenFromQuery, dictionary }: Verify
   const [errorKey, setErrorKey] = useState<ErrorKey>(tokenFromQuery ? "generic" : "missingToken");
 
   useEffect(() => {
+    if (!tokenFromQuery) {
+      return;
+    }
+
+    const currentUrl = new URL(window.location.href);
+    if (!currentUrl.searchParams.has("token")) {
+      return;
+    }
+
+    currentUrl.searchParams.delete("token");
+    const nextSearch = currentUrl.searchParams.toString();
+    const sanitizedUrl = `${currentUrl.pathname}${nextSearch ? `?${nextSearch}` : ""}${currentUrl.hash}`;
+    window.history.replaceState(null, "", sanitizedUrl);
+  }, [tokenFromQuery]);
+
+  useEffect(() => {
     if (tokenFromQuery) {
       return;
     }

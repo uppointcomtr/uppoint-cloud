@@ -26,6 +26,7 @@ jobs:
     env:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
+      E2E_ALLOW_MUTATIONS: "0"
     defaults:
       run:
         working-directory: uppoint-cloud
@@ -45,4 +46,3 @@ jobs:
 
       - name: Run remote smoke suite
         run: npm run test:e2e:remote
-

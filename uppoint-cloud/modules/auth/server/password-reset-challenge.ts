@@ -7,12 +7,11 @@ import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
 import { registerSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
+import { enqueueEmailNotification, enqueueSmsNotification } from "@/modules/notifications/server/outbox";
 
-import { sendAuthEmail } from "./email-service";
 import { generateOpaqueChallengeId } from "./opaque-challenge";
 import { hashOtpCode } from "./otp-hash";
 import { hashPassword } from "./password";
-import { sendAuthSms } from "./sms-service";
 
 const PASSWORD_RESET_CODE_TTL_MINUTES = 3;
 const PASSWORD_RESET_MAX_ATTEMPTS = 5;
@@ -159,7 +158,15 @@ const defaultStartDependencies: StartChallengeDependencies = {
       select: { id: true },
     }),
   sendEmailCode: async (input) => {
-    await sendAuthEmail(input);
+    await enqueueEmailNotification({
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      metadata: {
+        scope: "auth-password-reset",
+        channel: "email",
+      },
+    });
   },
   now: () => new Date(),
   generateCode: generateNumericCode,
@@ -297,7 +304,14 @@ const defaultVerifyEmailDependencies: VerifyEmailCodeDependencies = {
     return result.count === 1;
   },
   sendSmsCode: async (input) => {
-    await sendAuthSms(input);
+    await enqueueSmsNotification({
+      to: input.to,
+      message: input.message,
+      metadata: {
+        scope: "auth-password-reset",
+        channel: "sms",
+      },
+    });
   },
   now: () => new Date(),
   generateCode: generateNumericCode,

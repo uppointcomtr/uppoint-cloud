@@ -15,17 +15,12 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/opt/uppoint-cloud/scripts/lib/env-reader.sh
+source "${SCRIPT_DIR}/lib/env-reader.sh"
+
 ENV_FILE="/opt/uppoint-cloud/.env"
 ENABLE_LOCAL_PG_TUNING="${UPPOINT_ENABLE_LOCAL_PG_TUNING:-0}"
-
-load_env_file() {
-  if [ -f "$ENV_FILE" ]; then
-    set -a
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    set +a
-  fi
-}
 
 extract_database_host() {
   local db_url="$1"
@@ -43,9 +38,11 @@ is_local_database_host() {
   esac
 }
 
-load_env_file
-
-DATABASE_URL_VALUE="${DATABASE_URL:-}"
+DATABASE_URL_VALUE="${DATABASE_URL:-$(read_env_value "$ENV_FILE" "DATABASE_URL")}"
+if [ -z "${UPPOINT_ENABLE_LOCAL_PG_TUNING:-}" ]; then
+  ENABLE_LOCAL_PG_TUNING="$(read_env_value "$ENV_FILE" "UPPOINT_ENABLE_LOCAL_PG_TUNING")"
+  ENABLE_LOCAL_PG_TUNING="${ENABLE_LOCAL_PG_TUNING:-0}"
+fi
 DATABASE_HOST=""
 if [ -n "$DATABASE_URL_VALUE" ]; then
   DATABASE_HOST="$(extract_database_host "$DATABASE_URL_VALUE")"

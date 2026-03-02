@@ -123,6 +123,26 @@ cd /opt/uppoint-cloud
 npm run verify:nginx-drift
 ```
 
+Rate-limit drift policy modes:
+
+- `RATE_LIMIT_DRIFT_POLICY=warn` (default): tuned rate-limit file differences are warning-only.
+- `RATE_LIMIT_DRIFT_POLICY=enforce-baseline`: tuned file must match approved baseline hash.
+- `RATE_LIMIT_DRIFT_POLICY=strict-template`: tuned file must match repository template exactly.
+
+Approve tuned file as baseline:
+
+```bash
+sudo install -d -m 755 /etc/uppoint-cloud
+sudo sha256sum /etc/nginx/conf.d/uppoint-rate-limit.conf | sudo tee /etc/uppoint-cloud/uppoint-rate-limit.conf.sha256 >/dev/null
+```
+
+Run drift check with baseline enforcement:
+
+```bash
+cd /opt/uppoint-cloud
+RATE_LIMIT_DRIFT_POLICY=enforce-baseline npm run verify:nginx-drift
+```
+
 ## 3. Let's Encrypt issuance
 
 Issue certificate with webroot challenge:
@@ -218,7 +238,8 @@ Install cron entries:
 ```bash
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-backup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch
 ```
 
 Run manual tests:
@@ -226,6 +247,7 @@ Run manual tests:
 ```bash
 sudo /opt/uppoint-cloud/scripts/backup-db.sh
 sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
+sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
 ls -lah /opt/backups/postgres
 ```
 
@@ -381,7 +403,8 @@ Site config is accepted if it matches either:
 
 Rate-limit file note:
 - `/etc/nginx/conf.d/uppoint-rate-limit.conf` may diverge after auto-tuning runs and is reported as warning by default.
-- Set `STRICT_RATE_LIMIT_TEMPLATE=1` to treat rate-limit divergence as a hard failure.
+- Set `RATE_LIMIT_DRIFT_POLICY=enforce-baseline` to require match against `/etc/uppoint-cloud/uppoint-rate-limit.conf.sha256`.
+- Set `RATE_LIMIT_DRIFT_POLICY=strict-template` (or legacy `STRICT_RATE_LIMIT_TEMPLATE=1`) to treat template divergence as hard failure.
 
 ## 15. Restore drill (staging rehearsal)
 

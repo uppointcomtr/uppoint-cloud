@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const baseUrl = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
+const allowMutations = process.env.E2E_ALLOW_MUTATIONS === "1";
 
 function uniqueSuffix(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -39,15 +40,17 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     const healthResponse = await fetchWithTimeout("/api/health");
 
     if (healthResponse.status === 200) {
-      const payload = await healthResponse.json() as { status?: string };
-      expect(payload.status).toBe("ok");
+      const payload = await healthResponse.json() as { success?: boolean; data?: { status?: string } };
+      expect(payload.success).toBe(true);
+      expect(payload.data?.status).toBe("ok");
       return;
     }
 
     // Production may require x-health-token for /api/health.
     expect(healthResponse.status).toBe(401);
-    const unauthorizedPayload = await healthResponse.json() as { status?: string };
-    expect(unauthorizedPayload.status).toBe("unauthorized");
+    const unauthorizedPayload = await healthResponse.json() as { success?: boolean; error?: string };
+    expect(unauthorizedPayload.success).toBe(false);
+    expect(unauthorizedPayload.error).toBe("UNAUTHORIZED");
 
     const healthToken = process.env.E2E_HEALTHCHECK_TOKEN ?? process.env.HEALTHCHECK_TOKEN;
     if (!healthToken) {
@@ -60,8 +63,9 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
       },
     });
     expect(authorizedHealthResponse.status).toBe(200);
-    const authorizedPayload = await authorizedHealthResponse.json() as { status?: string };
-    expect(authorizedPayload.status).toBe("ok");
+    const authorizedPayload = await authorizedHealthResponse.json() as { success?: boolean; data?: { status?: string } };
+    expect(authorizedPayload.success).toBe(true);
+    expect(authorizedPayload.data?.status).toBe("ok");
   });
 
   afterAll(async () => {
@@ -94,7 +98,7 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(registerHtml).toContain("Hesap oluştur");
   });
 
-  it("returns neutral response for unverified email login challenge", async () => {
+  it.runIf(allowMutations)("returns neutral response for unverified email login challenge", async () => {
     const registerResponse = await fetchWithTimeout("/api/auth/register", {
       method: "POST",
       headers: {
@@ -146,7 +150,7 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(payload.data?.codeExpiresAt ?? null).toBeNull();
   });
 
-  it("enforces IP-based register rate limit", async () => {
+  it.runIf(allowMutations)("enforces IP-based register rate limit", async () => {
     let lastStatus = 0;
     let lastBody = "";
 
@@ -168,7 +172,7 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(lastBody).toContain("TOO_MANY_REQUESTS");
   });
 
-  it("returns unified error shape for forgot-password challenge validation failures", async () => {
+  it.runIf(allowMutations)("returns unified error shape for forgot-password challenge validation failures", async () => {
     const response = await fetchWithTimeout("/api/auth/forgot-password/challenge/start", {
       method: "POST",
       headers: {

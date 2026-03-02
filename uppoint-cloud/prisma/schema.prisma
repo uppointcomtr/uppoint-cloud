@@ -13,6 +13,17 @@ enum TenantRole {
   MEMBER
 }
 
+enum NotificationChannel {
+  EMAIL
+  SMS
+}
+
+enum NotificationOutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -248,4 +259,27 @@ model IdempotencyRecord {
   @@unique([action, key, subjectHash])
   @@index([action, subjectHash])
   @@index([expiresAt])
+}
+
+model NotificationOutbox {
+  id           String                  @id @default(cuid())
+  channel      NotificationChannel
+  recipient    String
+  subject      String?
+  body         String
+  status       NotificationOutboxStatus @default(PENDING)
+  attemptCount Int                     @default(0)
+  maxAttempts  Int                     @default(5)
+  nextAttemptAt DateTime               @default(now())
+  lockedAt     DateTime?
+  lockedBy     String?
+  sentAt       DateTime?
+  lastError    String?
+  metadata     Json?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt])
+  @@index([sentAt])
 }

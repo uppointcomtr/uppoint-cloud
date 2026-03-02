@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch, Controller, type Resolver } from "react-hook-form";
-import { Check, CheckCircle, Clock, Mail, Smartphone, X } from "lucide-react";
+import { CheckCircle, Mail, Smartphone } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,33 +18,13 @@ import { withLocale } from "@/modules/i18n/paths";
 
 import { AuthCard } from "./auth-card";
 import { PhoneInput } from "./phone-input";
+import { PasswordRulesList } from "./register/password-rules-list";
+import { VerificationSummary } from "./register/verification-summary";
+import { fetchWithTimeout, formatCountdown, type ApiResponse } from "./shared/request-utils";
 import { VerificationCodeInput } from "./verification-code-input";
 
 type RegisterStep = "email" | "details" | "verifyEmailCode" | "verifySmsCode" | "success";
 const REGISTER_CODE_TTL_SECONDS = 3 * 60;
-
-function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
-    window.clearTimeout(timer);
-  });
-}
-
-function formatCountdown(seconds: number): string {
-  const safeSeconds = Math.max(0, seconds);
-  const minutesPart = Math.floor(safeSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const secondsPart = (safeSeconds % 60).toString().padStart(2, "0");
-  return `${minutesPart}:${secondsPart}`;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
 
 interface RegisterFormProps {
   locale: Locale;
@@ -544,19 +524,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
                 {...form.register("password")}
               />
               {password.length > 0 && (
-                <ul className="mt-1.5 grid grid-cols-1 gap-y-1">
-                  {passwordRules.map((rule) => (
-                    <li
-                      key={rule.label}
-                      className={`flex items-center gap-1.5 text-xs transition-colors ${rule.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}
-                    >
-                      {rule.met
-                        ? <Check className="h-3 w-3 shrink-0" />
-                        : <X className="h-3 w-3 shrink-0" />}
-                      {rule.label}
-                    </li>
-                  ))}
-                </ul>
+                <PasswordRulesList rules={passwordRules} />
               )}
             </div>
           </>
@@ -564,18 +532,13 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
 
         {step === "verifyEmailCode" ? (
           <>
-            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="h-4 w-4 text-primary" />
-                <span>{form.getValues("email")}</span>
-              </div>
-              {countdownSeconds !== null ? (
-                <div className="flex items-center gap-2 text-xs font-medium text-primary">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{dictionary.countdownPrefix} {formatCountdown(countdownSeconds)}</span>
-                </div>
-              ) : null}
-            </div>
+            <VerificationSummary
+              icon={<Mail className="h-4 w-4 text-primary" />}
+              text={form.getValues("email")}
+              countdownSeconds={countdownSeconds}
+              countdownPrefix={dictionary.countdownPrefix}
+              formatCountdown={formatCountdown}
+            />
 
             <div className="space-y-2">
               <VerificationCodeInput
@@ -591,18 +554,13 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
 
         {step === "verifySmsCode" ? (
           <>
-            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Smartphone className="h-4 w-4 text-primary" />
-                <span>{dictionary.verification.smsSentToPrefix}: {maskedPhone ?? "****"}</span>
-              </div>
-              {countdownSeconds !== null ? (
-                <div className="flex items-center gap-2 text-xs font-medium text-primary">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{dictionary.countdownPrefix} {formatCountdown(countdownSeconds)}</span>
-                </div>
-              ) : null}
-            </div>
+            <VerificationSummary
+              icon={<Smartphone className="h-4 w-4 text-primary" />}
+              text={`${dictionary.verification.smsSentToPrefix}: ${maskedPhone ?? "****"}`}
+              countdownSeconds={countdownSeconds}
+              countdownPrefix={dictionary.countdownPrefix}
+              formatCountdown={formatCountdown}
+            />
 
             <div className="space-y-2">
               <VerificationCodeInput

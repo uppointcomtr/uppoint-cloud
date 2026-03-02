@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getRequestHost,
+  hasConflictingForwardedHost,
   isAllowedHost,
   isAllowedOrigin,
   resolveAllowedHosts,
@@ -30,8 +31,8 @@ describe("request guards", () => {
     expect(origins.has("https://portal.uppoint.com.tr")).toBe(true);
   });
 
-  it("parses request host from forwarded or direct host header", () => {
-    const forwardedRequest = new Request("https://cloud.uppoint.com.tr/test", {
+  it("parses request host from host header only", () => {
+    const forwardedOnlyRequest = new Request("https://cloud.uppoint.com.tr/test", {
       headers: {
         "x-forwarded-host": "cloud.uppoint.com.tr, proxy.local",
       },
@@ -43,8 +44,27 @@ describe("request guards", () => {
       },
     });
 
-    expect(getRequestHost(forwardedRequest)).toBe("cloud.uppoint.com.tr");
+    expect(getRequestHost(forwardedOnlyRequest)).toBeNull();
     expect(getRequestHost(directRequest)).toBe("cloud.uppoint.com.tr");
+  });
+
+  it("detects conflicting forwarded host values", () => {
+    const matchingRequest = new Request("https://cloud.uppoint.com.tr/test", {
+      headers: {
+        host: "cloud.uppoint.com.tr",
+        "x-forwarded-host": "cloud.uppoint.com.tr",
+      },
+    });
+
+    const conflictingRequest = new Request("https://cloud.uppoint.com.tr/test", {
+      headers: {
+        host: "cloud.uppoint.com.tr",
+        "x-forwarded-host": "evil.example.com",
+      },
+    });
+
+    expect(hasConflictingForwardedHost(matchingRequest)).toBe(false);
+    expect(hasConflictingForwardedHost(conflictingRequest)).toBe(true);
   });
 
   it("allows only configured hosts when list is non-empty", () => {

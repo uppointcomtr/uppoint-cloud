@@ -10,6 +10,8 @@ import { consumeLoginToken } from "@/modules/auth/server/login-challenge";
 import { defaultLocale } from "@/modules/i18n/config";
 import { withLocale } from "@/modules/i18n/paths";
 
+const SESSION_REVALIDATE_WINDOW_MS = env.AUTH_SESSION_REVALIDATE_SECONDS * 1000;
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -42,10 +44,21 @@ export const authOptions: NextAuthOptions = {
         token.tokenVersion = typeof user.tokenVersion === "number" ? user.tokenVersion : 0;
         token.sessionJti = typeof token.sessionJti === "string" ? token.sessionJti : generateSessionJti();
         token.revoked = false;
+        token.validatedAt = Date.now();
         return token;
       }
 
       if (!token.sub) {
+        return token;
+      }
+
+      const nowMs = Date.now();
+      const tokenValidatedAt = typeof token.validatedAt === "number" ? token.validatedAt : 0;
+      if (
+        token.revoked !== true
+        && tokenValidatedAt > 0
+        && nowMs - tokenValidatedAt < SESSION_REVALIDATE_WINDOW_MS
+      ) {
         return token;
       }
 
@@ -59,6 +72,7 @@ export const authOptions: NextAuthOptions = {
         token.name = undefined;
         token.tokenVersion = undefined;
         token.revoked = true;
+        token.validatedAt = nowMs;
         return token;
       }
 
@@ -79,12 +93,14 @@ export const authOptions: NextAuthOptions = {
         token.name = undefined;
         token.tokenVersion = undefined;
         token.revoked = true;
+        token.validatedAt = nowMs;
         return token;
       }
 
       token.email = currentUser.email ?? token.email;
       token.name = currentUser.name ?? token.name;
       token.revoked = false;
+      token.validatedAt = nowMs;
       return token;
     },
     session: async ({ session, token }) => {

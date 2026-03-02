@@ -24,7 +24,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - JWT session revocation via `User.tokenVersion` checks
   - Atomic one-time token/code consumption for login/register/password-reset challenge flows
   - Database-backed auth persistence (Auth.js + Prisma adapter)
-  - Registration notification hooks for SMTP email + Verimor SMS
+  - Notification outbox + async dispatcher for SMTP email + Verimor SMS (auth endpoints no longer block on provider latency)
   - Token-based password reset completion after dual verification
   - Identifier + IP based auth rate-limiting (email/phone/user + IP)
 - Root entry (`/` and `/:locale`) redirects directly to localized login page
@@ -62,6 +62,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_SECRET`
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
+- `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
 - `AUDIT_LOG_RETENTION_DAYS` (optional, default `180`, min `30`)
 - `HEALTHCHECK_TOKEN` (optional but recommended in production; required as `x-health-token` when set)
@@ -86,6 +87,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_DATACODING`
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 - `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
+- `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 
 ## Upstash rate limit activation
 
@@ -120,6 +122,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Login OTP challenge service: [modules/auth/server/login-challenge.ts](/opt/uppoint-cloud/modules/auth/server/login-challenge.ts)
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
 - Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)
+- Notification outbox service: [modules/notifications/server/outbox.ts](/opt/uppoint-cloud/modules/notifications/server/outbox.ts)
 - User soft-delete lifecycle service: [modules/auth/server/user-lifecycle.ts](/opt/uppoint-cloud/modules/auth/server/user-lifecycle.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
@@ -154,6 +157,26 @@ npm run build
 npm run verify:nginx-drift
 ```
 
+Nginx rate-limit drift policy:
+
+- `RATE_LIMIT_DRIFT_POLICY=warn` (default): tuned `/etc/nginx/conf.d/uppoint-rate-limit.conf` differences remain warning-level.
+- `RATE_LIMIT_DRIFT_POLICY=enforce-baseline`: tuned file must match approved baseline hash (`/etc/uppoint-cloud/uppoint-rate-limit.conf.sha256` by default).
+- `RATE_LIMIT_DRIFT_POLICY=strict-template`: tuned file must match repo template exactly.
+
+Approve current tuned file as baseline:
+
+```bash
+sudo install -d -m 755 /etc/uppoint-cloud
+sudo sha256sum /etc/nginx/conf.d/uppoint-rate-limit.conf | sudo tee /etc/uppoint-cloud/uppoint-rate-limit.conf.sha256 >/dev/null
+```
+
+Enforced drift check run:
+
+```bash
+cd /opt/uppoint-cloud
+RATE_LIMIT_DRIFT_POLICY=enforce-baseline npm run verify:nginx-drift
+```
+
 One-shot full gate:
 
 ```bash
@@ -167,15 +190,22 @@ Use `npm run build:deploy` for build + service restart.
 
 Auth E2E smoke suite lives under `tests/e2e/` and validates live HTTP behavior for:
 - login/register page reachability
-- register route rate limit behavior
-- unverified-account enumeration resistance (neutral login-start response)
-- forgot-password challenge contract baseline
+- deprecated endpoint contract baseline
+- health endpoint contract baseline
 
 Run:
 
 ```bash
 cd /opt/uppoint-cloud
 npm run test:e2e
+```
+
+By default smoke runs in read-only mode (`E2E_ALLOW_MUTATIONS=0`).
+To run mutating auth scenarios in an isolated non-production environment:
+
+```bash
+cd /opt/uppoint-cloud
+E2E_ALLOW_MUTATIONS=1 npm run test:e2e
 ```
 
 Remote environment smoke (already-deployed domain):
@@ -216,7 +246,7 @@ Run this checklist after deployment or UI-affecting changes:
 - `POST /api/auth/verify-email` is the only mutation endpoint for email verification; `GET /api/auth/verify-email` returns `405`.
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
 - `logAudit()` emits structured `[security-signal]` log lines for high-risk auth/tenant failures (`rate_limit_exceeded`, OTP failures, tenant access denials) to support alert pipelines.
-- Production edge guard rejects invalid `Host/X-Forwarded-Host` values (`INVALID_HOST_HEADER`) and invalid cross-origin API mutations (`ORIGIN_NOT_ALLOWED`).
+- Production edge guard rejects invalid host/origin requests (`INVALID_HOST_HEADER`, `ORIGIN_NOT_ALLOWED`) and emits edge rejection events into audit storage via internal ingest route.
 - CSP is nonce-based at Nginx layer: per-request `$request_id` is used as script/style nonce and injected into HTML tags via `sub_filter`.
 - Both `script-src` and `style-src` avoid `unsafe-inline`; nonce is enforced for inline script/style tags.
 - Health endpoint exposure is minimized:

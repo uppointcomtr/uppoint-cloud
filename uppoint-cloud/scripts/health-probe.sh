@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/opt/uppoint-cloud/scripts/lib/env-reader.sh
+source "${SCRIPT_DIR}/lib/env-reader.sh"
+
 DOMAIN="${UPPOINT_HEALTHCHECK_DOMAIN:-cloud.uppoint.com.tr}"
 CONNECT_IP="${UPPOINT_HEALTHCHECK_CONNECT_IP:-127.0.0.1}"
 PROBE_URL="https://${DOMAIN}/api/health"
@@ -8,18 +12,9 @@ TIMEOUT_SECONDS="${UPPOINT_HEALTHCHECK_TIMEOUT_SECONDS:-10}"
 ENV_FILE="/opt/uppoint-cloud/.env"
 
 HEALTHCHECK_TOKEN="${HEALTHCHECK_TOKEN:-}"
-
-load_env_file() {
-  if [ -f "$ENV_FILE" ]; then
-    set -a
-    # shellcheck disable=SC1090
-    . "$ENV_FILE"
-    set +a
-  fi
-}
-
-load_env_file
-HEALTHCHECK_TOKEN="${HEALTHCHECK_TOKEN:-}"
+if [ -z "$HEALTHCHECK_TOKEN" ]; then
+  HEALTHCHECK_TOKEN="$(read_env_value "$ENV_FILE" "HEALTHCHECK_TOKEN")"
+fi
 
 curl_args=(
   -sS

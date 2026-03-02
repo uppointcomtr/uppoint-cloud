@@ -3,6 +3,7 @@ import { timingSafeEqual } from "crypto";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { fail, ok } from "@/lib/http/response";
 
 // Health check endpoint for monitoring / load-balancer liveness probes.
 // Returns 200 + JSON when the app and DB are reachable; 503 otherwise.
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
 
     if (!tokenMatches) {
       return NextResponse.json(
-        { success: false, error: "UNAUTHORIZED", status: "unauthorized" },
+        fail("UNAUTHORIZED"),
         { status: 401, headers: { "Cache-Control": "no-store" } },
       );
     }
@@ -28,13 +29,13 @@ export async function GET(request: Request) {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json(
-      { success: true, data: { status: "ok" }, status: "ok" },
+      ok({ status: "ok" }),
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   } catch (err) {
     console.error("[health] DB check failed:", err);
     return NextResponse.json(
-      { success: false, error: "HEALTHCHECK_FAILED", status: "error" },
+      fail("HEALTHCHECK_FAILED"),
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
   }
