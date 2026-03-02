@@ -37,6 +37,7 @@ export type AuditAction =
   | "internal_dispatch_unauthorized"
   | "internal_audit_security_event_unauthorized"
   | "internal_audit_security_event_replay_blocked"
+  | "deprecated_endpoint_access"
   | "tenant_access_denied"
   | "tenant_role_insufficient"
   | "tenant_context_missing"
@@ -58,11 +59,12 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "internal_dispatch_unauthorized",
   "internal_audit_security_event_unauthorized",
   "internal_audit_security_event_replay_blocked",
+  "deprecated_endpoint_access",
   "tenant_access_denied",
   "tenant_role_insufficient",
 ]);
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
-const AUDIT_INTEGRITY_VERSION = "v1";
+const AUDIT_INTEGRITY_VERSION = "v2";
 const AUDIT_INTEGRITY_SECRET = env.AUDIT_LOG_SIGNING_SECRET ?? env.AUTH_SECRET;
 const AUDIT_CHAIN_LOCK_KEY_ONE = 2_147_483_647;
 const AUDIT_CHAIN_LOCK_KEY_TWO = 4_242;
@@ -263,6 +265,26 @@ function pickIntegrityHash(metadata: unknown): string | null {
   return /^[a-f0-9]{64}$/.test(normalized) ? normalized : null;
 }
 
+function normalizeForStableStringify(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeForStableStringify(item));
+  }
+
+  if (value && typeof value === "object") {
+    const sortedEntries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, normalizeForStableStringify(nested)] as const);
+
+    return Object.fromEntries(sortedEntries);
+  }
+
+  return value;
+}
+
+function stableStringify(value: unknown): string {
+  return JSON.stringify(normalizeForStableStringify(value));
+}
+
 function computeIntegrityHash(input: {
   action: AuditAction;
   ip: string | null;
@@ -279,7 +301,7 @@ function computeIntegrityHash(input: {
   createdAt: Date;
   previousHash: string | null;
 }): string {
-  const canonicalPayload = JSON.stringify({
+  const canonicalPayload = stableStringify({
     action: input.action,
     ip: input.ip,
     userId: input.userId ?? null,

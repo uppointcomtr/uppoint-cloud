@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-03-02 (finding closure: audit hash verification + deprecated endpoint telemetry + outbox scope columns)
+
+### Fixed
+- Closed audit-integrity verification blind spot:
+  - `scripts/verify-audit-integrity.mjs` now recomputes and validates per-row HMAC integrity hashes (not only chain continuity).
+  - Added constant-time hash comparison and explicit mismatch reporting (`HASH_MISMATCH`).
+  - Added integrity schema evolution handling:
+    - `v2` rows are cryptographically revalidated.
+    - `v1` rows are treated as legacy continuity-only.
+  - `lib/audit-log.ts` now writes deterministic `v2` integrity hashes (stable canonical payload ordering).
+  - `scripts/verify-audit-integrity.sh` now loads `AUDIT_LOG_SIGNING_SECRET`/`AUTH_SECRET` from `.env` for cryptographic verification.
+- Reduced client-side error leakage:
+  - `app/global-error.tsx` no longer logs raw error objects in production.
+- Closed register/login identifier limiter gaps:
+  - `app/api/auth/register/route.ts` now applies phone-based identifier rate limiting in addition to email.
+  - `app/api/auth/login/challenge/phone/start/route.ts` now normalizes phone value before identifier limit checks.
+- Closed deprecated auth endpoint observability gap:
+  - `/api/auth/forgot-password/request`, `/api/auth/forgot-password/reset`, and `/api/auth/verify-email` now apply limiter guards and emit `deprecated_endpoint_access` audit events.
+  - Preserved deterministic deprecation contract for legacy endpoints: when trusted client IP is unavailable, routes still return `410 ENDPOINT_DEPRECATED` (not infrastructure `503`) while keeping identifier-based throttling and audit telemetry.
+  - `lib/audit-log.ts` updated with `deprecated_endpoint_access` action.
+- Closed phone input controlled-state drift:
+  - `modules/auth/components/phone-input.tsx` now syncs internal state when parent `value` changes.
+
+### Changed
+- Improved tenant query guardrail coverage:
+  - `tests/tenant/tenant-guardrail.test.ts` now blocks unreviewed direct tenant model queries in app/modules server code (with explicit approved list).
+- Improved notification outbox forensic scope:
+  - Added nullable `tenantId` and `userId` columns/indexes to `NotificationOutbox`.
+  - Files:
+    - `prisma/schema.prisma`
+    - `prisma/migrations/20260302201000_add_notification_outbox_scope_columns/migration.sql`
+    - `modules/notifications/server/outbox.ts`
+    - auth enqueue call sites in login/password-reset services.
+- Updated verification command contract:
+  - `npm run verify` now runs build-only verification (`next build`) plus workflow-layout guardrail.
+  - Added `npm run verify:deploy` for explicit verify + service restart flow.
+  - `README.md` verification section updated accordingly.
+
 ## 2026-03-02 (audit hardening follow-up: login IP context + metadata schema + verification matrix)
 
 ### Fixed

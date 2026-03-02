@@ -17,6 +17,11 @@ function buildNeutralStartResponse() {
   );
 }
 
+function normalizePhoneForRateLimit(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  return digits ? `+${digits}` : "";
+}
+
 export async function POST(request: Request) {
   return withIdempotency("auth:login-phone-start", async () => {
   // Rate limit: 10 attempts per 15 minutes per IP
@@ -41,9 +46,10 @@ export async function POST(request: Request) {
 
   const rawPayload = payload as Record<string, unknown>;
   const phone = typeof rawPayload.phone === "string" ? rawPayload.phone.trim() : "";
+  const normalizedPhone = normalizePhoneForRateLimit(phone);
 
-  if (phone) {
-    const identifierRateLimit = await withRateLimitByIdentifier("login-phone-start-account", phone, 8, 900);
+  if (normalizedPhone) {
+    const identifierRateLimit = await withRateLimitByIdentifier("login-phone-start-account", normalizedPhone, 8, 900);
     if (identifierRateLimit) {
       await logAudit("rate_limit_exceeded", ip, undefined, {
         action: "login-phone-start",

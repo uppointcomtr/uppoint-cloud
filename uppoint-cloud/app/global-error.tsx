@@ -13,7 +13,9 @@ interface GlobalErrorProps {
 // Must include its own <html> and <body> since the root layout is unavailable.
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    console.error("[GlobalError]", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[GlobalError]", error);
+    }
   }, [error]);
 
   const locale = useMemo(

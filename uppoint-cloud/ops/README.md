@@ -276,9 +276,11 @@ ls -lah /opt/backups/postgres
 - `x-internal-request-ts`
 - `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
 
-`verify-audit-integrity.sh` performs read-only continuity validation for `AuditLog.metadata.integrity` chain:
+`verify-audit-integrity.sh` performs read-only integrity validation for `AuditLog.metadata.integrity` chain:
 - allows legacy rows before first integrity-enabled record
 - requires contiguous `previousHash -> hash` linkage once integrity chain starts
+- verifies `v2` rows with cryptographic HMAC recomputation
+- treats `v1` rows as legacy continuity-only (chain enforced, hash recomputation skipped)
 - fails on missing/invalid chain metadata after cutover
 
 ## 9. Redis backup automation

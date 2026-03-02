@@ -133,7 +133,7 @@ interface StartChallengeDependencies {
   findUserByEmail: (email: string) => Promise<{ id: string; email: string; phone: string | null; name: string | null } | null>;
   deleteChallengesForUser: (userId: string) => Promise<void>;
   createChallenge: (input: { userId: string; emailCodeHash: string; emailCodeExpiresAt: Date }) => Promise<{ id: string }>;
-  sendEmailCode: (input: { to: string; subject: string; text: string }) => Promise<void>;
+  sendEmailCode: (input: { userId: string; to: string; subject: string; text: string }) => Promise<void>;
   now: () => Date;
   generateCode: () => string;
   hashValue: (value: string) => string;
@@ -159,6 +159,7 @@ const defaultStartDependencies: StartChallengeDependencies = {
     }),
   sendEmailCode: async (input) => {
     await enqueueEmailNotification({
+      userId: input.userId,
       to: input.to,
       subject: input.subject,
       text: input.text,
@@ -210,6 +211,7 @@ export async function startPasswordResetChallenge(
   });
 
   await dependencies.sendEmailCode({
+    userId: user.id,
     to: user.email,
     subject: mailMessage.subject,
     text: mailMessage.text,
@@ -241,7 +243,7 @@ interface VerifyEmailCodeDependencies {
     smsCodeExpiresAt: Date;
     now: Date;
   }) => Promise<boolean>;
-  sendSmsCode: (input: { to: string; message: string }) => Promise<void>;
+  sendSmsCode: (input: { userId: string; to: string; message: string }) => Promise<void>;
   now: () => Date;
   generateCode: () => string;
   hashValue: (value: string) => string;
@@ -305,6 +307,7 @@ const defaultVerifyEmailDependencies: VerifyEmailCodeDependencies = {
   },
   sendSmsCode: async (input) => {
     await enqueueSmsNotification({
+      userId: input.userId,
       to: input.to,
       message: input.message,
       metadata: {
@@ -380,6 +383,7 @@ export async function verifyPasswordResetEmailCode(
   }
 
   await dependencies.sendSmsCode({
+    userId: challenge.userId,
     to: challenge.user.phone,
     message: buildSmsCodeMessage({
       locale,

@@ -214,8 +214,15 @@ One-shot full gate:
 npm run verify
 ```
 
-Note: `npm run build` performs only `next build`.
-Use `npm run build:deploy` for build + service restart (service restart auto-skips when `systemd` service is unavailable).
+Deployment gate (includes service restart):
+
+```bash
+npm run verify:deploy
+```
+
+Notes:
+- `npm run verify` performs lint + type-check + tests + local E2E + `next build` + workflow layout drift check.
+- `npm run build:deploy` (used by `verify:deploy`) performs build + service restart.
 
 ## E2E smoke tests
 
@@ -295,6 +302,9 @@ Run this checklist after deployment or UI-affecting changes:
 
 - `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated and now explicitly return `410 ENDPOINT_DEPRECATED` as unified JSON.
 - `GET/POST /api/auth/verify-email` are intentionally deprecated and now return `410 ENDPOINT_DEPRECATED`; registration verification is OTP-only via `/api/auth/register/challenge/*`.
+- Deprecated auth endpoints are still guarded and observable:
+  - IP + identifier limiter guards are applied.
+  - access attempts are written to audit log with action `deprecated_endpoint_access`.
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
 - `logAudit()` emits structured `[security-signal]` log lines for high-risk auth/tenant failures (`rate_limit_exceeded`, OTP failures, tenant access denials) to support alert pipelines.
 - Production edge guard rejects invalid host/origin requests (`INVALID_HOST_HEADER`, `ORIGIN_NOT_ALLOWED`) and emits edge rejection events into audit storage via internal ingest route.

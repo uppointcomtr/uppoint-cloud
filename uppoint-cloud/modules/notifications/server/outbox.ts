@@ -31,6 +31,8 @@ interface OutboxDependencies {
   now: () => Date;
   createOutboxRecord: (input: {
     channel: NotificationChannel;
+    tenantId?: string;
+    userId?: string;
     recipient: string;
     subject?: string;
     body: string;
@@ -63,11 +65,13 @@ const defaultOutboxDependencies: OutboxDependencies = {
     const sealedBody = sealNotificationPayload(input.body);
     await prisma.$executeRaw`
       INSERT INTO "NotificationOutbox" (
-        "id", "channel", "recipient", "subject", "body", "metadata", "status", "nextAttemptAt", "updatedAt"
+        "id", "channel", "tenantId", "userId", "recipient", "subject", "body", "metadata", "status", "nextAttemptAt", "updatedAt"
       )
       VALUES (
         ${randomUUID()},
         ${input.channel}::"NotificationChannel",
+        ${input.tenantId ?? null},
+        ${input.userId ?? null},
         ${sealedRecipient},
         ${sealedSubject},
         ${sealedBody},
@@ -162,6 +166,8 @@ function clampDispatchBatchSize(batchSize?: number): number {
 
 export async function enqueueEmailNotification(
   input: {
+    tenantId?: string;
+    userId?: string;
     to: string;
     subject: string;
     text: string;
@@ -178,6 +184,8 @@ export async function enqueueEmailNotification(
 
   await dependencies.createOutboxRecord({
     channel: "EMAIL",
+    tenantId: input.tenantId,
+    userId: input.userId,
     recipient: input.to,
     subject: input.subject,
     body: input.text,
@@ -187,6 +195,8 @@ export async function enqueueEmailNotification(
 
 export async function enqueueSmsNotification(
   input: {
+    tenantId?: string;
+    userId?: string;
     to: string;
     message: string;
     metadata?: Prisma.InputJsonValue;
@@ -202,6 +212,8 @@ export async function enqueueSmsNotification(
 
   await dependencies.createOutboxRecord({
     channel: "SMS",
+    tenantId: input.tenantId,
+    userId: input.userId,
     recipient: input.to,
     body: input.message,
     metadata: input.metadata,

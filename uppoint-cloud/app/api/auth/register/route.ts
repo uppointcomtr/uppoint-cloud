@@ -12,6 +12,19 @@ import {
 } from "@/modules/auth/server/register-verification-challenge";
 import { generateOpaqueChallengeId, getOpaqueChallengeExpiresAt } from "@/modules/auth/server/opaque-challenge";
 
+function normalizePhoneForRateLimit(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const digits = value.replace(/\D/g, "");
+  if (!digits) {
+    return null;
+  }
+
+  return `+${digits}`;
+}
+
 export async function POST(request: Request) {
   return withIdempotency("auth:register", async () => {
   // Rate limit: 5 registration attempts per 10 minutes per IP
@@ -39,6 +52,9 @@ export async function POST(request: Request) {
 
   const rawPayload = payload as Record<string, unknown>;
   const normalizedEmail = typeof rawPayload.email === "string" ? rawPayload.email.trim().toLowerCase() : null;
+  const normalizedPhone = normalizePhoneForRateLimit(
+    typeof rawPayload.phone === "string" ? rawPayload.phone.trim() : null,
+  );
 
   if (normalizedEmail) {
     const identifierRateLimit = await withRateLimitByIdentifier("register-email", normalizedEmail, 3, 600);
@@ -48,6 +64,17 @@ export async function POST(request: Request) {
         scope: "email",
       });
       return identifierRateLimit;
+    }
+  }
+
+  if (normalizedPhone) {
+    const phoneIdentifierRateLimit = await withRateLimitByIdentifier("register-phone", normalizedPhone, 3, 600);
+    if (phoneIdentifierRateLimit) {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
+        action: "register",
+        scope: "phone",
+      });
+      return phoneIdentifierRateLimit;
     }
   }
 

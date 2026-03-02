@@ -160,7 +160,7 @@ interface StartEmailLoginDependencies {
     codeHash: string;
     codeExpiresAt: Date;
   }) => Promise<{ id: string }>;
-  sendEmailOtp: (input: { to: string; subject: string; text: string }) => Promise<void>;
+  sendEmailOtp: (input: { userId: string; to: string; subject: string; text: string }) => Promise<void>;
   now: () => Date;
   generateCode: () => string;
   hashValue: (value: string) => string;
@@ -208,6 +208,7 @@ const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
       select: { id: true },
     }),
   sendEmailOtp: async (input) => enqueueEmailNotification({
+    userId: input.userId,
     to: input.to,
     subject: input.subject,
     text: input.text,
@@ -279,6 +280,7 @@ export async function startEmailLoginChallenge(
   });
 
   await dependencies.sendEmailOtp({
+    userId: user.id,
     to: user.email,
     subject: emailMessage.subject,
     text: emailMessage.text,
@@ -309,7 +311,7 @@ interface StartPhoneLoginDependencies {
     codeHash: string;
     codeExpiresAt: Date;
   }) => Promise<{ id: string }>;
-  sendSmsOtp: (input: { to: string; message: string }) => Promise<void>;
+  sendSmsOtp: (input: { userId: string; to: string; message: string }) => Promise<void>;
   now: () => Date;
   generateCode: () => string;
   hashValue: (value: string) => string;
@@ -371,6 +373,7 @@ const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
       select: { id: true },
     }),
   sendSmsOtp: async (input) => enqueueSmsNotification({
+    userId: input.userId,
     to: input.to,
     message: input.message,
     metadata: {
@@ -433,6 +436,7 @@ export async function startPhoneLoginChallenge(
   });
 
   await dependencies.sendSmsOtp({
+    userId: user.id,
     to: user.phone,
     message: buildSmsOtpMessage({
       locale,

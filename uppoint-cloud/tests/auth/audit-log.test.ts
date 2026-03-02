@@ -84,7 +84,7 @@ describe("logAudit", () => {
           }),
           token: "[REDACTED]",
           integrity: expect.objectContaining({
-            version: "v1",
+            version: "v2",
             hash: expect.stringMatching(/^[a-f0-9]{64}$/),
           }),
         }),

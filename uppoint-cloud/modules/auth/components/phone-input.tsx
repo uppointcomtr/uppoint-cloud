@@ -165,18 +165,16 @@ interface PhoneInputProps {
 
 export function PhoneInput({ id, value, onChange, onBlur }: PhoneInputProps) {
   const parsed = parseValue(value);
-  const [countryCode, setCountryCode] = useState(parsed.countryCode);
-  const [localNumber, setLocalNumber] = useState(parsed.localNumber);
+  const countryCode = parsed.countryCode;
+  const localNumber = parsed.localNumber;
 
   function handleCodeChange(newCode: string) {
-    setCountryCode(newCode);
     onChange(newCode + localNumber);
   }
 
   function handleNumberChange(newNumber: string) {
     const digitsOnly = newNumber.replace(/\D/g, "");
     const stripped = digitsOnly.replace(/^0+/, "");
-    setLocalNumber(stripped);
     onChange(countryCode + stripped);
   }
 

@@ -2,6 +2,18 @@ import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
 
+const APPROVED_DIRECT_TENANT_QUERY_FILES = new Set([
+  "modules/tenant/server/scope.ts",
+  "modules/tenant/server/user-tenant.ts",
+  "modules/auth/server/register-verification-challenge.ts",
+  "modules/auth/server/user-lifecycle.ts",
+]);
+
+const TENANT_INPUT_GUARD_EXEMPT_FILES = new Set([
+  // Carries tenant/user context for forensic metadata only; no tenant-scoped reads/mutations.
+  "modules/notifications/server/outbox.ts",
+]);
+
 function collectFilesRecursively(rootDir: string): string[] {
   const entries = readdirSync(rootDir);
   const files: string[] = [];
@@ -62,6 +74,11 @@ describe("tenant authorization guardrail", () => {
     const violations: string[] = [];
 
     for (const filePath of entryFiles) {
+      const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      if (TENANT_INPUT_GUARD_EXEMPT_FILES.has(relativePath)) {
+        continue;
+      }
+
       const source = readFileSync(filePath, "utf8");
       const hasTenantInput = /\btenantId\??\s*:\s*string\b/.test(source);
 
@@ -76,7 +93,7 @@ describe("tenant authorization guardrail", () => {
         || /export\s+async\s+function\s+resolveUserTenantContext\(/.test(source);
 
       if (!hasServerTenantAuth) {
-        violations.push(path.relative(process.cwd(), filePath));
+        violations.push(relativePath);
       }
     }
 
@@ -107,6 +124,43 @@ describe("tenant authorization guardrail", () => {
 
       if (!hasTenantGuard) {
         violations.push(path.relative(process.cwd(), filePath));
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it("blocks unreviewed direct tenant model queries in app/modules server code", () => {
+    const candidateRoots = [
+      path.join(process.cwd(), "app"),
+      path.join(process.cwd(), "modules"),
+    ];
+    const files = candidateRoots.flatMap((root) => collectFilesRecursively(root));
+    const candidateFiles = files.filter((filePath) => /\.(ts|tsx)$/.test(filePath));
+    const violations: string[] = [];
+
+    for (const filePath of candidateFiles) {
+      const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      const source = readFileSync(filePath, "utf8");
+      const hasDirectTenantQuery =
+        /\b(?:prisma|tx)\s*\.\s*tenantMembership\s*\./.test(source)
+        || /\b(?:prisma|tx)\s*\.\s*tenant\s*\./.test(source)
+        || /"(?:TenantMembership|Tenant)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source);
+
+      if (!hasDirectTenantQuery) {
+        continue;
+      }
+
+      if (APPROVED_DIRECT_TENANT_QUERY_FILES.has(relativePath)) {
+        continue;
+      }
+
+      const hasGuardCall =
+        /assertTenantAccess\(/.test(source)
+        || /resolveUserTenantContext\(/.test(source);
+
+      if (!hasGuardCall) {
+        violations.push(relativePath);
       }
     }
 

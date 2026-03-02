@@ -267,6 +267,8 @@ model IdempotencyRecord {
 model NotificationOutbox {
   id           String                  @id @default(cuid())
   channel      NotificationChannel
+  tenantId     String?
+  userId       String?
   recipient    String
   subject      String?
   body         String
@@ -285,4 +287,6 @@ model NotificationOutbox {
   @@index([status, nextAttemptAt])
   @@index([createdAt])
   @@index([sentAt])
+  @@index([tenantId, status, nextAttemptAt])
+  @@index([userId, status, nextAttemptAt])
 }
