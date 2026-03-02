@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-02 (ci observability: optional health guard for remote smoke)
+
+### Changed
+- Added workflow-dispatch input `enforce_health_200` (`0`/`1`) to `.github/workflows/remote-auth-smoke.yml`.
+- Added `E2E_ENFORCE_HEALTH_200` env binding (dispatch input or repository variable fallback).
+- Added `Enforce health endpoint policy` step:
+  - when guard is enabled, workflow fails if health probe `final_code` is not `200`
+  - default guard mode remains disabled (`0`) for non-blocking nightly behavior
+- Summary now includes `Health guard` mode value for run-level visibility.
+
 ## 2026-03-02 (ci observability: remote health status in smoke summary)
 
 ### Changed

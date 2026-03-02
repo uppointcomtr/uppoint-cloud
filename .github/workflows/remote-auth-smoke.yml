@@ -14,6 +14,10 @@ on:
         description: "Run mutating smoke cases (use only on isolated non-production env)"
         required: false
         default: "0"
+      enforce_health_200:
+        description: "Fail workflow when /api/health final status is not 200 (0/1)"
+        required: false
+        default: "0"
 
 permissions:
   contents: read
@@ -31,6 +35,7 @@ jobs:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
       E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || '0' }}
+      E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '0' }}
     defaults:
       run:
         working-directory: uppoint-cloud
@@ -89,12 +94,35 @@ jobs:
           echo "final_code=${final_code}" >> "${GITHUB_OUTPUT}"
           echo "Health endpoint probe result: ${health_result} (initial=${initial_code}, final=${final_code})"
 
+      - name: Enforce health endpoint policy
+        if: always()
+        env:
+          ENFORCE_HEALTH_200: ${{ env.E2E_ENFORCE_HEALTH_200 }}
+          HEALTH_FINAL_CODE: ${{ steps.health.outputs.final_code }}
+        run: |
+          set -euo pipefail
+
+          enforce="0"
+          case "${ENFORCE_HEALTH_200}" in
+            1|true|TRUE|yes|YES)
+              enforce="1"
+              ;;
+          esac
+
+          if [ "${enforce}" = "1" ] && [ "${HEALTH_FINAL_CODE:-}" != "200" ]; then
+            echo "Health guard failed: final_code=${HEALTH_FINAL_CODE:-unknown}"
+            exit 1
+          fi
+
+          echo "Health guard passed: enforce=${enforce}, final_code=${HEALTH_FINAL_CODE:-unknown}"
+
       - name: Write CI summary
         if: always()
         env:
           JOB_STATUS: ${{ job.status }}
           START_EPOCH: ${{ steps.timing.outputs.start_epoch }}
           HEALTH_RESULT: ${{ steps.health.outputs.health_result }}
+          HEALTH_GUARD: ${{ env.E2E_ENFORCE_HEALTH_200 }}
         run: |
           set -euo pipefail
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -122,4 +150,5 @@ jobs:
             echo "- Mutations enabled: ${E2E_ALLOW_MUTATIONS}"
             echo "- E2E_HEALTHCHECK_TOKEN: ${health_token_state}"
             echo "- Health endpoint: ${HEALTH_RESULT:-unknown}"
+            echo "- Health guard: ${HEALTH_GUARD}"
           } >> "${GITHUB_STEP_SUMMARY}"
