@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-02 (governance update: AGENTS.md policy refresh)
+
+### Changed
+- Updated `AGENTS.md` with stricter governance and audit protocol guidance:
+  - expanded **Core Directives** with explicit **Zero Trust by Default**
+  - added **Zero Trust + System Integrity Review Protocol (Audit Mode)** section with mandatory A-H audit output structure
+  - tightened language around token/OTP handling, neutral error surfaces, and internal-call trust assumptions
+  - clarified verification vs deployment distinction (`build` for verification, `build:deploy` for explicit deploy/restart flows)
+  - aligned CI/verification wording for type-check/build script preference
+
 ## 2026-03-02 (finding closure: internal audit coverage, idempotency fail-closed, workflow/ops hardening)
 
 ### Fixed

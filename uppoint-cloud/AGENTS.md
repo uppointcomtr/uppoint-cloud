@@ -21,9 +21,9 @@ Do not replace this stack unless there is a strong technical reason and you expl
 
 * App layer: **Next.js** (App Router, TypeScript, strict mode)
 * UI: **shadcn/ui**
-* Database: **PostgreSQL (self-hosted)** (standard `postgresql://` connection string)
-  — `DATABASE_URL` is a direct PostgreSQL URL — `psql`, `pg_dump`, and backup scripts can use it directly.
-  — Prisma Accelerate is **not** in use; do not add `prisma://` or `directUrl` unless explicitly migrating.
+* Database: **PostgreSQL (self-hosted)** using a standard `postgresql://` connection string
+* `DATABASE_URL` is a direct PostgreSQL URL; tools such as `psql`, `pg_dump`, and backup scripts can use it directly
+* Prisma Accelerate is **not** in use; do not add `prisma://` URLs or `directUrl` unless explicitly migrating the stack
 * ORM: **Prisma**
 * Validation: **Zod**
 * Forms: **React Hook Form**
@@ -33,26 +33,29 @@ Do not replace this stack unless there is a strong technical reason and you expl
 
 ## Core Directives
 
-1. Read Before Act
+1. **Read Before Act**
    Always read the current file and relevant surrounding code before modifying, deleting, or refactoring anything. Never assume file paths, signatures, schemas, or contracts.
 
-2. Enforce Boundaries
+2. **Enforce Boundaries**
    Always enforce tenant access, authorization, input validation, and server/client boundaries explicitly. Never rely on assumptions or client-side enforcement.
 
-3. Ask Before Destroy
+3. **Ask Before Destroy**
    Stop and ask before destructive commands, destructive data changes, schema-destructive migrations, irreversible restructuring, or history rewriting.
 
-4. Prefer Minimal Safe Change
+4. **Prefer Minimal Safe Change**
    Reuse existing patterns and make the smallest safe change that solves the problem. Do not perform broad refactors unless clearly necessary or explicitly requested.
 
-5. Verify Before Recommend
+5. **Verify Before Recommend**
    Do not claim success unless lint, type checks, tests, and production build have been run successfully, or you clearly state what could not be verified and why.
+
+6. **Zero Trust by Default**
+   Treat the client, internal network, internal services, background jobs, webhooks, queues, cron tasks, support/admin paths, and integrations as untrusted unless explicitly verified and authenticated/authorized.
 
 ## Non-Negotiables (never skip these)
 
 1. Enforce `assertTenantAccess()` or an approved equivalent on every tenant-scoped server entry point that reads or mutates tenant data
 2. Validate all untrusted input with Zod before processing
-3. Never store raw tokens, OTPs, or secrets in the database
+3. Never store raw tokens, raw OTPs, or plaintext secrets in the database
 4. Always read relevant files before modifying them
 5. Always ask before destructive commands, destructive data changes, or irreversible restructuring
 
@@ -74,7 +77,7 @@ Do not jump straight into changes without first confirming the local context and
 * Prefer the smallest safe change that solves the problem
 * Reuse existing patterns before introducing new abstractions
 * Do not make broad refactors unless explicitly requested or clearly necessary
-* Do not guess in security-critical, auth-critical, tenant-critical, billing-critical, or migration-critical areas
+* Do not guess in security-critical, auth-critical, tenant-critical, billing-critical, migration-critical, or provisioning-critical areas
 
 ## Tool and change discipline
 
@@ -82,7 +85,8 @@ Do not jump straight into changes without first confirming the local context and
 * Do not generate migrations blindly; inspect the current schema and explain the migration intent first
 * Do not run destructive commands or destructive data operations without explicit user approval
 * Do not invent scripts, commands, or project conventions if the repository already defines them
-* Prefer existing package scripts, tooling, lint rules, and test conventions when present
+* Prefer repository-defined package scripts, tooling, lint rules, and test conventions when present
+* If the repository defines a script for type-checking, building, testing, deployment, or cleanup, prefer that script over ad hoc shell commands unless there is a clear reason not to
 
 ## Debugging and CI rules
 
@@ -94,8 +98,8 @@ Do not jump straight into changes without first confirming the local context and
 * Keep repository-root `.github/workflows/remote-auth-smoke.yml` active as the canonical nightly remote auth smoke check
 * Remote smoke must run nightly and remain runnable on-demand via `workflow_dispatch`
 * Use `https://cloud.uppoint.com.tr` as the default remote smoke target unless explicitly changed
-* If production health endpoint is token-gated, repository secret `E2E_HEALTHCHECK_TOKEN` must be configured in GitHub Actions
-* Do not silently disable, bypass, or remove remote smoke CI without explicit owner approval and changelog entry
+* If the production health endpoint is token-gated, repository secret `E2E_HEALTHCHECK_TOKEN` must be configured in GitHub Actions
+* Do not silently disable, bypass, or remove remote smoke CI without explicit owner approval and a changelog entry
 
 ## Core engineering rules
 
@@ -130,6 +134,82 @@ Do not jump straight into changes without first confirming the local context and
 * When adding a new protected route, update `modules/auth/server/route-access.ts → PROTECTED_ROUTES`
 * `modules/auth/server/route-access.ts → PROTECTED_ROUTES` is the canonical registry for protected route intent, but it does not replace explicit server-side authorization inside handlers, Server Actions, or domain services
 
+## Zero Trust + System Integrity Review Protocol (Audit Mode)
+
+This section applies when the user asks things such as:
+
+* “tüm yapı doğru mu?”
+* “system-wide kontrol”
+* “production readiness”
+* “security audit”
+* “zero trust denetim”
+* “logging/audit eksikleri”
+* “büyüyünce kırılır mı?”
+* “sadece auth değil tüm sistemi denetle”
+
+### Zero Trust principles
+
+* **Zero Trust**
+* **Deny by Default**
+* **Least Privilege**
+* **Assume Breach**
+* **Defense in Depth**
+* **Tenant Boundary = Hard Security Boundary**
+* Do not trust client-side checks, internal network location, background jobs, webhooks, queues, cron jobs, admin/support tools, or inter-service calls unless explicitly authenticated and authorized
+
+### Mandatory audit methodology
+
+When in Audit Mode, always assess **all** headings below and produce a **Coverage Matrix**:
+
+1. Authentication
+2. Authorization (RBAC / permissions / IDOR)
+3. Session / Token / Cookie Security
+4. Tenant Isolation (queries, caches, exports, logs, jobs)
+5. Input Validation / Web Security (CSRF/XSS/injection/open redirect/etc.)
+6. Data Model / Database Integrity (constraints, indexes, migrations, soft delete discipline)
+7. Logging / Audit / Traceability (forensics readiness, redaction, correlation IDs)
+8. API / Backend Consistency (status codes, envelopes, error shaping)
+9. Frontend Auth State / Client-side Risks (storage, route guards vs backend)
+10. Admin / Internal / Support Paths (impersonation, break-glass, auditability)
+11. Async Jobs / Queue / Cron / Webhook Security (context, idempotency, retries)
+12. Configuration / Secrets / Environment Safety (CORS, TLS, trusted headers, debug)
+13. Operational Resilience (monitoring, alerting, incident response, rollback)
+14. Architecture Layering / Boundaries / Coupling (modularity, domain boundaries)
+15. Future Scale / Failure / Race Condition Risks (retries, duplicates, partial outage)
+
+### Findings discipline
+
+* Every item must be classified as exactly one of:
+
+  * **Confirmed Finding** — supported by evidence in code or config
+  * **Probable Risk** — strong likelihood but not fully proven; needs more evidence
+  * **Design Smell** — structural issue that increases future risk
+  * **Missing Evidence / Cannot Verify** — insufficient information to confirm
+* Do not present speculation as a Confirmed Finding
+* If a previous Findings Register exists in the conversation, do not repeat it; reference prior IDs and only add truly new, independent findings
+* If there are no new Confirmed Findings, explicitly state:
+  **“No new independent confirmed finding was identified in this round beyond the previously recorded findings.”**
+
+### Audit output format
+
+A. Executive Verdict (works vs correctly designed vs production-ready; be explicit)
+B. Coverage Matrix (Checked / Partial / Not Checked / Cannot Verify)
+C. Findings Register (ID, title, type, severity, evidence, scenario, fix, priority)
+D. Zero-Trust Violations (explicit list)
+E. Logging & Audit Gaps (including sensitive data leakage risks)
+F. Structural Integrity Review (correct / wrong / risky-but-tolerable / must-fix)
+G. Broken-in-the-future Risks (scale, race, retries, coupling)
+H. Production Gate: **Go / Go with mandatory fixes / No-Go** with reasons
+
+### Standards reference
+
+When relevant, assess against:
+
+* OWASP Top 10
+* OWASP ASVS (at least conceptually)
+* Secure session/token/cookie best practices
+* Secure logging/auditability best practices
+
 ## React / Next.js boundary rules
 
 * Do not import server-only modules into Client Components
@@ -155,6 +235,7 @@ Do not jump straight into changes without first confirming the local context and
 * Do not rely on client-side filters for tenant isolation
 * Do not allow cross-tenant data leakage through logs, caches, exports, support tooling, or background processing
 * Platform-level support or administrative access to tenant data must be explicit, minimized, and auditable
+* Assume breach: any missing tenant scope is treated as a potential security incident
 
 ## Folder structure rules
 
@@ -276,14 +357,15 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Prepare for secure cookies, session protection, route protection, and future RBAC
 * Add defensive handling for auth flows, database writes, infrastructure actions, and sensitive operations
 * Never leak internal implementation details to the client
-* Never store raw tokens in the database: send the raw token in email/URL, store only the SHA-256 hash in the DB
-* Always compare tokens and OTP hashes with `crypto.timingSafeEqual()` — `===` is vulnerable to timing attacks
-* Hash OTP codes with HMAC-SHA256 and a secret pepper; plain SHA-256 is rainbow-table-attackable
+* Never store raw tokens in the database: send the raw token in email or URL, store only the SHA-256 hash in the database
+* Always compare tokens and OTP hashes with `crypto.timingSafeEqual()`; `===` is vulnerable to timing attacks
+* Hash OTP codes with HMAC-SHA256 and a secret pepper; plain SHA-256 is not acceptable for OTP storage
 * Every auth endpoint must have two rate-limit layers: (1) IP-based and (2) identifier-based (email/phone/challengeId); omitting either enables credential stuffing
-* All responses that could reveal user existence, account state, or registration status must be neutral — different HTTP status codes or error codes are information leaks
+* All responses that could reveal user existence, account state, or registration status must be neutral; different HTTP status codes or machine-readable errors can become information leaks
 * In security-critical paths, infrastructure failure must be fail-closed (reject, do not pass); fail-open is only acceptable where explicitly documented for business continuity
 * Registration verification is OTP-only: create the user account only after required OTP challenges are verified; do not rely on email-link verification for registration
-* Keep legacy email-link verification surface deprecated by default: `GET /api/auth/verify-email` and `POST /api/auth/verify-email` must remain `410 ENDPOINT_DEPRECATED` unless explicit owner approval is given
+* Keep legacy email-link verification deprecated by default: `GET /api/auth/verify-email` and `POST /api/auth/verify-email` must remain `410 ENDPOINT_DEPRECATED` unless explicit owner approval is given
+* Treat inter-service and internal calls as untrusted unless explicitly authenticated and authorized
 
 ## Authorization and RBAC rules
 
@@ -312,6 +394,7 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Retries must be deliberate and safe; never blindly retry destructive infrastructure actions
 * Record audit/event history for infrastructure lifecycle operations
 * Background jobs must enforce tenant, permission, and ownership rules just as strictly as request-driven flows
+* In Audit Mode, async flows must be reviewed explicitly for tenant/context leakage and retry duplication
 
 ## Idempotency and concurrency rules
 
@@ -415,10 +498,9 @@ If a different structure is chosen, explain the reason and keep it equally disci
 After every meaningful change:
 
 * run lint: `npm run lint`
-* run type checks: `npx tsc --noEmit`
+* run type checks: `npx tsc --noEmit` or the repository-defined type-check script if one exists
 * run tests: `npm test`
-* run production build **and restart service**: `npm run build:deploy`
-  — `npm run build` only builds; it does NOT restart the service. Always use `npm run build:deploy` when deploying to production so the running service picks up the new build.
+* run production build verification: `npm run build`
 
 Rules:
 
@@ -433,12 +515,20 @@ Rules:
 * Always list the exact commands executed
 * Test mocks for cryptographic operations must use realistic values: a SHA-256 hash mock must be a valid 64-character hex string (for example `"a".repeat(64)`), not a human-readable placeholder like `"my-hash"`
 
+## Deployment and release rules
+
+* Verification build and deployment are not the same operation; do not treat them as equivalent
+* `npm run build` is the default verification build
+* `npm run build:deploy` is a deployment/restart step and must be used only when explicitly deploying or when the owner explicitly requests a service restart
+* Do not restart the running service as part of ordinary local verification, code review, or pre-commit checks
+* If a task includes production deployment, explicitly state that deployment and restart are being performed
+
 ## When to ask vs when to proceed
 
 * Proceed when the change is local, reversible, low-risk, and clearly matches existing patterns
 * Present a plan before implementation when the change affects auth, billing, tenant isolation, migrations, provisioning workflows, or multiple modules
 * Always ask before destructive data changes, destructive commands, schema-destructive migrations, or irreversible restructuring
-* If uncertainty affects correctness or security, do not guess — surface the uncertainty explicitly
+* If uncertainty affects correctness or security, do not guess; surface the uncertainty explicitly
 
 ## Mandatory Git / GitHub discipline
 
@@ -449,9 +539,9 @@ For every update intended to be committed, pushed, or submitted as a pull reques
 Always do the following first:
 
 * run lint: `npm run lint`
-* run type checks: `npx tsc --noEmit`
+* run type checks: `npx tsc --noEmit` or the repository-defined type-check script if one exists
 * run tests: `npm test`
-* run production build and restart service: `npm run build:deploy`
+* run production build verification: `npm run build`
 
 If any required verification fails:
 
