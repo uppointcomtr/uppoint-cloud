@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-02 (ci observability: robust smoke duration timing)
+
+### Fixed
+- Remote smoke workflow summary duration now uses an explicit per-job captured epoch baseline instead of `github.run_started_at` context.
+- Added `Capture run timing baseline` step and switched summary duration computation to `steps.timing.outputs.start_epoch`.
+- Added numeric guard fallback to avoid empty/invalid duration inputs in summary generation.
+
 ## 2026-03-02 (ci observability: remote auth smoke summary step)
 
 ### Changed

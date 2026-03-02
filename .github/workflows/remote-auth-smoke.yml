@@ -38,6 +38,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Capture run timing baseline
+        id: timing
+        run: echo "start_epoch=$(date -u +%s)" >> "$GITHUB_OUTPUT"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -55,13 +59,16 @@ jobs:
         if: always()
         env:
           JOB_STATUS: ${{ job.status }}
-          RUN_STARTED_AT: ${{ github.run_started_at }}
+          START_EPOCH: ${{ steps.timing.outputs.start_epoch }}
         run: |
           set -euo pipefail
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           end_epoch="$(date -u +%s)"
-          start_epoch="$(date -u -d "${RUN_STARTED_AT}" +%s)"
+          start_epoch="${START_EPOCH:-$end_epoch}"
+          if ! [[ "${start_epoch}" =~ ^[0-9]+$ ]]; then
+            start_epoch="${end_epoch}"
+          fi
           duration_sec="$((end_epoch - start_epoch))"
           duration_hms="$(printf '%02d:%02d:%02d' "$((duration_sec / 3600))" "$(((duration_sec % 3600) / 60))" "$((duration_sec % 60))")"
 
