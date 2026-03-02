@@ -10,10 +10,6 @@ export const enMessages = {
       title: "Create Account — Uppoint Cloud",
       description: "Join Uppoint Cloud. Access secure and scalable cloud infrastructure from one place.",
     },
-    verifyEmail: {
-      title: "Verify Email — Uppoint Cloud",
-      description: "Verify your Uppoint Cloud account email address.",
-    },
     dashboard: {
       title: "Dashboard — Uppoint Cloud",
       description: "Manage your Uppoint Cloud account and cloud operations.",
@@ -243,18 +239,6 @@ export const enMessages = {
       noPhone: "No phone number is available for this account.",
       smsDisabled: "SMS verification service is currently unavailable.",
       smsDeliveryFailed: "SMS verification code could not be sent. Please try again.",
-    },
-  },
-  emailVerification: {
-    successTitle: "Email verified",
-    successDescription: "Your email address has been successfully verified. You now have full access to your account.",
-    errorTitle: "Verification failed",
-    goToDashboard: "Go to dashboard",
-    backToLogin: "Back to sign in",
-    errors: {
-      invalidOrExpired: "This verification link is invalid or has expired.",
-      missingToken: "Verification link is missing.",
-      generic: "Verification could not be completed. Please try again.",
     },
   },
   dashboard: {

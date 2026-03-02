@@ -10,10 +10,6 @@ export const trMessages = {
       title: "Hesap Oluştur — Uppoint Cloud",
       description: "Uppoint Cloud'a katılın. Güvenli bulut altyapısına tek noktadan erişin.",
     },
-    verifyEmail: {
-      title: "E-posta Doğrulama — Uppoint Cloud",
-      description: "Uppoint Cloud hesabınızın e-posta adresini doğrulayın.",
-    },
     dashboard: {
       title: "Panel — Uppoint Cloud",
       description: "Uppoint Cloud hesabınızı ve bulut operasyonlarınızı yönetin.",
@@ -243,18 +239,6 @@ export const trMessages = {
       noPhone: "Kayıtlı telefon numarası bulunamadı.",
       smsDisabled: "SMS doğrulama servisi şu anda kullanılamıyor.",
       smsDeliveryFailed: "SMS doğrulama kodu gönderilemedi. Lütfen tekrar deneyin.",
-    },
-  },
-  emailVerification: {
-    successTitle: "E-posta doğrulandı",
-    successDescription: "E-posta adresiniz başarıyla doğrulandı. Artık hesabınızın tüm özelliklerine erişebilirsiniz.",
-    errorTitle: "Doğrulama başarısız",
-    goToDashboard: "Panele git",
-    backToLogin: "Girişe dön",
-    errors: {
-      invalidOrExpired: "Bu doğrulama bağlantısı geçersiz veya süresi dolmuş.",
-      missingToken: "Doğrulama bağlantısı eksik.",
-      generic: "Doğrulama tamamlanamadı. Lütfen tekrar deneyin.",
     },
   },
   dashboard: {

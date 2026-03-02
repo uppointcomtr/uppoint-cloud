@@ -265,7 +265,7 @@ Run this checklist after deployment or UI-affecting changes:
 ## Security hardening notes
 
 - `POST /api/auth/forgot-password/request` and `POST /api/auth/forgot-password/reset` are intentionally deprecated and now explicitly return `410 ENDPOINT_DEPRECATED` as unified JSON.
-- `POST /api/auth/verify-email` is the only mutation endpoint for email verification; `GET /api/auth/verify-email` returns `405`.
+- `GET/POST /api/auth/verify-email` are intentionally deprecated and now return `410 ENDPOINT_DEPRECATED`; registration verification is OTP-only via `/api/auth/register/challenge/*`.
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
 - `logAudit()` emits structured `[security-signal]` log lines for high-risk auth/tenant failures (`rate_limit_exceeded`, OTP failures, tenant access denials) to support alert pipelines.
 - Production edge guard rejects invalid host/origin requests (`INVALID_HOST_HEADER`, `ORIGIN_NOT_ALLOWED`) and emits edge rejection events into audit storage via internal ingest route.

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-03-02 (auth surface cleanup: OTP-only registration model)
+
+### Changed
+- Deprecated legacy email-link verification endpoint:
+  - `GET /api/auth/verify-email` -> `410 ENDPOINT_DEPRECATED`
+  - `POST /api/auth/verify-email` -> `410 ENDPOINT_DEPRECATED`
+  - file: `app/api/auth/verify-email/route.ts`
+- Updated verify-email pages to redirect to sign-in:
+  - `app/[locale]/verify-email/page.tsx`
+  - `app/verify-email/page.tsx`
+- Removed unused verify-email UI surface and translation payload tied to link-based verification:
+  - deleted `modules/auth/components/verify-email-status.tsx`
+  - removed `emailVerification` dictionaries from `messages/tr.ts` and `messages/en.ts`
+  - removed `metadata.verifyEmail` dictionary entries and aligned verify-email page metadata to login metadata
+
+### Documentation
+- Updated security hardening notes in `README.md` to reflect OTP-only registration verification and deprecate `/api/auth/verify-email`.
+
+### Tests
+- Added route-level deprecation coverage:
+  - `tests/auth/deprecated-verify-email-route.test.ts`
+
 ## 2026-03-02 (security closure: G2/G3/G5/G6/G7)
 
 ### Fixed
