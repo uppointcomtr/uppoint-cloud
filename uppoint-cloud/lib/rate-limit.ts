@@ -265,14 +265,17 @@ export function normalizeRateLimitIdentifier(value: string): string {
  * Extracts the real client IP from request headers.
  * Prefers X-Real-IP and falls back to a trusted parse of X-Forwarded-For.
  */
-export async function getClientIp(): Promise<string> {
+async function resolveClientIpFromHeaders(): Promise<string | null> {
   const headersList = await headers();
-  const resolvedIp = resolveTrustedClientIp({
+  return resolveTrustedClientIp({
     realIpHeader: headersList.get("x-real-ip"),
     forwardedForHeader: headersList.get("x-forwarded-for"),
     isProduction: env.NODE_ENV === "production",
   });
+}
 
+export async function getClientIp(): Promise<string> {
+  const resolvedIp = await resolveClientIpFromHeaders();
   return resolvedIp ?? "unknown";
 }
 
@@ -325,8 +328,18 @@ export async function withRateLimit(
   max: number,
   windowSeconds: number,
 ): Promise<Response | null> {
-  const ip = await getClientIp();
-  const result = await checkRateLimit(action, ip, max, windowSeconds);
+  const ip = await resolveClientIpFromHeaders();
+
+  if (!ip && env.NODE_ENV === "production") {
+    // Security-sensitive: production auth endpoints fail closed when trusted client IP cannot be resolved.
+    return Response.json(
+      { success: false, error: "RATE_LIMIT_CONTEXT_UNAVAILABLE" },
+      { status: 503 },
+    );
+  }
+
+  const rateLimitSubject = ip ?? "unknown";
+  const result = await checkRateLimit(action, rateLimitSubject, max, windowSeconds);
 
   if (!result.allowed) {
     const retryAfter = result.retryAfterSeconds ?? windowSeconds;

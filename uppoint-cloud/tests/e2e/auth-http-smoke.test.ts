@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const baseUrl = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3000";
+const baseUrl = process.env.E2E_BASE_URL ?? "https://cloud.uppoint.com.tr";
 const allowMutations = process.env.E2E_ALLOW_MUTATIONS === "1";
 
 function uniqueSuffix(): string {

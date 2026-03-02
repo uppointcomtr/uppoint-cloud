@@ -175,7 +175,7 @@ PGEOF
 else
   echo ""
   echo "── PostgreSQL ──────────────────────────────────────────────"
-  echo "  · local PostgreSQL tuning atlandı (Managed PostgreSQL varsayıldı)."
+  echo "  · local PostgreSQL tuning atlandı (harici/self-hosted PostgreSQL varsayıldı)."
   echo "  · Local tuning zorlamak için: UPPOINT_ENABLE_LOCAL_PG_TUNING=1"
 fi
 

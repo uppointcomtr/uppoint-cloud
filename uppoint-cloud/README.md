@@ -47,7 +47,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
 
 - Next.js App Router + TypeScript strict mode
 - shadcn/ui
-- Prisma + Managed PostgreSQL
+- Prisma + PostgreSQL (self-hosted)
 - Zod
 - React Hook Form
 - Auth.js (`next-auth`) with Prisma adapter
@@ -164,7 +164,7 @@ npm run lint
 npm run typecheck
 npm run test
 npm run test:e2e
-npm run build
+npm run build:deploy
 npm run verify:nginx-drift
 ```
 
@@ -213,7 +213,7 @@ npm run verify
 ```
 
 Note: `npm run build` performs only `next build`.
-Use `npm run build:deploy` for build + service restart.
+Use `npm run build:deploy` for build + service restart (service restart auto-skips when `systemd` service is unavailable).
 
 ## E2E smoke tests
 
@@ -241,7 +241,14 @@ Remote environment smoke (already-deployed domain):
 
 ```bash
 cd /opt/uppoint-cloud
-E2E_BASE_URL=https://cloud.uppoint.com.tr npm run test:e2e:remote
+npm run test:e2e:remote
+```
+
+Override target only when needed:
+
+```bash
+cd /opt/uppoint-cloud
+E2E_BASE_URL=https://staging.example.com npm run test:e2e:remote
 ```
 
 GitHub Actions nightly/ondemand remote smoke:
@@ -306,7 +313,7 @@ cd /opt/uppoint-cloud
 npm ci
 npx prisma generate
 npx prisma migrate deploy
-npm run build
+npm run build:deploy
 sudo systemctl enable --now uppoint-cloud.service
 ```
 

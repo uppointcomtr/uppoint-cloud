@@ -62,10 +62,10 @@ AUDIT_FALLBACK_LOG_PATH=/var/log/uppoint-cloud/audit-fallback.log
 
 This matches the shipped systemd unit (`EnvironmentFile=/opt/uppoint-cloud/.env`).
 
-Managed PostgreSQL note:
+PostgreSQL deployment note:
 
-- Default architecture uses managed PostgreSQL.
-- `scripts/tune-system.sh` applies PostgreSQL kernel/DB tuning only when DATABASE_URL points to a local host (`localhost/127.0.0.1/::1`) or `UPPOINT_ENABLE_LOCAL_PG_TUNING=1` is explicitly set.
+- Default architecture uses self-hosted PostgreSQL on the same server.
+- `scripts/tune-system.sh` applies PostgreSQL kernel/DB tuning when DATABASE_URL points to a local host (`localhost/127.0.0.1/::1`) or `UPPOINT_ENABLE_LOCAL_PG_TUNING=1` is explicitly set.
 
 ### Safe deployment sequence (required)
 
@@ -247,6 +247,10 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cl
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
 sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch
 ```
+
+`uppoint-notification-dispatch` uses least-privilege execution:
+- root-owned cron entry keeps lock/log ownership
+- dispatcher process runs as `www-data` via `runuser`
 
 Run manual tests:
 

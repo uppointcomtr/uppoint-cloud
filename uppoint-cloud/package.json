@@ -12,7 +12,7 @@
     "prisma:generate": "prisma generate",
     "test": "vitest run",
     "test:e2e": "bash ./scripts/run-e2e-smoke-local.sh",
-    "test:e2e:remote": "RUN_E2E=1 vitest run tests/e2e --testTimeout=30000",
+    "test:e2e:remote": "E2E_BASE_URL=${E2E_BASE_URL:-https://cloud.uppoint.com.tr} RUN_E2E=1 vitest run tests/e2e --testTimeout=30000",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run test:e2e && npm run build",
     "verify:nginx-drift": "bash ./scripts/check-nginx-config-drift.sh",
     "prisma:migrate:deploy": "prisma migrate deploy",

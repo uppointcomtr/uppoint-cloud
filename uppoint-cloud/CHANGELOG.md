@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-03-02 (finding closure: 2-8 follow-up + stack clarification)
+
+### Changed
+- Clarified stack wording across project instructions/docs:
+  - `AGENTS.md`: database stack is explicitly `PostgreSQL (self-hosted) + Prisma`.
+  - `README.md`: stack/verification wording aligned with self-hosted PostgreSQL and deploy verification flow.
+  - `ops/README.md`: PostgreSQL deployment note and cron guidance aligned with current architecture.
+
+### Fixed
+- Closed **finding #2** (remote smoke default target drift):
+  - `tests/e2e/auth-http-smoke.test.ts` default base URL is `https://cloud.uppoint.com.tr`.
+  - `package.json` `test:e2e:remote` now defaults `E2E_BASE_URL` to `https://cloud.uppoint.com.tr`.
+- Closed **finding #3** (ops alert email outbox encryption bypass):
+  - `scripts/alert-nginx-drift.sh` now seals NotificationOutbox email payloads with the same `enc:v1` AES-GCM format used by app outbox logic.
+  - Script now fails closed when email alerts are configured but `NOTIFICATION_PAYLOAD_SECRET` is missing.
+- Closed **finding #4** (tenant guardrail coverage gap):
+  - `tests/tenant/tenant-guardrail.test.ts` extended to cover tenant-aware server module entry points, not only app route/page/action files.
+- Closed **finding #5** (rate-limit IP context risk):
+  - `lib/rate-limit.ts` now fails closed in production with `503 RATE_LIMIT_CONTEXT_UNAVAILABLE` if trusted client IP cannot be resolved.
+  - Added regression tests: `tests/security/rate-limit-context.test.ts`.
+- Closed **finding #6** (self-hosted PostgreSQL wording drift):
+  - `lib/env/server.ts` SSL validation message updated to generic non-local PostgreSQL wording.
+  - `scripts/tune-system.sh` local PostgreSQL tuning skip message aligned with self-hosted/external PostgreSQL model.
+- Closed **finding #7** (notification dispatcher cron least-privilege gap):
+  - `ops/cron/uppoint-notification-dispatch` now runs dispatcher as `www-data` via `runuser`, with root-owned lock/log management.
+  - `ops/README.md` updated with least-privilege execution note.
+- Closed **finding #8** (protected-route intent drift visibility):
+  - `modules/auth/server/route-access.ts` now exports route intent registries and explicit protected-rule matcher.
+  - Added route-intent guardrails:
+    - `tests/auth/route-access.test.ts`
+    - `tests/auth/route-intent-guardrail.test.ts`
+
 ## 2026-03-02 (ci bugfix: allow_mutations input no longer overrides repo variable)
 
 ### Fixed

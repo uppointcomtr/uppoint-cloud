@@ -52,4 +52,34 @@ describe("tenant authorization guardrail", () => {
 
     expect(violations).toEqual([]);
   });
+
+  it("requires explicit tenant authorization in tenant-aware server module entry points", () => {
+    const modulesDir = path.join(process.cwd(), "modules");
+    const entryFiles = collectFilesRecursively(modulesDir).filter((filePath) =>
+      /\/server\/.+\.ts$/.test(filePath),
+    );
+
+    const violations: string[] = [];
+
+    for (const filePath of entryFiles) {
+      const source = readFileSync(filePath, "utf8");
+      const hasTenantInput = /\btenantId\??\s*:\s*string\b/.test(source);
+
+      if (!hasTenantInput) {
+        continue;
+      }
+
+      const hasServerTenantAuth =
+        /assertTenantAccess\(/.test(source)
+        || /resolveUserTenantContext\(/.test(source)
+        || /export\s+async\s+function\s+assertTenantAccess\(/.test(source)
+        || /export\s+async\s+function\s+resolveUserTenantContext\(/.test(source);
+
+      if (!hasServerTenantAuth) {
+        violations.push(path.relative(process.cwd(), filePath));
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
 });

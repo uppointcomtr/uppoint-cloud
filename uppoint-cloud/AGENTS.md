@@ -21,7 +21,7 @@ Do not replace this stack unless there is a strong technical reason and you expl
 
 * App layer: **Next.js** (App Router, TypeScript, strict mode)
 * UI: **shadcn/ui**
-* Database: **Managed PostgreSQL** (standard `postgresql://` connection string)
+* Database: **PostgreSQL (self-hosted)** (standard `postgresql://` connection string)
   — `DATABASE_URL` is a direct PostgreSQL URL — `psql`, `pg_dump`, and backup scripts can use it directly.
   — Prisma Accelerate is **not** in use; do not add `prisma://` or `directUrl` unless explicitly migrating.
 * ORM: **Prisma**

@@ -158,7 +158,7 @@ const serverEnvSchema = z.object({
         context.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["DATABASE_URL"],
-          message: "Managed PostgreSQL production connections must include sslmode=require (or verify-full)",
+          message: "Non-local PostgreSQL production connections must include sslmode=require (or verify-full)",
         });
       }
     }

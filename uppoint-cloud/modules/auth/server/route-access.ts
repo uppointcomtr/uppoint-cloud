@@ -10,14 +10,14 @@ interface ProtectedRouteRule {
   preserveCallbackUrl?: boolean;
 }
 
-const AUTH_ROUTES = new Set(["/login", "/register"]);
-const EXPLICIT_PUBLIC_ROUTES = new Set([
+export const AUTH_ROUTES = new Set(["/login", "/register"]);
+export const EXPLICIT_PUBLIC_ROUTES = new Set([
   "/",
   "/forgot-password",
   "/reset-password",
   "/verify-email",
 ]);
-const PROTECTED_ROUTES: ProtectedRouteRule[] = [
+export const PROTECTED_ROUTES: ProtectedRouteRule[] = [
   { prefix: "/dashboard", preserveCallbackUrl: true },
 ];
 const AUTHENTICATED_HOME_PATH = "/dashboard";
@@ -27,14 +27,18 @@ function isExplicitlyPublicRoute(pathname: string): boolean {
   return EXPLICIT_PUBLIC_ROUTES.has(pathname);
 }
 
+export function hasExplicitProtectedRouteRule(pathname: string): boolean {
+  return PROTECTED_ROUTES.some(
+    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 export function isProtectedRoute(pathname: string): boolean {
   if (AUTH_ROUTES.has(pathname) || isExplicitlyPublicRoute(pathname)) {
     return false;
   }
 
-  return PROTECTED_ROUTES.some(
-    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  ) || pathname.startsWith("/");
+  return hasExplicitProtectedRouteRule(pathname) || pathname.startsWith("/");
 }
 
 export function shouldPreserveCallbackUrl(pathname: string): boolean {

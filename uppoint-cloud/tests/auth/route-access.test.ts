@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveAuthRedirect, shouldPreserveCallbackUrl } from "@/modules/auth/server/route-access";
+import {
+  hasExplicitProtectedRouteRule,
+  resolveAuthRedirect,
+  shouldPreserveCallbackUrl,
+} from "@/modules/auth/server/route-access";
 
 describe("resolveAuthRedirect", () => {
   it("redirects unauthenticated dashboard requests to locale login", () => {
@@ -43,5 +47,16 @@ describe("shouldPreserveCallbackUrl", () => {
 
   it("preserves callback for non-public protected routes", () => {
     expect(shouldPreserveCallbackUrl("/settings")).toBe(true);
+  });
+});
+
+describe("protected route intent", () => {
+  it("matches explicit protected route registry", () => {
+    expect(hasExplicitProtectedRouteRule("/dashboard")).toBe(true);
+    expect(hasExplicitProtectedRouteRule("/dashboard/instances")).toBe(true);
+  });
+
+  it("keeps unknown paths protected while requiring explicit registry for route intent", () => {
+    expect(hasExplicitProtectedRouteRule("/settings")).toBe(false);
   });
 });
