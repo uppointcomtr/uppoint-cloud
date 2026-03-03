@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-03-03 (governance: canonical findings register)
+
+### Changed
+- Added canonical findings governance file:
+  - `FINDINGS_REGISTER.md` now defines stable finding IDs, status model, closure evidence, and register update discipline.
+- Linked findings governance from `README.md`:
+  - Added a dedicated section pointing to `FINDINGS_REGISTER.md` and required usage rules.
+
 ## 2026-03-03 (security closure: F1-F9 follow-up, auth-first + instances boundary scaffold)
 
 ### Fixed

@@ -52,6 +52,15 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
 - React Hook Form
 - Auth.js (`next-auth`) with Prisma adapter
 
+## Findings governance
+
+Use the canonical findings register to keep audit results stable across rounds:
+
+- Register file: [FINDINGS_REGISTER.md](/opt/uppoint-cloud/FINDINGS_REGISTER.md)
+- Reuse existing IDs (`F1`, `F2`, ...) instead of creating duplicates
+- Close findings only with explicit verification evidence
+- Include UI break risk (`High/Medium/Low/None`) per finding
+
 ## Environment variables
 
 Create and maintain `.env` with real values (do not commit it):
