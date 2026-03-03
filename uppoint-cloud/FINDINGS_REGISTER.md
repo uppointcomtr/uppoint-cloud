@@ -51,6 +51,7 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F10 | Edge security telemetry could be dropped due to proxy host/origin/IP guard conflict | security/observability | High | None | closed | 2026-03-03 | 2026-03-03 | codex | `proxy.ts`, `app/api/internal/audit/security-event/route.ts`, live smoke (`POST http://127.0.0.1:3000/api/internal/audit/security-event` previously `400 INVALID_HOST_HEADER`) | Add narrow trusted ingress path for signed loopback internal audit emit; verify by signed local POST returns 202 |
 | F11 | Edge security telemetry emit failures were silently swallowed | observability | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `proxy.ts` catch block in `emitEdgeSecurityAudit` | Emit structured error logs for telemetry delivery failure without leaking secrets |
 | F12 | Edge telemetry emit failures lacked periodic alerting pipeline | operational/security-monitoring | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `scripts/run-edge-audit-emit-check.sh`, `scripts/alert-edge-audit-emit.sh`, `ops/cron/uppoint-edge-audit-emit-check`, `ops/logrotate/uppoint-cloud` | Add fail-pattern monitor with cooldown + Slack/email alert channels and cron deployment instructions |
+| F13 | Ops email alert enqueue used psql variable interpolation mode that fails with inline `-c` execution | operational/reliability | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `scripts/alert-edge-audit-emit.sh`, `scripts/alert-nginx-drift.sh`, manual smoke run output (`syntax error at or near \":\"`) | Use `psql -f` with explicit `-v` variables for SQL templating; verify with real outbox enqueue + dispatch |
 
 ## Change Log (Register-only)
 
@@ -71,6 +72,7 @@ Record only register updates here (not general product changes).
 | 2026-03-03 | F10 | Closed: proxy now allows only narrow trusted internal audit ingress for signed loopback emit path | `proxy.ts` trusted ingress guard + signed local emit smoke |
 | 2026-03-03 | F11 | Closed: edge telemetry emit catch now logs structured failure signal | `proxy.ts` catch logging |
 | 2026-03-03 | F12 | Closed: edge audit emit failure monitor and alert pipeline added with cooldown + cron integration | edge-audit check/alert scripts + cron + logrotate/docs |
+| 2026-03-03 | F13 | Closed: outbox email alert insert now uses portable `psql -f` + `-v` variable binding in both alert scripts | manual enqueue smoke + dispatch verification |
 
 ## Audit Output Contract
 

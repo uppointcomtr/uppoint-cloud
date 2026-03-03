@@ -18,6 +18,9 @@
   - `README.md` now lists edge-audit alert env vars and cron setup.
   - `ops/README.md` now includes edge-audit monitoring runbook and configuration.
   - `FINDINGS_REGISTER.md` now tracks and closes `F12`.
+- Alert SQL execution hardened for portability (`F13`):
+  - `scripts/alert-edge-audit-emit.sh` and `scripts/alert-nginx-drift.sh` now use `psql -f` + `-v` variable binding.
+  - avoids inline `-c` interpolation failures (`syntax error at or near ":"`) and restores reliable outbox email enqueue.
 
 ## 2026-03-03 (security closure: close F10/F11 edge telemetry reliability)
 

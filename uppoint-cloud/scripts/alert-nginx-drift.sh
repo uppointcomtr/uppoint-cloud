@@ -115,17 +115,23 @@ if [ -n "$UPPOINT_ALERT_EMAIL_TO" ] && [ -n "$DATABASE_URL" ]; then
   SEALED_RECIPIENT="$(seal_notification_payload "$UPPOINT_ALERT_EMAIL_TO")"
   SEALED_SUBJECT="$(seal_notification_payload "$SUBJECT")"
   SEALED_BODY="$(seal_notification_payload "$BODY")"
+  SQL_FILE="$(mktemp)"
+  cat > "$SQL_FILE" <<'SQL'
+INSERT INTO "NotificationOutbox" ("id", "channel", "recipient", "subject", "body", "metadata", "status", "nextAttemptAt", "updatedAt")
+VALUES (:'alert_id', 'EMAIL'::"NotificationChannel", :'recipient', :'subject', :'body', jsonb_build_object('scope','ops-nginx-drift-alert','severity','critical'), 'PENDING'::"NotificationOutboxStatus", NOW(), NOW());
+SQL
   if psql -v ON_ERROR_STOP=1 -q \
-    --set=alert_id="$ALERT_ID" \
-    --set=recipient="$SEALED_RECIPIENT" \
-    --set=subject="$SEALED_SUBJECT" \
-    --set=body="$SEALED_BODY" \
-    -c "INSERT INTO \"NotificationOutbox\" (\"id\", \"channel\", \"recipient\", \"subject\", \"body\", \"metadata\", \"status\", \"nextAttemptAt\", \"updatedAt\") VALUES (:'alert_id', 'EMAIL'::\"NotificationChannel\", :'recipient', :'subject', :'body', jsonb_build_object('scope','ops-nginx-drift-alert','severity','critical'), 'PENDING'::\"NotificationOutboxStatus\", NOW(), NOW());"; then
+    -v alert_id="$ALERT_ID" \
+    -v recipient="$SEALED_RECIPIENT" \
+    -v subject="$SEALED_SUBJECT" \
+    -v body="$SEALED_BODY" \
+    -f "$SQL_FILE"; then
     CHANNEL_DELIVERED=1
     echo "[nginx-drift-alert] Email alert enqueued for ${UPPOINT_ALERT_EMAIL_TO}"
   else
     echo "[nginx-drift-alert] Email alert enqueue failed" >&2
   fi
+  rm -f "$SQL_FILE"
 fi
 
 if [ "$CHANNEL_DELIVERED" -eq 0 ]; then
