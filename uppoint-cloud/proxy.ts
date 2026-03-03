@@ -68,12 +68,12 @@ async function hmacSha256Hex(secret: string, value: string): Promise<string> {
   return toHex(signature);
 }
 const INTERNAL_AUDIT_ORIGIN = (() => {
-  if (!INTERNAL_AUDIT_URL) {
+  if (!proxyEnv.NEXT_PUBLIC_APP_URL) {
     return null;
   }
 
   try {
-    return new URL(INTERNAL_AUDIT_URL).origin;
+    return new URL(proxyEnv.NEXT_PUBLIC_APP_URL).origin;
   } catch {
     return null;
   }
@@ -149,6 +149,33 @@ interface EdgeSecurityAuditEvent {
   reason?: string;
 }
 
+function isTrustedInternalAuditIngress(request: NextRequest, pathname: string): boolean {
+  if (!IS_PRODUCTION || pathname !== "/api/internal/audit/security-event") {
+    return false;
+  }
+
+  const requestHost = request.nextUrl.hostname.trim().toLowerCase();
+  const realIp = request.headers.get("x-real-ip")?.split(",")[0]?.trim();
+  const token = request.headers.get("x-internal-audit-token")?.trim();
+  const requestId = request.headers.get("x-internal-request-id")?.trim();
+  const timestamp = request.headers.get("x-internal-request-ts")?.trim();
+  const signature = request.headers.get("x-internal-request-signature")?.trim();
+
+  const isLoopbackSource =
+    requestHost === "127.0.0.1"
+    || requestHost === "::1"
+    || requestHost === "localhost"
+    || realIp === "127.0.0.1"
+    || realIp === "::1";
+  const hasShape =
+    Boolean(token && token.length >= 32)
+    && Boolean(requestId && requestId.length >= 12 && requestId.length <= 128)
+    && Boolean(timestamp && /^\d{10,}$/.test(timestamp))
+    && Boolean(signature && /^[a-f0-9]{64}$/i.test(signature));
+
+  return isLoopbackSource && hasShape;
+}
+
 function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
   if (!IS_PRODUCTION || !INTERNAL_AUDIT_URL || !INTERNAL_AUDIT_TOKEN || !INTERNAL_AUDIT_SIGNING_SECRET || !INTERNAL_AUDIT_ORIGIN) {
     return;
@@ -178,6 +205,7 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
       headers: {
         "Content-Type": "application/json",
         origin: INTERNAL_AUDIT_ORIGIN,
+        "x-real-ip": "127.0.0.1",
         "x-request-id": internalRequestId,
         "x-internal-request-id": internalRequestId,
         "x-internal-audit-token": INTERNAL_AUDIT_TOKEN,
@@ -187,7 +215,16 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
       body,
     });
   })().catch(() => {
-    // Security telemetry must never block user-facing responses.
+    // Security telemetry must never block user-facing responses, but failures must be visible.
+    console.error(
+      "[edge-audit-emit] failed",
+      JSON.stringify({
+        action: event.action,
+        requestId: event.requestId,
+        path: event.path,
+        method: event.method,
+      }),
+    );
   });
 }
 
@@ -227,8 +264,9 @@ export async function proxy(request: NextRequest) {
   const requestId = getOrCreateRequestId(request);
   const forwardHeaders = buildForwardHeaders(request, requestId);
   const requestHost = getRequestHost(request);
+  const trustedInternalAuditIngress = isTrustedInternalAuditIngress(request, pathname);
 
-  if (IS_PRODUCTION && hasConflictingForwardedHost(request)) {
+  if (IS_PRODUCTION && !trustedInternalAuditIngress && hasConflictingForwardedHost(request)) {
     emitEdgeSecurityAudit({
       action: "edge_host_rejected",
       requestId,
@@ -247,7 +285,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (IS_PRODUCTION && !isAllowedHost(requestHost, ALLOWED_HOSTS)) {
+  if (IS_PRODUCTION && !trustedInternalAuditIngress && !isAllowedHost(requestHost, ALLOWED_HOSTS)) {
     emitEdgeSecurityAudit({
       action: "edge_host_rejected",
       requestId,
@@ -266,7 +304,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (IS_PRODUCTION && isApiMutation(pathname, request.method)) {
+  if (IS_PRODUCTION && !trustedInternalAuditIngress && isApiMutation(pathname, request.method)) {
     const origin = request.headers.get("origin");
 
     if (!isAllowedOrigin(origin, ALLOWED_ORIGINS)) {

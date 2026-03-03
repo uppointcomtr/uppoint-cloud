@@ -341,6 +341,7 @@ Run this checklist after deployment or UI-affecting changes:
     - `x-internal-request-id` (single-use request nonce)
     - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
     - shared signing secret: `INTERNAL_AUDIT_SIGNING_SECRET`
+    - edge self-emit path is additionally allowlisted only for signed loopback ingress at proxy layer (narrow exception for telemetry reliability)
   - `/api/internal/notifications/dispatch` requires:
     - loopback source (`127.0.0.1`/`::1`) in production
     - `x-internal-dispatch-token` matching `INTERNAL_DISPATCH_TOKEN`

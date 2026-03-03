@@ -48,6 +48,8 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F7 | Instances domain boundary lacked enforceable guardrails | architecture | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `tests/instances/instances-surface-guardrail.test.ts` | Add automated guardrails for future `/instances` entry points and forbid direct hypervisor coupling in boundary |
 | F8 | Audit immutability allowed unrestricted row deletion | security/audit-integrity | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `prisma/migrations/20260303200000_enforce_audit_log_delete_guard/migration.sql`, `scripts/cleanup-db.sh` | DB trigger blocks delete unless retention guard flag is set; cleanup path uses explicit retention guard |
 | F9 | Logout endpoint lacked idempotency protection | reliability/audit-noise | Low | None | closed | 2026-03-03 | 2026-03-03 | codex | `app/api/auth/logout/route.ts` | Wrap logout handler with `withIdempotency("auth:logout", ...)` |
+| F10 | Edge security telemetry could be dropped due to proxy host/origin/IP guard conflict | security/observability | High | None | closed | 2026-03-03 | 2026-03-03 | codex | `proxy.ts`, `app/api/internal/audit/security-event/route.ts`, live smoke (`POST http://127.0.0.1:3000/api/internal/audit/security-event` previously `400 INVALID_HOST_HEADER`) | Add narrow trusted ingress path for signed loopback internal audit emit; verify by signed local POST returns 202 |
+| F11 | Edge security telemetry emit failures were silently swallowed | observability | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `proxy.ts` catch block in `emitEdgeSecurityAudit` | Emit structured error logs for telemetry delivery failure without leaking secrets |
 
 ## Change Log (Register-only)
 
@@ -65,6 +67,8 @@ Record only register updates here (not general product changes).
 | 2026-03-03 | F7 | Closed: instances future-surface guardrail test added | `tests/instances/instances-surface-guardrail.test.ts` |
 | 2026-03-03 | F8 | Closed: audit deletes blocked by DB trigger unless retention guard is explicitly set | migration + cleanup script guard flag |
 | 2026-03-03 | F9 | Closed: logout endpoint wrapped with idempotency protection | logout route update |
+| 2026-03-03 | F10 | Closed: proxy now allows only narrow trusted internal audit ingress for signed loopback emit path | `proxy.ts` trusted ingress guard + signed local emit smoke |
+| 2026-03-03 | F11 | Closed: edge telemetry emit catch now logs structured failure signal | `proxy.ts` catch logging |
 
 ## Audit Output Contract
 

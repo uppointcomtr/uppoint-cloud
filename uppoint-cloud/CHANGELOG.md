@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-03-03 (security closure: close F10/F11 edge telemetry reliability)
+
+### Fixed
+- Closed edge security telemetry delivery conflict (`F10`):
+  - `proxy.ts` now applies a **narrow trusted-ingress exception** only for `POST /api/internal/audit/security-event` when request shape matches signed internal audit headers and `x-real-ip` is loopback.
+  - Host/origin guards remain active for all non-trusted traffic; bypass is not global.
+  - Edge emitter now includes `x-real-ip: 127.0.0.1` to satisfy production fail-closed rate-limit context requirements on internal route ingress.
+- Closed silent telemetry-drop gap (`F11`):
+  - `emitEdgeSecurityAudit` now logs structured failure signals (`[edge-audit-emit] failed`) instead of silently swallowing all emit errors.
+
+### Added
+- Added proxy guardrail tests:
+  - `tests/security/proxy-internal-audit-guardrail.test.ts`
+  - Asserts trusted ingress bypass remains narrowly scoped and failure logging remains present.
+
 ## 2026-03-03 (security closure: internal source hardening + audit delete guard + logout idempotency)
 
 ### Fixed
