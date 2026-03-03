@@ -17,6 +17,16 @@ WORM_S3_ENDPOINT_URL="${WORM_S3_ENDPOINT_URL:-}"
 WORM_AUDIT_OBJECT_LOCK_MODE="${WORM_AUDIT_OBJECT_LOCK_MODE:-}"
 WORM_AUDIT_RETENTION_DAYS="${WORM_AUDIT_RETENTION_DAYS:-}"
 WORM_AUDIT_STORAGE_CLASS="${WORM_AUDIT_STORAGE_CLASS:-}"
+UPPOINT_CLOSED_SYSTEM_MODE="${UPPOINT_CLOSED_SYSTEM_MODE:-}"
+
+normalize_bool() {
+  local raw="${1:-}"
+  case "$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) printf 'true' ;;
+    0|false|no|off) printf 'false' ;;
+    *) printf '' ;;
+  esac
+}
 
 if [ -z "$AUDIT_ANCHOR_OUTPUT_PATH" ]; then
   AUDIT_ANCHOR_OUTPUT_PATH="$(read_env_value "$ENV_FILE" "AUDIT_ANCHOR_OUTPUT_PATH")"
@@ -42,12 +52,21 @@ fi
 if [ -z "$WORM_AUDIT_STORAGE_CLASS" ]; then
   WORM_AUDIT_STORAGE_CLASS="$(read_env_value "$ENV_FILE" "WORM_AUDIT_STORAGE_CLASS")"
 fi
+if [ -z "$UPPOINT_CLOSED_SYSTEM_MODE" ]; then
+  UPPOINT_CLOSED_SYSTEM_MODE="$(read_env_value "$ENV_FILE" "UPPOINT_CLOSED_SYSTEM_MODE")"
+fi
 
 AUDIT_ANCHOR_OUTPUT_PATH="${AUDIT_ANCHOR_OUTPUT_PATH:-/opt/backups/audit/audit-anchor.jsonl}"
 WORM_S3_PREFIX="${WORM_S3_PREFIX:-uppoint-cloud/audit-anchor}"
 WORM_AUDIT_OBJECT_LOCK_MODE="${WORM_AUDIT_OBJECT_LOCK_MODE:-COMPLIANCE}"
 WORM_AUDIT_RETENTION_DAYS="${WORM_AUDIT_RETENTION_DAYS:-365}"
 WORM_AUDIT_STORAGE_CLASS="${WORM_AUDIT_STORAGE_CLASS:-STANDARD_IA}"
+UPPOINT_CLOSED_SYSTEM_MODE="$(normalize_bool "${UPPOINT_CLOSED_SYSTEM_MODE:-true}")"
+
+if [ "${UPPOINT_CLOSED_SYSTEM_MODE:-true}" = "true" ] || [ -z "${UPPOINT_CLOSED_SYSTEM_MODE}" ]; then
+  echo "[audit-anchor-replication] closed-system mode active; off-host replication skipped."
+  exit 0
+fi
 
 if ! [[ "$WORM_AUDIT_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$WORM_AUDIT_RETENTION_DAYS" -lt 1 ]; then
   echo "[audit-anchor-replication] invalid WORM_AUDIT_RETENTION_DAYS: ${WORM_AUDIT_RETENTION_DAYS}" >&2

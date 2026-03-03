@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-03-03 (closed-system policy: no off-host egress by default)
+
+### Changed
+- Updated `AGENTS.md` with explicit closed-system policy:
+  - default deny for off-host egress,
+  - no third-party replication/telemetry by default,
+  - owner-approved exception process for external egress.
+- Updated operational docs for closed-system default:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+
+### Fixed
+- Made egress scripts closed-mode aware (`UPPOINT_CLOSED_SYSTEM_MODE=true` defaults to skip):
+  - `scripts/replicate-audit-anchor.sh`
+  - `scripts/alert-nginx-drift.sh`
+  - `scripts/alert-edge-audit-emit.sh`
+  - `scripts/alert-auth-abuse.sh`
+
 ## 2026-03-03 (ops hardening: cron activation + off-host WORM anchor replication + runtime catalog)
 
 ### Added

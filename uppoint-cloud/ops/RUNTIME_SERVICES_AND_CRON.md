@@ -18,6 +18,10 @@ systemctl status uppoint-tune.service
 
 ## Cron jobs (`/etc/cron.d`)
 
+Closed-system policy note:
+- Default mode is `UPPOINT_CLOSED_SYSTEM_MODE=true`.
+- In this mode, off-host replication jobs must remain disabled.
+
 | File | Schedule | Purpose | Log file |
 | --- | --- | --- | --- |
 | `uppoint-postgres-backup` | `0 2 * * *` | PostgreSQL backup | `/var/log/uppoint-postgres-backup.log` |
@@ -26,7 +30,7 @@ systemctl status uppoint-tune.service
 | `uppoint-notification-dispatch` | every minute | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` |
 | `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` |
 | `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` |
-| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` |
+| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (disabled in closed mode) |
 | `uppoint-auth-abuse-check` | `*/5 * * * *` | Auth abuse threshold monitoring + alerts | `/var/log/uppoint-auth-abuse-check.log` |
 | `uppoint-auth-rate-limit-tune` | daily | Report-only auth limiter tuning | `/var/log/uppoint-auth-rate-limit-tune.log` |
 | `uppoint-health-probe` | periodic | Health probe | `/var/log/uppoint-health-probe.log` |
@@ -46,3 +50,4 @@ tail -n 100 /var/log/uppoint-auth-abuse-check.log
 1. Any new cron/service must be added to this file and `ops/README.md`.
 2. Log destination must be covered by `ops/logrotate/uppoint-cloud`.
 3. Security-sensitive jobs must fail closed and emit diagnosable errors.
+4. In closed-system mode, keep external egress jobs disabled unless owner-approved exception is documented.

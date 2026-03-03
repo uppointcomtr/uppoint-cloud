@@ -70,6 +70,7 @@ AUDIT_FALLBACK_LOG_PATH=/var/log/uppoint-cloud/audit-fallback.log
 AUDIT_ANCHOR_SIGNING_SECRET=replace-with-strong-random-secret
 AUDIT_ANCHOR_SIGNING_KEY_ID=prod-kms-key-2026-01
 AUDIT_ANCHOR_OUTPUT_PATH=/opt/backups/audit/audit-anchor.jsonl
+UPPOINT_CLOSED_SYSTEM_MODE=true
 WORM_S3_BUCKET=uppoint-audit-immutable
 WORM_S3_REGION=eu-central-1
 WORM_S3_PREFIX=cloud.uppoint.com.tr/audit-anchor
@@ -266,9 +267,8 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cl
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
-sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-replication /etc/cron.d/uppoint-audit-anchor-replication
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-replication /etc/cron.d/uppoint-auth-abuse-check
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -283,7 +283,6 @@ sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
 sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
 sudo /opt/uppoint-cloud/scripts/export-audit-anchor.sh
-sudo /opt/uppoint-cloud/scripts/replicate-audit-anchor.sh
 sudo /opt/uppoint-cloud/scripts/run-auth-abuse-check.sh
 ls -lah /opt/backups/postgres
 ```
@@ -320,6 +319,12 @@ Production guard:
 - uploads with `ObjectLockMode` (`COMPLIANCE` or `GOVERNANCE`) and retention window
 - verifies object lock metadata via `head-object`
 - deduplicates by last replicated anchor hash (`/var/lib/uppoint-cloud/audit-anchor-replication.state`)
+
+Closed-system default:
+- Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.
+- Do not install `uppoint-audit-anchor-replication` cron.
+- `replicate-audit-anchor.sh` exits with skip in closed mode.
+- Enable off-host replication only with explicit owner approval and documented exception.
 
 ## 9. Redis backup automation
 

@@ -116,6 +116,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUDIT_ANCHOR_SIGNING_SECRET` (recommended, min 32 chars; signer for external audit-chain anchor export)
 - `AUDIT_ANCHOR_SIGNING_KEY_ID` (optional key identifier included in exported anchor records)
 - `AUDIT_ANCHOR_OUTPUT_PATH` (optional, default `/opt/backups/audit/audit-anchor.jsonl`)
+- `UPPOINT_CLOSED_SYSTEM_MODE` (recommended `true`; default closed-system/no off-host egress mode)
 - `NOTIFICATION_PAYLOAD_SECRET` (required in production; encrypts notification outbox payload at rest)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
@@ -131,6 +132,11 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_ABUSE_THRESHOLD_LOGIN_CHALLENGE_START_FAILED` (optional, default `30`)
 - `AUTH_ABUSE_THRESHOLD_PASSWORD_RESET_FAILED` (optional, default `20`)
 - `AUTH_ABUSE_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
+
+Closed-system deployment policy:
+- Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.
+- Do not enable off-host replication/third-party alert sinks unless explicitly approved.
+- `npm run audit:anchor:replicate` skips when closed mode is active.
 
 ## Upstash rate limit activation
 

@@ -51,6 +51,9 @@ Do not replace this stack unless there is a strong technical reason and you expl
 6. **Zero Trust by Default**
    Treat the client, internal network, internal services, background jobs, webhooks, queues, cron tasks, support/admin paths, and integrations as untrusted unless explicitly verified and authenticated/authorized.
 
+7. **Closed System by Default**
+   Treat this platform as a closed environment: no off-host data egress, no third-party telemetry sinks, and no automatic external replication unless explicit owner approval is documented.
+
 ## Non-Negotiables (never skip these)
 
 1. Enforce `assertTenantAccess()` or an approved equivalent on every tenant-scoped server entry point that reads or mutates tenant data
@@ -87,6 +90,8 @@ Do not jump straight into changes without first confirming the local context and
 * Do not invent scripts, commands, or project conventions if the repository already defines them
 * Prefer repository-defined package scripts, tooling, lint rules, and test conventions when present
 * If the repository defines a script for type-checking, building, testing, deployment, or cleanup, prefer that script over ad hoc shell commands unless there is a clear reason not to
+* Any addition or modification of cron jobs or systemd units must include an update to `ops/RUNTIME_SERVICES_AND_CRON.md` (and `ops/README.md` when operational procedures change)
+* Any change that introduces, enables, or expands off-host egress (S3/object storage replication, webhooks, Slack/email/SMS providers, external APIs) requires explicit owner approval, documentation, and a rollback path
 
 ## Debugging and CI rules
 
@@ -441,7 +446,19 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Distinguish logs, metrics, traces, and audit data; they serve different purposes
 * Log enough context for diagnosis without leaking secrets or tenant-sensitive data
 * Operationally important failures should be measurable and alertable
-* Maintain an immutable external audit anchor process (hash-chain export/verification to append-only storage) so DB compromise cannot fully erase forensic evidence
+* Maintain audit integrity anchoring. For closed-system mode, use local append-only anchor export and offline transfer procedures; do not require automatic off-host replication unless explicitly approved by owner
+
+## Closed system and egress policy
+
+* Default deployment mode is **closed system** (`UPPOINT_CLOSED_SYSTEM_MODE=true`): no off-host replication, no third-party alert sinks, and no external data export jobs
+* In closed-system mode, keep `uppoint-audit-anchor-replication` disabled and avoid configuring off-host WORM targets
+* In closed-system mode, disable optional external alert channels (`UPPOINT_ALERT_SLACK_WEBHOOK`, external webhook destinations) unless explicit owner approval is documented
+* Any approved exception must include:
+  - data classification and scope,
+  - transport/authentication method,
+  - retention/deletion policy,
+  - rollback and disable steps,
+  - update to `ops/RUNTIME_SERVICES_AND_CRON.md` and `ops/README.md`
 
 ## Quality rules
 

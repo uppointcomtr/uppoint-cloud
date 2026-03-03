@@ -22,6 +22,16 @@ UPPOINT_ALERT_SLACK_WEBHOOK="${UPPOINT_ALERT_SLACK_WEBHOOK:-}"
 UPPOINT_ALERT_EMAIL_TO="${UPPOINT_ALERT_EMAIL_TO:-}"
 DATABASE_URL="${DATABASE_URL:-}"
 NOTIFICATION_PAYLOAD_SECRET="${NOTIFICATION_PAYLOAD_SECRET:-}"
+UPPOINT_CLOSED_SYSTEM_MODE="${UPPOINT_CLOSED_SYSTEM_MODE:-}"
+
+normalize_bool() {
+  local raw="${1:-}"
+  case "$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) printf 'true' ;;
+    0|false|no|off) printf 'false' ;;
+    *) printf '' ;;
+  esac
+}
 
 if [ -z "$UPPOINT_ALERT_SLACK_WEBHOOK" ]; then
   UPPOINT_ALERT_SLACK_WEBHOOK="$(read_env_value "$ENV_FILE" "UPPOINT_ALERT_SLACK_WEBHOOK")"
@@ -37,6 +47,15 @@ if [ -n "$DATABASE_URL" ]; then
 fi
 if [ -z "$NOTIFICATION_PAYLOAD_SECRET" ]; then
   NOTIFICATION_PAYLOAD_SECRET="$(read_env_value "$ENV_FILE" "NOTIFICATION_PAYLOAD_SECRET")"
+fi
+if [ -z "$UPPOINT_CLOSED_SYSTEM_MODE" ]; then
+  UPPOINT_CLOSED_SYSTEM_MODE="$(read_env_value "$ENV_FILE" "UPPOINT_CLOSED_SYSTEM_MODE")"
+fi
+
+UPPOINT_CLOSED_SYSTEM_MODE="$(normalize_bool "${UPPOINT_CLOSED_SYSTEM_MODE:-true}")"
+if [ "${UPPOINT_CLOSED_SYSTEM_MODE:-true}" = "true" ] || [ -z "${UPPOINT_CLOSED_SYSTEM_MODE}" ]; then
+  echo "[auth-abuse-alert] closed-system mode active; external alert delivery skipped."
+  exit 0
 fi
 
 if [ -n "$UPPOINT_ALERT_EMAIL_TO" ] && [ -n "$DATABASE_URL" ] && [ -z "$NOTIFICATION_PAYLOAD_SECRET" ]; then
