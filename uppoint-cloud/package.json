@@ -18,6 +18,7 @@
     "verify:workflow-layout": "bash ./scripts/check-remote-smoke-workflow-location.sh",
     "verify:repo-layout": "bash ./scripts/check-repo-root-contract.sh",
     "verify:nginx-drift": "bash ./scripts/check-nginx-config-drift.sh",
+    "verify:edge-audit-emit": "bash ./scripts/run-edge-audit-emit-check.sh",
     "verify:audit-integrity": "bash ./scripts/verify-audit-integrity.sh",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:migrate:status": "prisma migrate status",

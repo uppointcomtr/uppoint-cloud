@@ -488,6 +488,41 @@ sudo nginx -t && sudo systemctl reload nginx
 RATE_LIMIT_DRIFT_POLICY=enforce-baseline /opt/uppoint-cloud/scripts/check-nginx-config-drift.sh
 ```
 
+## 14.1 Edge audit emit failure monitoring
+
+Monitor `uppoint-cloud.service` logs for `[edge-audit-emit] failed` and alert via Slack/email channels.
+
+Manual check:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/run-edge-audit-emit-check.sh
+```
+
+Install periodic checker (every 5 minutes):
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-edge-audit-emit-check /etc/cron.d/uppoint-edge-audit-emit-check
+sudo chmod 644 /etc/cron.d/uppoint-edge-audit-emit-check
+```
+
+Log path:
+- `/var/log/uppoint-cloud/edge-audit-emit-check.log`
+
+Optional alert tuning in `/opt/uppoint-cloud/.env`:
+
+```bash
+UPPOINT_ALERT_SLACK_WEBHOOK=https://hooks.slack.com/services/...
+UPPOINT_ALERT_EMAIL_TO=semih.akbag@uppoint.com.tr
+UPPOINT_EDGE_AUDIT_ALERT_LOOKBACK_MINUTES=15
+UPPOINT_EDGE_AUDIT_ALERT_COOLDOWN_MINUTES=60
+```
+
+Alert behavior:
+- scans recent `uppoint-cloud.service` journal window for `[edge-audit-emit] failed`
+- sends Slack alert when `UPPOINT_ALERT_SLACK_WEBHOOK` is configured
+- queues encrypted email into `NotificationOutbox` when `UPPOINT_ALERT_EMAIL_TO` is configured
+- suppresses repeated identical alerts during cooldown window
+
 ## 15. Restore drill (staging rehearsal)
 
 PostgreSQL drill (recommended on staging or temporary drill database):

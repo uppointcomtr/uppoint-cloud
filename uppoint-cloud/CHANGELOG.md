@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-03-03 (ops/security: edge telemetry alerting + internal guardrail standardization)
+
+### Added
+- Added edge telemetry emit failure monitoring and alert pipeline:
+  - `scripts/run-edge-audit-emit-check.sh` scans `uppoint-cloud.service` logs for `[edge-audit-emit] failed` and applies cooldown-based dedupe.
+  - `scripts/alert-edge-audit-emit.sh` sends Slack alerts and/or enqueues encrypted outbox email alerts.
+  - `ops/cron/uppoint-edge-audit-emit-check` provides periodic monitoring (`*/5`).
+  - `ops/logrotate/uppoint-cloud` now rotates `/var/log/uppoint-cloud/edge-audit-emit-check.log`.
+- Added internal route guardrail regression test:
+  - `tests/internal/internal-route-guardrail.test.ts` asserts both internal routes enforce signed auth + loopback source + replay limiter.
+- Added verification script shortcut:
+  - `npm run verify:edge-audit-emit`
+
+### Changed
+- Documentation updates:
+  - `README.md` now lists edge-audit alert env vars and cron setup.
+  - `ops/README.md` now includes edge-audit monitoring runbook and configuration.
+  - `FINDINGS_REGISTER.md` now tracks and closes `F12`.
+
 ## 2026-03-03 (security closure: close F10/F11 edge telemetry reliability)
 
 ### Fixed

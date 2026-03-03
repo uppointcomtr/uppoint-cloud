@@ -107,9 +107,11 @@ Create and maintain `.env` with real values (do not commit it):
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
 - `AUDIT_LOG_ARCHIVE_DIR` (optional, default `/opt/backups/audit`; archive path used by `cleanup-db.sh`)
-- `UPPOINT_ALERT_SLACK_WEBHOOK` (optional, ops alert channel for nginx drift failures)
+- `UPPOINT_ALERT_SLACK_WEBHOOK` (optional, ops alert channel for nginx drift and edge-audit-emit failures)
 - `UPPOINT_ALERT_EMAIL_TO` (optional, ops alert recipient; enqueued via `NotificationOutbox`)
 - `UPPOINT_NGINX_DRIFT_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
+- `UPPOINT_EDGE_AUDIT_ALERT_LOOKBACK_MINUTES` (optional, default `15`)
+- `UPPOINT_EDGE_AUDIT_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
 
 ## Upstash rate limit activation
 
@@ -178,6 +180,7 @@ npm run test
 npm run test:e2e
 npm run build:deploy
 npm run verify:nginx-drift
+npm run verify:edge-audit-emit
 npm run verify:audit-integrity
 ```
 
@@ -207,10 +210,12 @@ Periodic server-side drift enforcement:
 
 ```bash
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-nginx-drift-check /etc/cron.d/uppoint-nginx-drift-check
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-edge-audit-emit-check /etc/cron.d/uppoint-edge-audit-emit-check
 sudo chmod 644 /etc/cron.d/uppoint-nginx-drift-check
+sudo chmod 644 /etc/cron.d/uppoint-edge-audit-emit-check
 ```
 
-Optional alert channels for drift failures:
+Optional alert channels for drift + edge-audit emit failures:
 
 ```bash
 # Slack webhook (Incoming Webhook URL)
@@ -219,6 +224,8 @@ UPPOINT_ALERT_SLACK_WEBHOOK=https://hooks.slack.com/services/...
 # Email recipient (queued to NotificationOutbox)
 UPPOINT_ALERT_EMAIL_TO=ops@uppoint.com.tr
 UPPOINT_NGINX_DRIFT_ALERT_COOLDOWN_MINUTES=60
+UPPOINT_EDGE_AUDIT_ALERT_LOOKBACK_MINUTES=15
+UPPOINT_EDGE_AUDIT_ALERT_COOLDOWN_MINUTES=60
 ```
 
 One-shot full gate:

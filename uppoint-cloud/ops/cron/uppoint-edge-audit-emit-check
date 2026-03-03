@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Monitors uppoint-cloud service logs for edge audit emit failures and triggers alert channels.
+*/5 * * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-edge-audit-emit-check.lock /opt/uppoint-cloud/scripts/run-edge-audit-emit-check.sh
