@@ -100,6 +100,9 @@ describe("verifyPasswordResetEmailCode", () => {
 
 describe("verifyPasswordResetSmsCode", () => {
   it("returns reset token for valid sms code", async () => {
+    const smsHash = "e".repeat(64);
+    const resetTokenHash = "f".repeat(64);
+
     const result = await verifyPasswordResetSmsCode(
       {
         challengeId: "challenge-1",
@@ -108,7 +111,7 @@ describe("verifyPasswordResetSmsCode", () => {
       {
         findChallengeById: vi.fn().mockResolvedValue({
           id: "challenge-1",
-          smsCodeHash: "sms-hash",
+          smsCodeHash: smsHash,
           smsCodeExpiresAt: new Date("2026-02-28T12:03:00.000Z"),
           smsCodeAttempts: 0,
           smsCodeVerifiedAt: null,
@@ -117,7 +120,7 @@ describe("verifyPasswordResetSmsCode", () => {
         incrementSmsAttempts: vi.fn().mockResolvedValue(1),
         markSmsVerifiedAndStoreResetToken: vi.fn().mockResolvedValue(true),
         now: vi.fn(() => new Date("2026-02-28T12:01:00.000Z")),
-        hashValue: vi.fn((value: string) => (value === "654321" ? "sms-hash" : "token-hash")),
+        hashValue: vi.fn((value: string) => (value === "654321" ? smsHash : resetTokenHash)),
         generateResetToken: vi.fn(() => "raw-reset-token"),
       },
     );
@@ -128,6 +131,7 @@ describe("verifyPasswordResetSmsCode", () => {
 
 describe("completePasswordResetChallenge", () => {
   it("updates password for valid challenge", async () => {
+    const resetTokenHash = "9".repeat(64);
     const completePasswordUpdate = vi.fn().mockResolvedValue(true);
 
     const result = await completePasswordResetChallenge(
@@ -141,13 +145,13 @@ describe("completePasswordResetChallenge", () => {
           id: "challenge-1",
           userId: "u1",
           smsCodeVerifiedAt: new Date("2026-02-28T12:01:00.000Z"),
-          resetTokenHash: "token-hash",
+          resetTokenHash,
           resetTokenExpiresAt: new Date("2026-02-28T12:30:00.000Z"),
           resetTokenUsedAt: null,
         }),
         hashPassword: vi.fn().mockResolvedValue("new-hash"),
         completePasswordUpdate,
-        hashValue: vi.fn(() => "token-hash"),
+        hashValue: vi.fn(() => resetTokenHash),
         now: vi.fn(() => new Date("2026-02-28T12:02:00.000Z")),
       },
     );
@@ -157,7 +161,7 @@ describe("completePasswordResetChallenge", () => {
     expect(completePasswordUpdate).toHaveBeenCalledWith({
       challengeId: "challenge-1",
       userId: "u1",
-      expectedResetTokenHash: "token-hash",
+      expectedResetTokenHash: resetTokenHash,
       passwordHash: "new-hash",
       now: new Date("2026-02-28T12:02:00.000Z"),
     });

@@ -87,6 +87,8 @@ describe("verifyRegisterEmailCode", () => {
 
 describe("verifyRegisterSmsCode", () => {
   it("completes verification for valid sms code", async () => {
+    const smsHash = "c".repeat(64);
+
     const result = await verifyRegisterSmsCode(
       {
         challengeId: "challenge-1",
@@ -99,7 +101,7 @@ describe("verifyRegisterSmsCode", () => {
           name: "User Name",
           phone: "+905551112233",
           passwordHash: "password-hash",
-          smsCodeHash: "sms-hash",
+          smsCodeHash: smsHash,
           smsCodeExpiresAt: new Date("2026-03-01T10:05:00.000Z"),
           smsCodeAttempts: 0,
           smsCodeVerifiedAt: null,
@@ -108,7 +110,7 @@ describe("verifyRegisterSmsCode", () => {
         incrementSmsAttempts: vi.fn().mockResolvedValue(1),
         completeRegistrationVerification: vi.fn().mockResolvedValue("u1"),
         now: vi.fn(() => new Date("2026-03-01T10:02:00.000Z")),
-        hashValue: vi.fn((value: string) => (value === "654321" ? "sms-hash" : "wrong-hash")),
+        hashValue: vi.fn((value: string) => (value === "654321" ? smsHash : "d".repeat(64))),
       },
     );
 

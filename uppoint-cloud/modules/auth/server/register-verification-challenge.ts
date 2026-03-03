@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { timingSafeEqualHex } from "@/lib/security/constant-time";
 import { getRegisterSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 import { enqueueEmailNotification, enqueueSmsNotification } from "@/modules/notifications/server/outbox";
@@ -534,7 +535,7 @@ export async function verifyRegisterEmailCode(
   const providedCodeHash = dependencies.hashValue(input.emailCode);
 
   // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
-  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.emailCodeHash, "hex"))) {
+  if (!timingSafeEqualHex(providedCodeHash, challenge.emailCodeHash, 32)) {
     await dependencies.incrementEmailAttempts(challenge.id);
     throw new RegisterVerificationChallengeError("INVALID_EMAIL_CODE", "Email code is invalid");
   }
@@ -774,7 +775,7 @@ export async function verifyRegisterSmsCode(
   const providedCodeHash = dependencies.hashValue(input.smsCode);
 
   // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
-  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.smsCodeHash, "hex"))) {
+  if (!timingSafeEqualHex(providedCodeHash, challenge.smsCodeHash, 32)) {
     await dependencies.incrementSmsAttempts(challenge.id);
     throw new RegisterVerificationChallengeError("INVALID_SMS_CODE", "SMS code is invalid");
   }

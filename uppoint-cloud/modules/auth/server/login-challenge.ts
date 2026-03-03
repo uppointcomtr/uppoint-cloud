@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { timingSafeEqualHex } from "@/lib/security/constant-time";
 import { getLoginSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 import { enqueueEmailNotification, enqueueSmsNotification } from "@/modules/notifications/server/outbox";
@@ -565,7 +566,7 @@ export async function verifyLoginChallengeCode(
   const providedHash = dependencies.hashValue(input.code);
 
   // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
-  if (!crypto.timingSafeEqual(Buffer.from(providedHash, "hex"), Buffer.from(challenge.codeHash, "hex"))) {
+  if (!timingSafeEqualHex(providedHash, challenge.codeHash, 32)) {
     await dependencies.incrementCodeAttempts(challenge.id);
     throw new LoginChallengeError("INVALID_CODE", "Login code is invalid");
   }

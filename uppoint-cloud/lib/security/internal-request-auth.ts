@@ -1,14 +1,11 @@
 import "server-only";
 
-import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac } from "crypto";
+
+import { timingSafeEqualText } from "@/lib/security/constant-time";
 
 function equalsConstantTime(provided: string | null, expected: string): boolean {
-  const providedBuffer = Buffer.from(provided ?? "");
-  const expectedBuffer = Buffer.from(expected);
-  return (
-    providedBuffer.length === expectedBuffer.length
-    && timingSafeEqual(providedBuffer, expectedBuffer)
-  );
+  return timingSafeEqualText(provided, expected);
 }
 
 function toSha256Hex(value: string): string {

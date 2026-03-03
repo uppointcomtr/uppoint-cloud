@@ -190,6 +190,19 @@ When in Audit Mode, always assess **all** headings below and produce a **Coverag
 * If there are no new Confirmed Findings, explicitly state:
   **“No new independent confirmed finding was identified in this round beyond the previously recorded findings.”**
 
+### Canonical findings register
+
+* `FINDINGS_REGISTER.md` is the canonical findings source for this repository.
+* Do not create duplicate findings for the same issue; reuse the existing stable ID and update that row.
+* When reporting a new independent issue, add a new ID to `FINDINGS_REGISTER.md` and include evidence (file, endpoint, or command).
+* A finding can be marked `closed` only with explicit verification evidence:
+  - `npm run lint`
+  - `npm run typecheck`
+  - `npm test`
+  - `npm run build`
+  - targeted smoke/ops checks for the changed surface when applicable
+* If a closed finding regresses, re-open the same ID instead of creating a new one.
+
 ### Audit output format
 
 A. Executive Verdict (works vs correctly designed vs production-ready; be explicit)

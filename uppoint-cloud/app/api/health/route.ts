@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
+import { timingSafeEqualText } from "@/lib/security/constant-time";
 
 // Health check endpoint for monitoring / load-balancer liveness probes.
 // Returns 200 + JSON when the app and DB are reachable; 503 otherwise.
@@ -11,12 +11,7 @@ export async function GET(request: Request) {
   if (env.NODE_ENV === "production" && env.HEALTHCHECK_TOKEN) {
     const token = request.headers.get("x-health-token");
     const expectedToken = env.HEALTHCHECK_TOKEN;
-    const tokenBuffer = Buffer.from(token ?? "");
-    const expectedTokenBuffer = Buffer.from(expectedToken);
-
-    const tokenMatches =
-      tokenBuffer.length === expectedTokenBuffer.length
-      && timingSafeEqual(tokenBuffer, expectedTokenBuffer);
+    const tokenMatches = timingSafeEqualText(token, expectedToken);
 
     if (!tokenMatches) {
       return NextResponse.json(

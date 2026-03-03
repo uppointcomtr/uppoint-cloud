@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { logAudit } from "@/lib/audit-log";
+import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/modules/auth/server/login-challenge";
 
 export async function POST(request: Request) {
+  return withIdempotency("auth:login-email-verify", async () => {
   // Rate limit: 10 attempts per 15 minutes per IP
   const rateLimitResponse = await withRateLimit("login-email-verify", 10, 900);
   if (rateLimitResponse) {
@@ -56,6 +58,10 @@ export async function POST(request: Request) {
     return NextResponse.json(ok({ loginToken: result.loginToken }), { status: 200 });
   } catch (error) {
     if (error instanceof z.ZodError) {
+      await logAudit("login_otp_failed", ip, undefined, {
+        mode: "email",
+        reason: "VALIDATION_FAILED",
+      });
       return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
     }
 
@@ -69,6 +75,11 @@ export async function POST(request: Request) {
 
       if (error.code === "INVALID_CODE" || error.code === "MAX_ATTEMPTS_REACHED") {
         await logAudit("login_otp_failed", ip, undefined, { mode: "email", reason: error.code });
+      } else {
+        await logAudit("login_otp_failed", ip, undefined, {
+          mode: "email",
+          reason: "VERIFICATION_REJECTED",
+        });
       }
 
       return NextResponse.json(fail(error.code), { status });
@@ -83,6 +94,7 @@ export async function POST(request: Request) {
       status: 500,
     });
   }
+  });
 }
 
 export async function GET() {

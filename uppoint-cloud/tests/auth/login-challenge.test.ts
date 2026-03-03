@@ -155,6 +155,9 @@ describe("startPhoneLoginChallenge", () => {
 
 describe("verifyLoginChallengeCode", () => {
   it("returns login token for valid code", async () => {
+    const otpHash = "a".repeat(64);
+    const loginTokenHash = "b".repeat(64);
+
     const result = await verifyLoginChallengeCode(
       {
         challengeId: "c1",
@@ -166,7 +169,7 @@ describe("verifyLoginChallengeCode", () => {
           id: "c1",
           userId: "u1",
           mode: "email",
-          codeHash: "code-hash",
+          codeHash: otpHash,
           codeExpiresAt: new Date("2026-02-28T17:03:00.000Z"),
           codeAttempts: 0,
           verifiedAt: null,
@@ -174,7 +177,7 @@ describe("verifyLoginChallengeCode", () => {
         incrementCodeAttempts: vi.fn().mockResolvedValue(1),
         markVerifiedAndStoreLoginToken: vi.fn().mockResolvedValue(true),
         now: vi.fn(() => new Date("2026-02-28T17:01:00.000Z")),
-        hashValue: vi.fn((value: string) => (value === "123456" ? "code-hash" : "token-hash")),
+        hashValue: vi.fn((value: string) => (value === "123456" ? otpHash : loginTokenHash)),
         generateLoginToken: vi.fn(() => "raw-login-token"),
       },
     );

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { timingSafeEqualHex } from "@/lib/security/constant-time";
 import { registerSchema } from "@/modules/auth/schemas/auth-schemas";
 import { defaultLocale, isLocale, type Locale } from "@/modules/i18n/config";
 import { enqueueEmailNotification, enqueueSmsNotification } from "@/modules/notifications/server/outbox";
@@ -347,7 +348,7 @@ export async function verifyPasswordResetEmailCode(
   const providedCodeHash = dependencies.hashValue(input.emailCode);
 
   // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
-  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.emailCodeHash, "hex"))) {
+  if (!timingSafeEqualHex(providedCodeHash, challenge.emailCodeHash, 32)) {
     await dependencies.incrementEmailAttempts(challenge.id);
     throw new PasswordResetChallengeError("INVALID_EMAIL_CODE", "Email code is invalid");
   }
@@ -511,7 +512,7 @@ export async function verifyPasswordResetSmsCode(
   const providedCodeHash = dependencies.hashValue(input.smsCode);
 
   // Constant-time comparison prevents timing side-channel attacks on the OTP hash.
-  if (!crypto.timingSafeEqual(Buffer.from(providedCodeHash, "hex"), Buffer.from(challenge.smsCodeHash!, "hex"))) {
+  if (!timingSafeEqualHex(providedCodeHash, challenge.smsCodeHash, 32)) {
     await dependencies.incrementSmsAttempts(challenge.id);
     throw new PasswordResetChallengeError("INVALID_SMS_CODE", "SMS code is invalid");
   }
@@ -662,7 +663,7 @@ export async function completePasswordResetChallenge(
 
   // Constant-time comparison prevents timing side-channel attacks on the reset token hash.
   const providedResetHash = dependencies.hashValue(input.resetToken);
-  if (!crypto.timingSafeEqual(Buffer.from(providedResetHash, "hex"), Buffer.from(challenge.resetTokenHash!, "hex"))) {
+  if (!timingSafeEqualHex(providedResetHash, challenge.resetTokenHash, 32)) {
     throw new PasswordResetChallengeError(
       "INVALID_OR_EXPIRED_RESET_TOKEN",
       "Reset token is invalid or expired",

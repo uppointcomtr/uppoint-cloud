@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-03-03 (security closure: robust hash compare + verify idempotency + audit completeness)
+
+### Fixed
+- Hardened security-critical hash comparisons against malformed digest inputs:
+  - Added centralized `timingSafeEqualText()` / `timingSafeEqualHex()` helper in `lib/security/constant-time.ts`.
+  - Updated auth verification flows to use strict constant-time hex comparison with length/format guards:
+    - `modules/auth/server/login-challenge.ts`
+    - `modules/auth/server/register-verification-challenge.ts`
+    - `modules/auth/server/password-reset-challenge.ts`
+  - Updated internal token checks and health-token verification to use centralized constant-time text comparison:
+    - `lib/security/internal-request-auth.ts`
+    - `app/api/health/route.ts`
+- Closed duplicate submission risk on OTP verification endpoints by adding idempotency wrappers:
+  - `app/api/auth/login/challenge/email/verify/route.ts`
+  - `app/api/auth/login/challenge/phone/verify/route.ts`
+  - `app/api/auth/forgot-password/challenge/verify-sms/route.ts`
+- Closed login OTP failure audit gaps:
+  - login verify routes now emit `login_otp_failed` consistently for validation failures and rejected/expired challenges.
+
+### Added
+- New security unit tests for constant-time helpers:
+  - `tests/security/constant-time.test.ts`
+- Updated auth service tests to use realistic SHA-256 style hex mocks where timing-safe hash checks are exercised:
+  - `tests/auth/login-challenge.test.ts`
+  - `tests/auth/register-verification-challenge.test.ts`
+  - `tests/auth/password-reset-challenge.test.ts`
+
 ## 2026-03-03 (governance: canonical findings register)
 
 ### Changed
