@@ -62,11 +62,21 @@ export async function POST(request: Request) {
   try {
     payload = JSON.parse(verifiedRequest.rawBody);
   } catch {
+    await logAudit("internal_audit_security_event_invalid_body", "unknown", undefined, {
+      requestId: verifiedRequest.requestId,
+      reason: "JSON_PARSE_FAILED",
+      result: "FAILURE",
+    });
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 
   const parsed = securityEventSchema.safeParse(payload);
   if (!parsed.success) {
+    await logAudit("internal_audit_security_event_invalid_body", "unknown", undefined, {
+      requestId: verifiedRequest.requestId,
+      reason: "SCHEMA_VALIDATION_FAILED",
+      result: "FAILURE",
+    });
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 

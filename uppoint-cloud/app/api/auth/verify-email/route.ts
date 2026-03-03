@@ -1,14 +1,35 @@
 import { NextResponse } from "next/server";
 
 import { logAudit } from "@/lib/audit-log";
+import { env } from "@/lib/env";
 import { fail } from "@/lib/http/response";
-import { checkRateLimit, getClientIp, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { checkRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { resolveTrustedClientIp } from "@/lib/security/client-ip";
+
+function resolveDeprecatedRouteClientIp(request?: Request): string | null {
+  if (!request) {
+    return null;
+  }
+
+  return resolveTrustedClientIp({
+    realIpHeader: request.headers.get("x-real-ip"),
+    forwardedForHeader: request.headers.get("x-forwarded-for"),
+    isProduction: env.NODE_ENV === "production",
+  });
+}
 
 async function applyDeprecatedEndpointGuards(request?: Request): Promise<Response | null> {
+  const clientIp = resolveDeprecatedRouteClientIp(request);
+  if (env.NODE_ENV === "production" && !clientIp) {
+    return NextResponse.json(
+      fail("RATE_LIMIT_CONTEXT_UNAVAILABLE"),
+      { status: 503 },
+    );
+  }
+
   try {
-    const ip = await getClientIp();
-    if (ip !== "unknown") {
-      const ipResult = await checkRateLimit("deprecated-verify-email", ip, 60, 60);
+    if (clientIp) {
+      const ipResult = await checkRateLimit("deprecated-verify-email", clientIp, 60, 60);
       if (!ipResult.allowed) {
         const retryAfter = ipResult.retryAfterSeconds ?? 60;
         return NextResponse.json(
@@ -39,15 +60,24 @@ async function applyDeprecatedEndpointGuards(request?: Request): Promise<Respons
 async function deprecatedResponse(request: Request | undefined, method: "GET" | "POST") {
   const guardResponse = await applyDeprecatedEndpointGuards(request);
   if (guardResponse) {
-    const ip = await getClientIp().catch(() => "unknown");
-    await logAudit("rate_limit_exceeded", ip, undefined, {
-      action: "deprecated-verify-email",
-      scope: "ip_or_agent",
-    });
+    const ip = resolveDeprecatedRouteClientIp(request) ?? "unknown";
+    if (guardResponse.status === 429) {
+      await logAudit("rate_limit_exceeded", ip, undefined, {
+        action: "deprecated-verify-email",
+        scope: "ip_or_agent",
+      });
+    } else {
+      await logAudit("deprecated_endpoint_access", ip, undefined, {
+        endpoint: "/api/auth/verify-email",
+        method,
+        result: "FAILURE",
+        reason: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+      });
+    }
     return guardResponse;
   }
 
-  const ip = await getClientIp().catch(() => "unknown");
+  const ip = resolveDeprecatedRouteClientIp(request) ?? "unknown";
   await logAudit("deprecated_endpoint_access", ip, undefined, {
     endpoint: "/api/auth/verify-email",
     method,

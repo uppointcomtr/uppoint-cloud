@@ -134,6 +134,8 @@ describe("tenant authorization guardrail", () => {
     const candidateRoots = [
       path.join(process.cwd(), "app"),
       path.join(process.cwd(), "modules"),
+      path.join(process.cwd(), "db"),
+      path.join(process.cwd(), "lib"),
     ];
     const files = candidateRoots.flatMap((root) => collectFilesRecursively(root));
     const candidateFiles = files.filter((filePath) => /\.(ts|tsx)$/.test(filePath));

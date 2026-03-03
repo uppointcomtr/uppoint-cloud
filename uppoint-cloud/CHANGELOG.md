@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-03-03 (security closure: session invalidation, deprecated fail-closed, internal payload audit, auth-priority outbox)
+
+### Fixed
+- Closed password-reset session invalidation delay in production (`F14`):
+  - `auth.ts` now disables JWT revalidation cache in production so `tokenVersion` changes are enforced immediately.
+- Closed deprecated endpoint fail-open behavior under missing trusted IP context (`F15`):
+  - `app/api/auth/verify-email/route.ts`
+  - `app/api/auth/forgot-password/request/route.ts`
+  - `app/api/auth/forgot-password/reset/route.ts`
+  - production now returns `503 RATE_LIMIT_CONTEXT_UNAVAILABLE` when trusted client IP cannot be resolved.
+- Closed internal audit payload blind spot (`F16`):
+  - `app/api/internal/audit/security-event/route.ts` now logs `internal_audit_security_event_invalid_body` on JSON parse/schema failures.
+  - `lib/audit-log.ts` includes the new audit action.
+
+### Changed
+- Reduced OTP delivery starvation risk under load (`F17`):
+  - `modules/notifications/server/outbox.ts` now prioritizes auth-scoped notifications (`metadata.scope` prefixed with `auth-`) in dispatch candidate ordering.
+- Strengthened tenant boundary guardrail scan coverage:
+  - `tests/tenant/tenant-guardrail.test.ts` now scans `db/` and `lib/` in addition to `app/` and `modules/` for unreviewed direct tenant queries.
+
+### Added
+- New regression tests:
+  - `tests/auth/deprecated-routes-rate-limit-context.test.ts`
+  - extended `tests/internal/security-event-route.test.ts` with invalid-body audit coverage.
+- Stabilized deprecated route unit tests by mocking limiter behavior:
+  - `tests/auth/deprecated-verify-email-route.test.ts`
+  - `tests/auth/deprecated-forgot-password-routes.test.ts`
+
 ## 2026-03-03 (ops/security: edge telemetry alerting + internal guardrail standardization)
 
 ### Added

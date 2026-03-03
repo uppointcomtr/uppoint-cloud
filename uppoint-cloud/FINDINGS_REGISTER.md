@@ -52,6 +52,11 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F11 | Edge security telemetry emit failures were silently swallowed | observability | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `proxy.ts` catch block in `emitEdgeSecurityAudit` | Emit structured error logs for telemetry delivery failure without leaking secrets |
 | F12 | Edge telemetry emit failures lacked periodic alerting pipeline | operational/security-monitoring | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `scripts/run-edge-audit-emit-check.sh`, `scripts/alert-edge-audit-emit.sh`, `ops/cron/uppoint-edge-audit-emit-check`, `ops/logrotate/uppoint-cloud` | Add fail-pattern monitor with cooldown + Slack/email alert channels and cron deployment instructions |
 | F13 | Ops email alert enqueue used psql variable interpolation mode that fails with inline `-c` execution | operational/reliability | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `scripts/alert-edge-audit-emit.sh`, `scripts/alert-nginx-drift.sh`, manual smoke run output (`syntax error at or near \":\"`) | Use `psql -f` with explicit `-v` variables for SQL templating; verify with real outbox enqueue + dispatch |
+| F14 | JWT session revalidation cache delayed password-reset session invalidation in production | security/session | High | None | closed | 2026-03-03 | 2026-03-03 | codex | `auth.ts` (`SESSION_REVALIDATION_CACHE_ENABLED`), `modules/auth/server/password-reset-challenge.ts` | Disable revalidation cache in production so tokenVersion bumps invalidate active JWT sessions immediately |
+| F15 | Deprecated auth endpoints could degrade to identifier-only throttling when trusted IP context is unavailable | security/abuse-resilience | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `app/api/auth/verify-email/route.ts`, `app/api/auth/forgot-password/request/route.ts`, `app/api/auth/forgot-password/reset/route.ts`, `tests/auth/deprecated-routes-rate-limit-context.test.ts` | Fail closed with `503 RATE_LIMIT_CONTEXT_UNAVAILABLE` in production when trusted client IP cannot be resolved |
+| F16 | Internal security-event invalid payload attempts were not audited | observability/audit | Low | None | closed | 2026-03-03 | 2026-03-03 | codex | `app/api/internal/audit/security-event/route.ts`, `lib/audit-log.ts`, `tests/internal/security-event-route.test.ts` | Audit JSON parse/schema validation failures with structured reason and requestId |
+| F17 | Auth OTP notifications lacked explicit priority in outbox dispatch ordering | reliability/scale | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `modules/notifications/server/outbox.ts` | Prioritize `metadata.scope LIKE 'auth-%'` records in candidate ordering to reduce OTP latency under load |
+| F18 | Tenant-query guardrail did not scan infra layers (`db/`, `lib/`) | architecture/tenant-isolation | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `tests/tenant/tenant-guardrail.test.ts` | Expand guardrail scan roots to include `db/` and `lib/` to prevent unreviewed direct tenant queries outside app/modules |
 
 ## Change Log (Register-only)
 
@@ -73,6 +78,11 @@ Record only register updates here (not general product changes).
 | 2026-03-03 | F11 | Closed: edge telemetry emit catch now logs structured failure signal | `proxy.ts` catch logging |
 | 2026-03-03 | F12 | Closed: edge audit emit failure monitor and alert pipeline added with cooldown + cron integration | edge-audit check/alert scripts + cron + logrotate/docs |
 | 2026-03-03 | F13 | Closed: outbox email alert insert now uses portable `psql -f` + `-v` variable binding in both alert scripts | manual enqueue smoke + dispatch verification |
+| 2026-03-03 | F14 | Closed: production JWT callback now bypasses revalidation cache for immediate tokenVersion invalidation | `auth.ts` |
+| 2026-03-03 | F15 | Closed: deprecated auth routes now fail closed without trusted rate-limit IP context in production | deprecated route files + `tests/auth/deprecated-routes-rate-limit-context.test.ts` |
+| 2026-03-03 | F16 | Closed: internal security-event route now audits invalid-body attempts | route + audit action + unit test |
+| 2026-03-03 | F17 | Closed: outbox dispatch ordering now prioritizes auth-scoped notifications | `modules/notifications/server/outbox.ts` |
+| 2026-03-03 | F18 | Closed: tenant direct-query guardrail scan now includes `db/` and `lib/` layers | `tests/tenant/tenant-guardrail.test.ts` |
 
 ## Audit Output Contract
 

@@ -37,6 +37,7 @@ export type AuditAction =
   | "internal_dispatch_unauthorized"
   | "internal_audit_security_event_unauthorized"
   | "internal_audit_security_event_replay_blocked"
+  | "internal_audit_security_event_invalid_body"
   | "deprecated_endpoint_access"
   | "tenant_access_denied"
   | "tenant_role_insufficient"
@@ -59,6 +60,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "internal_dispatch_unauthorized",
   "internal_audit_security_event_unauthorized",
   "internal_audit_security_event_replay_blocked",
+  "internal_audit_security_event_invalid_body",
   "deprecated_endpoint_access",
   "tenant_access_denied",
   "tenant_role_insufficient",

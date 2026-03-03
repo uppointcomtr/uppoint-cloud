@@ -13,6 +13,8 @@ import { withLocale } from "@/modules/i18n/paths";
 import { resolveTrustedClientIp } from "@/lib/security/client-ip";
 
 const SESSION_REVALIDATE_WINDOW_MS = env.AUTH_SESSION_REVALIDATE_SECONDS * 1000;
+// Security-sensitive: production disables JWT revalidation cache so tokenVersion bumps invalidate sessions immediately.
+const SESSION_REVALIDATION_CACHE_ENABLED = env.NODE_ENV !== "production";
 
 function pickAuthHeader(
   headersInput: unknown,
@@ -123,7 +125,8 @@ export const authOptions: NextAuthOptions = {
 
       const tokenValidatedAt = typeof token.validatedAt === "number" ? token.validatedAt : 0;
       if (
-        token.revoked !== true
+        SESSION_REVALIDATION_CACHE_ENABLED
+        && token.revoked !== true
         && tokenValidatedAt > 0
         && nowMs - tokenValidatedAt < SESSION_REVALIDATE_WINDOW_MS
       ) {

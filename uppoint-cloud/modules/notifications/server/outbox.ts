@@ -93,6 +93,7 @@ const defaultOutboxDependencies: OutboxDependencies = {
           "recipient",
           "subject",
           "body",
+          "metadata",
           "attemptCount",
           "maxAttempts",
           "nextAttemptAt",
@@ -111,11 +112,19 @@ const defaultOutboxDependencies: OutboxDependencies = {
         "recipient",
         "subject",
         "body",
+        "metadata",
         "attemptCount",
         "maxAttempts"
       FROM "due_candidates"
       WHERE "scope_rank" <= ${partitionSize}
-      ORDER BY "scope_rank" ASC, "nextAttemptAt" ASC, "createdAt" ASC
+      ORDER BY
+        "scope_rank" ASC,
+        CASE
+          WHEN COALESCE("metadata"->>'scope', '') LIKE 'auth-%' THEN 0
+          ELSE 1
+        END ASC,
+        "nextAttemptAt" ASC,
+        "createdAt" ASC
       LIMIT ${take}
     `,
   acquireLock: async ({ id, now, lockOwner, staleBefore }) => {

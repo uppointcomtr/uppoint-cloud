@@ -100,4 +100,36 @@ describe("internal security event route", () => {
       }),
     );
   });
+
+  it("audits invalid body payloads from authorized internal requests", async () => {
+    withRateLimitMock.mockResolvedValueOnce(null);
+    verifyInternalRequestAuthMock.mockResolvedValueOnce({
+      requestId: "req_invalid_payload_1",
+      rawBody: "{",
+    });
+    withRateLimitByIdentifierMock.mockResolvedValueOnce(null);
+    logAuditMock.mockResolvedValueOnce(undefined);
+
+    const response = await securityEventRoute.POST(
+      new Request("https://cloud.uppoint.com.tr/api/internal/audit/security-event", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: "INVALID_BODY",
+    });
+    expect(logAuditMock).toHaveBeenCalledWith(
+      "internal_audit_security_event_invalid_body",
+      "unknown",
+      undefined,
+      expect.objectContaining({
+        requestId: "req_invalid_payload_1",
+        reason: "JSON_PARSE_FAILED",
+        result: "FAILURE",
+      }),
+    );
+  });
 });
