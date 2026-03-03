@@ -13,6 +13,9 @@ const PENDING_STATUS_CODE = -1;
 const PENDING_CONTENT_TYPE = "application/x-idempotency-pending";
 const WAIT_FOR_PENDING_MAX_MS = 3_000;
 const WAIT_FOR_PENDING_POLL_MS = 100;
+const PERSIST_MAX_RETRY_ATTEMPTS = 3;
+const PERSIST_RETRY_BASE_DELAY_MS = 50;
+const PERSIST_FAILURE_RESERVATION_SECONDS = 24 * 60 * 60;
 
 function normalizeIpAddress(value: string): string | null {
   const trimmed = value.trim();
@@ -333,6 +336,51 @@ async function persistResponse(
   });
 }
 
+async function persistResponseWithRetry(
+  action: string,
+  key: string,
+  subjectHash: string,
+  response: Response,
+  ttlSeconds: number,
+): Promise<void> {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < PERSIST_MAX_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await persistResponse(action, key, subjectHash, response, ttlSeconds);
+      return;
+    } catch (error) {
+      lastError = error;
+      const delayMs = PERSIST_RETRY_BASE_DELAY_MS * 2 ** attempt;
+      await new Promise((resolve) => {
+        setTimeout(resolve, delayMs);
+      });
+    }
+  }
+
+  throw lastError;
+}
+
+async function extendPendingReservationOnPersistFailure(
+  action: string,
+  key: string,
+  subjectHash: string,
+): Promise<void> {
+  const expiresAt = new Date(Date.now() + PERSIST_FAILURE_RESERVATION_SECONDS * 1000);
+
+  await prisma.idempotencyRecord.updateMany({
+    where: {
+      action,
+      key,
+      subjectHash,
+      statusCode: PENDING_STATUS_CODE,
+    },
+    data: {
+      expiresAt,
+    },
+  });
+}
+
 export async function withIdempotency(
   action: string,
   handler: () => Promise<Response>,
@@ -391,6 +439,18 @@ export async function withIdempotency(
   }
 
   const response = await handler();
-  await persistResponse(action, key, subjectHash, response, ttlSeconds).catch(() => undefined);
+  try {
+    await persistResponseWithRetry(action, key, subjectHash, response, ttlSeconds);
+  } catch (error) {
+    // Security-sensitive: do not silently swallow persistence failures; keep reservation active longer.
+    await extendPendingReservationOnPersistFailure(action, key, subjectHash).catch(() => undefined);
+    console.error("[idempotency] Failed to persist response cache entry", error);
+
+    try {
+      response.headers.set("X-Idempotency-Persisted", "false");
+    } catch {
+      // Ignore header mutation errors; response body/status remain authoritative.
+    }
+  }
   return response;
 }

@@ -139,6 +139,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
 - Tenant context resolver: [modules/tenant/server/user-tenant.ts](/opt/uppoint-cloud/modules/tenant/server/user-tenant.ts)
+- Instance domain boundary (no runtime provisioning yet): [modules/instances/domain/contracts.ts](/opt/uppoint-cloud/modules/instances/domain/contracts.ts), [modules/instances/server/security-boundary.ts](/opt/uppoint-cloud/modules/instances/server/security-boundary.ts)
 - Idempotent API helper: [lib/http/idempotency.ts](/opt/uppoint-cloud/lib/http/idempotency.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
 - Logout audit endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
@@ -169,6 +170,8 @@ npm run build:deploy
 npm run verify:nginx-drift
 npm run verify:audit-integrity
 ```
+
+`npm run test:e2e` defaults to mutation coverage (`E2E_ALLOW_MUTATIONS=1`) against an isolated local server on `127.0.0.1:3101`. Set `E2E_ALLOW_MUTATIONS=0` only for explicit read-only smoke.
 
 Nginx rate-limit drift policy:
 

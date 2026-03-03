@@ -98,4 +98,28 @@ describe("notification outbox", () => {
       errorMessage: "provider down",
     }));
   });
+
+  it("passes scope partition size into due-record selection", async () => {
+    const findDueRecords = vi.fn(async () => []);
+
+    const result = await dispatchNotificationOutboxBatch(
+      { batchSize: 20, lockOwner: "worker-c" },
+      {
+        now: () => new Date("2026-03-02T08:00:00.000Z"),
+        createOutboxRecord: vi.fn(async () => {}),
+        findDueRecords,
+        acquireLock: vi.fn(async () => false),
+        markSent: vi.fn(async () => {}),
+        markFailedAttempt: vi.fn(async () => {}),
+        sendEmail: vi.fn(async () => {}),
+        sendSms: vi.fn(async () => {}),
+      },
+    );
+
+    expect(result).toEqual({ inspected: 0, sent: 0, failed: 0 });
+    expect(findDueRecords).toHaveBeenCalledWith(expect.objectContaining({
+      take: 20,
+      partitionSize: 5,
+    }));
+  });
 });

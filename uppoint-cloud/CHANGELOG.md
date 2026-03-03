@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-03-03 (security closure: F1-F9 follow-up, auth-first + instances boundary scaffold)
+
+### Fixed
+- Closed idempotency persistence silent-failure path:
+  - `lib/http/idempotency.ts` now retries response persistence and marks responses with `X-Idempotency-Persisted: false` when cache persistence ultimately fails.
+  - Keeps pending reservation alive longer on persist failure to reduce replay race windows.
+  - Added regression coverage in `tests/http/idempotency.test.ts`.
+- Closed register challenge replacement race type gap:
+  - `modules/auth/server/register-verification-challenge.ts` now includes `replacePendingChallengeByEmail` in typed challenge-issuance dependencies.
+- Closed proxy env drift from validated source:
+  - `proxy.ts` now reads environment through `lib/env/proxy.ts` instead of raw scattered `process.env` access.
+- Closed deprecated-route test audit-noise gap:
+  - `tests/auth/deprecated-forgot-password-routes.test.ts` and `tests/auth/deprecated-verify-email-route.test.ts` now mock `logAudit` and assert deprecation audit calls explicitly.
+
+### Changed
+- Added fairer notification outbox candidate selection:
+  - `modules/notifications/server/outbox.ts` now uses scope-aware partitioned selection to reduce starvation risk from a single tenant/user/global scope dominating the batch.
+- Strengthened remote smoke workflow guardrail:
+  - `.github/workflows/remote-auth-smoke.yml` now runs `npm run verify:workflow-layout` before smoke execution.
+- Increased local E2E mutation coverage by default:
+  - `scripts/run-e2e-smoke-local.sh` now defaults `E2E_ALLOW_MUTATIONS=1` (can still be overridden to `0` explicitly).
+- Introduced KVM/VPS architecture boundary scaffold (no feature implementation yet):
+  - Added `modules/instances/domain/contracts.ts`
+  - Added `modules/instances/server/security-boundary.ts`
+  - Added `modules/instances/README.md`
+  - Added tests: `tests/instances/security-boundary.test.ts`
+  - Updated architecture docs in `README.md`.
+
 ## 2026-03-02 (hotfix: audit advisory lock signature portability)
 
 ### Fixed

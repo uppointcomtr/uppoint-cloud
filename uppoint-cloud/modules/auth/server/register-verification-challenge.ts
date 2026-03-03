@@ -156,6 +156,14 @@ interface StartRegisterVerificationDependencies {
     emailCodeHash: string;
     emailCodeExpiresAt: Date;
   }) => Promise<{ id: string }>;
+  replacePendingChallengeByEmail?: (input: {
+    email: string;
+    name: string;
+    phone: string;
+    passwordHash: string;
+    emailCodeHash: string;
+    emailCodeExpiresAt: Date;
+  }) => Promise<{ id: string }>;
   sendEmailCode: (input: { to: string; subject: string; text: string }) => Promise<void>;
   hashPassword: (password: string) => Promise<string>;
   now: () => Date;
@@ -205,6 +213,33 @@ const defaultStartRegisterVerificationDependencies: StartRegisterVerificationDep
         id: true,
       },
     }),
+  replacePendingChallengeByEmail: async (input) =>
+    prisma.$transaction(async (tx) => {
+      // Security-sensitive: serialize per-email challenge replacement to avoid concurrent duplicate pending records.
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(CAST(hashtext(${input.email}) AS bigint))
+      `;
+
+      await tx.registrationVerificationChallenge.deleteMany({
+        where: {
+          email: input.email,
+        },
+      });
+
+      return tx.registrationVerificationChallenge.create({
+        data: {
+          email: input.email,
+          name: input.name,
+          phone: input.phone,
+          passwordHash: input.passwordHash,
+          emailCodeHash: input.emailCodeHash,
+          emailCodeExpiresAt: input.emailCodeExpiresAt,
+        },
+        select: {
+          id: true,
+        },
+      });
+    }),
   sendEmailCode: async (input) => {
     await enqueueEmailNotification({
       to: input.to,
@@ -226,7 +261,13 @@ async function issueRegisterChallenge(
   input: IssueRegisterChallengeInput,
   dependencies: Pick<
     StartRegisterVerificationDependencies,
-    "deletePendingChallengesByEmail" | "createPendingChallenge" | "sendEmailCode" | "now" | "generateCode" | "hashValue"
+    | "deletePendingChallengesByEmail"
+    | "createPendingChallenge"
+    | "replacePendingChallengeByEmail"
+    | "sendEmailCode"
+    | "now"
+    | "generateCode"
+    | "hashValue"
   >,
 ): Promise<{ challengeId: string; emailCodeExpiresAt: Date }> {
   const now = dependencies.now();
@@ -234,16 +275,26 @@ async function issueRegisterChallenge(
   const emailCode = dependencies.generateCode();
   const emailCodeHash = dependencies.hashValue(emailCode);
 
-  await dependencies.deletePendingChallengesByEmail(input.email);
-
-  const challenge = await dependencies.createPendingChallenge({
-    email: input.email,
-    name: input.name,
-    phone: input.phone,
-    passwordHash: input.passwordHash,
-    emailCodeHash,
-    emailCodeExpiresAt,
-  });
+  const challenge = dependencies.replacePendingChallengeByEmail
+    ? await dependencies.replacePendingChallengeByEmail({
+        email: input.email,
+        name: input.name,
+        phone: input.phone,
+        passwordHash: input.passwordHash,
+        emailCodeHash,
+        emailCodeExpiresAt,
+      })
+    : await (async () => {
+        await dependencies.deletePendingChallengesByEmail(input.email);
+        return dependencies.createPendingChallenge({
+          email: input.email,
+          name: input.name,
+          phone: input.phone,
+          passwordHash: input.passwordHash,
+          emailCodeHash,
+          emailCodeExpiresAt,
+        });
+      })();
 
   const message = buildRegisterEmailCodeMessage({
     locale: input.locale,

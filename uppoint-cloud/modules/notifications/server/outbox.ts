@@ -14,6 +14,7 @@ type NotificationOutboxStatus = "PENDING" | "SENT" | "FAILED";
 
 const DEFAULT_DISPATCH_BATCH_SIZE = 20;
 const MAX_ALLOWED_BATCH_SIZE = 200;
+const MAX_SCOPE_PARTITION_SIZE = 5;
 const LOCK_STALE_SECONDS = 120;
 const MAX_BACKOFF_SECONDS = 15 * 60;
 
@@ -41,6 +42,7 @@ interface OutboxDependencies {
   findDueRecords: (input: {
     now: Date;
     take: number;
+    partitionSize?: number;
   }) => Promise<NotificationOutboxRecord[]>;
   acquireLock: (input: { id: string; now: Date; lockOwner: string; staleBefore: Date }) => Promise<boolean>;
   markSent: (input: { id: string; now: Date; lockOwner: string }) => Promise<void>;
@@ -82,8 +84,27 @@ const defaultOutboxDependencies: OutboxDependencies = {
       )
     `;
   },
-  findDueRecords: async ({ now, take }) =>
+  findDueRecords: async ({ now, take, partitionSize = 1 }) =>
     prisma.$queryRaw<NotificationOutboxRecord[]>`
+      WITH "due_candidates" AS (
+        SELECT
+          "id",
+          "channel",
+          "recipient",
+          "subject",
+          "body",
+          "attemptCount",
+          "maxAttempts",
+          "nextAttemptAt",
+          "createdAt",
+          ROW_NUMBER() OVER (
+            PARTITION BY COALESCE("tenantId", "userId", CONCAT('global:', "channel"::text))
+            ORDER BY "nextAttemptAt" ASC, "createdAt" ASC
+          ) AS "scope_rank"
+        FROM "NotificationOutbox"
+        WHERE "status" = 'PENDING'::"NotificationOutboxStatus"
+          AND "nextAttemptAt" <= ${now}
+      )
       SELECT
         "id",
         "channel",
@@ -92,10 +113,9 @@ const defaultOutboxDependencies: OutboxDependencies = {
         "body",
         "attemptCount",
         "maxAttempts"
-      FROM "NotificationOutbox"
-      WHERE "status" = 'PENDING'::"NotificationOutboxStatus"
-        AND "nextAttemptAt" <= ${now}
-      ORDER BY "createdAt" ASC
+      FROM "due_candidates"
+      WHERE "scope_rank" <= ${partitionSize}
+      ORDER BY "scope_rank" ASC, "nextAttemptAt" ASC, "createdAt" ASC
       LIMIT ${take}
     `,
   acquireLock: async ({ id, now, lockOwner, staleBefore }) => {
@@ -162,6 +182,11 @@ function clampDispatchBatchSize(batchSize?: number): number {
   }
 
   return Math.max(1, Math.min(MAX_ALLOWED_BATCH_SIZE, Math.floor(batchSize)));
+}
+
+function resolveScopePartitionSize(batchSize: number): number {
+  const scaled = Math.floor(batchSize / 4);
+  return Math.max(1, Math.min(MAX_SCOPE_PARTITION_SIZE, scaled || 1));
 }
 
 export async function enqueueEmailNotification(
@@ -232,10 +257,15 @@ export async function dispatchNotificationOutboxBatch(
 ): Promise<DispatchOutboxResult> {
   const now = dependencies.now();
   const batchSize = clampDispatchBatchSize(input?.batchSize);
+  const partitionSize = resolveScopePartitionSize(batchSize);
   const lockOwner = input?.lockOwner?.trim() || `worker-${randomUUID()}`;
   const staleBefore = new Date(now.getTime() - LOCK_STALE_SECONDS * 1000);
 
-  const records = await dependencies.findDueRecords({ now, take: batchSize });
+  const records = await dependencies.findDueRecords({
+    now,
+    take: batchSize,
+    partitionSize,
+  });
   let sent = 0;
   let failed = 0;
 

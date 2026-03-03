@@ -1,9 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const logAuditMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock("@/lib/audit-log", () => ({
+  logAudit: logAuditMock,
+}));
 
 import * as requestRoute from "@/app/api/auth/forgot-password/request/route";
 import * as resetRoute from "@/app/api/auth/forgot-password/reset/route";
 
 describe("deprecated forgot-password routes", () => {
+  beforeEach(() => {
+    logAuditMock.mockClear();
+  });
+
   it("returns 410 for POST /api/auth/forgot-password/request", async () => {
     const response = await requestRoute.POST();
     expect(response.status).toBe(410);
@@ -11,6 +21,15 @@ describe("deprecated forgot-password routes", () => {
       success: false,
       error: "ENDPOINT_DEPRECATED",
     });
+    expect(logAuditMock).toHaveBeenCalledWith(
+      "deprecated_endpoint_access",
+      expect.any(String),
+      undefined,
+      expect.objectContaining({
+        endpoint: "/api/auth/forgot-password/request",
+        method: "POST",
+      }),
+    );
   });
 
   it("returns 410 for POST /api/auth/forgot-password/reset", async () => {
@@ -20,5 +39,14 @@ describe("deprecated forgot-password routes", () => {
       success: false,
       error: "ENDPOINT_DEPRECATED",
     });
+    expect(logAuditMock).toHaveBeenCalledWith(
+      "deprecated_endpoint_access",
+      expect.any(String),
+      undefined,
+      expect.objectContaining({
+        endpoint: "/api/auth/forgot-password/reset",
+        method: "POST",
+      }),
+    );
   });
 });

@@ -97,4 +97,4 @@ if [ "$READY" -ne 1 ]; then
   exit 1
 fi
 
-RUN_E2E=1 E2E_BASE_URL="$BASE_URL" E2E_ALLOW_MUTATIONS="${E2E_ALLOW_MUTATIONS:-0}" npx vitest run tests/e2e --testTimeout=30000
+RUN_E2E=1 E2E_BASE_URL="$BASE_URL" E2E_ALLOW_MUTATIONS="${E2E_ALLOW_MUTATIONS:-1}" npx vitest run tests/e2e --testTimeout=30000

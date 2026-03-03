@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+import { proxyEnv } from "@/lib/env/proxy";
 import {
   getRequestHost,
   hasConflictingForwardedHost,
@@ -19,24 +20,24 @@ import {
 } from "@/modules/i18n/paths";
 
 const PUBLIC_FILE_PATTERN = /\.[^/]+$/;
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const IS_PRODUCTION = proxyEnv.NODE_ENV === "production";
 const ALLOWED_HOSTS = resolveAllowedHosts({
-  appUrl: process.env.NEXT_PUBLIC_APP_URL,
-  configuredHosts: process.env.UPPOINT_ALLOWED_HOSTS,
+  appUrl: proxyEnv.NEXT_PUBLIC_APP_URL,
+  configuredHosts: proxyEnv.UPPOINT_ALLOWED_HOSTS,
 });
 const ALLOWED_ORIGINS = resolveAllowedOrigins({
-  appUrl: process.env.NEXT_PUBLIC_APP_URL,
-  configuredOrigins: process.env.UPPOINT_ALLOWED_ORIGINS,
+  appUrl: proxyEnv.NEXT_PUBLIC_APP_URL,
+  configuredOrigins: proxyEnv.UPPOINT_ALLOWED_ORIGINS,
 });
-const INTERNAL_AUDIT_TOKEN = process.env.INTERNAL_AUDIT_TOKEN;
-const INTERNAL_AUDIT_SIGNING_SECRET = process.env.INTERNAL_AUDIT_SIGNING_SECRET;
+const INTERNAL_AUDIT_TOKEN = proxyEnv.INTERNAL_AUDIT_TOKEN;
+const INTERNAL_AUDIT_SIGNING_SECRET = proxyEnv.INTERNAL_AUDIT_SIGNING_SECRET;
 const INTERNAL_AUDIT_URL = (() => {
-  if (!process.env.NEXT_PUBLIC_APP_URL) {
+  if (!proxyEnv.NEXT_PUBLIC_APP_URL) {
     return null;
   }
 
   try {
-    return new URL("/api/internal/audit/security-event", process.env.NEXT_PUBLIC_APP_URL).toString();
+    return new URL("/api/internal/audit/security-event", proxyEnv.NEXT_PUBLIC_APP_URL).toString();
   } catch {
     return null;
   }
@@ -67,12 +68,12 @@ async function hmacSha256Hex(secret: string, value: string): Promise<string> {
   return toHex(signature);
 }
 const INTERNAL_AUDIT_ORIGIN = (() => {
-  if (!process.env.NEXT_PUBLIC_APP_URL) {
+  if (!proxyEnv.NEXT_PUBLIC_APP_URL) {
     return null;
   }
 
   try {
-    return new URL(process.env.NEXT_PUBLIC_APP_URL).origin;
+    return new URL(proxyEnv.NEXT_PUBLIC_APP_URL).origin;
   } catch {
     return null;
   }
@@ -312,7 +313,7 @@ export async function proxy(request: NextRequest) {
   // Security-sensitive: align middleware token lookup with the secure cookie name set over HTTPS.
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
+    secret: proxyEnv.AUTH_SECRET,
     secureCookie: useSecureCookie,
     cookieName: useSecureCookie
       ? "__Secure-next-auth.session-token"

@@ -164,4 +164,47 @@ describe("withIdempotency", () => {
     });
     expect(handler).not.toHaveBeenCalled();
   });
+
+  it("marks response when cache persistence fails after handler execution", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    mocks.headersMock.mockResolvedValue(
+      new Headers({
+        "idempotency-key": "key-12345678",
+        "x-real-ip": "203.0.113.10",
+        "user-agent": "vitest-agent",
+      }),
+    );
+    mocks.findUnique.mockResolvedValue(null);
+    mocks.create.mockResolvedValue(undefined);
+    mocks.updateMany
+      // persistResponse updateMany retries
+      .mockRejectedValueOnce(new Error("persist failed"))
+      .mockRejectedValueOnce(new Error("persist failed"))
+      .mockRejectedValueOnce(new Error("persist failed"))
+      // extendPendingReservationOnPersistFailure updateMany
+      .mockResolvedValueOnce({ count: 1 });
+    mocks.upsert.mockResolvedValue(undefined);
+
+    const { withIdempotency } = await loadIdempotencyModule();
+    const handler = vi.fn().mockResolvedValue(
+      new Response("{\"ok\":true}", {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }),
+    );
+
+    const response = await withIdempotency("auth:test", handler);
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Idempotency-Persisted")).toBe("false");
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "[idempotency] Failed to persist response cache entry",
+      expect.any(Error),
+    );
+    consoleErrorSpy.mockRestore();
+  });
 });
