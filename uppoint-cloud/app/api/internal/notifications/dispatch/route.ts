@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     tokenHeaderName: "x-internal-dispatch-token",
     expectedToken: env.INTERNAL_DISPATCH_TOKEN ?? "",
     signingSecret: env.INTERNAL_DISPATCH_SIGNING_SECRET ?? "",
+    requireLoopbackSource: env.NODE_ENV === "production",
   });
 
   if (!verifiedRequest) {

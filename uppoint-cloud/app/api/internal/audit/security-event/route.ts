@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     tokenHeaderName: "x-internal-audit-token",
     expectedToken: env.INTERNAL_AUDIT_TOKEN ?? "",
     signingSecret: env.INTERNAL_AUDIT_SIGNING_SECRET ?? "",
+    requireLoopbackSource: env.NODE_ENV === "production",
   });
 
   if (!verifiedRequest) {

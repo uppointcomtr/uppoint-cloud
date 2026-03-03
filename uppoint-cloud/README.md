@@ -74,6 +74,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `INTERNAL_DISPATCH_TOKEN` (required in production; secures internal notification dispatcher route)
 - `INTERNAL_AUDIT_SIGNING_SECRET` (required in production; HMAC signing key for internal audit ingest requests)
 - `INTERNAL_DISPATCH_SIGNING_SECRET` (required in production; HMAC signing key for notification dispatch requests)
+- `INTERNAL_AUDIT_ENDPOINT_URL` (optional override; defaults to loopback `http://127.0.0.1:3000/api/internal/audit/security-event`)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)
@@ -295,6 +296,13 @@ Optional CI audit-integrity check:
 - Optional repository variable:
   - `E2E_BASE_URL` (default is `https://cloud.uppoint.com.tr`)
 
+Repository/app-root contract checks:
+
+```bash
+cd /opt/uppoint-cloud
+npm run verify:repo-layout
+```
+
 ## Visual smoke checklist (light/dark, TR/EN auth)
 
 Run this checklist after deployment or UI-affecting changes:
@@ -328,11 +336,13 @@ Run this checklist after deployment or UI-affecting changes:
   - local Nginx probe endpoint `/healthz` is loopback-only and injects token via snippet (`/etc/nginx/snippets/uppoint-health-token.conf`)
 - Internal operational endpoints are token-isolated:
   - `/api/internal/audit/security-event` requires:
+    - loopback source (`127.0.0.1`/`::1`) in production
     - `x-internal-audit-token` matching `INTERNAL_AUDIT_TOKEN`
     - `x-internal-request-id` (single-use request nonce)
     - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
     - shared signing secret: `INTERNAL_AUDIT_SIGNING_SECRET`
   - `/api/internal/notifications/dispatch` requires:
+    - loopback source (`127.0.0.1`/`::1`) in production
     - `x-internal-dispatch-token` matching `INTERNAL_DISPATCH_TOKEN`
     - `x-internal-request-id` (single-use request nonce)
     - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)

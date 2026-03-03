@@ -174,4 +174,84 @@ describe("verifyInternalRequestAuth", () => {
 
     expect(verified).toBeNull();
   });
+
+  it("rejects valid signed requests from non-loopback source when loopback is required", async () => {
+    const method = "POST";
+    const path = "/api/internal/notifications/dispatch";
+    const body = "";
+    const requestId = "dispatch-test-request-loopback-block";
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const token = "dispatch-token-abcdefghijklmnopqrstuvwxyz12";
+    const signingSecret = "dispatch-signing-secret-abcdefghijklmnopqrstuvwxyz";
+    const signature = signRequest(signingSecret, {
+      method,
+      path,
+      requestId,
+      timestamp,
+      body,
+    });
+
+    const request = new Request(`https://cloud.uppoint.com.tr${path}`, {
+      method,
+      headers: {
+        "x-internal-dispatch-token": token,
+        "x-internal-request-id": requestId,
+        "x-internal-request-ts": timestamp,
+        "x-internal-request-signature": signature,
+        "x-real-ip": "203.0.113.22",
+      },
+      body,
+    });
+
+    const verified = await verifyInternalRequestAuth({
+      request,
+      expectedPath: path,
+      tokenHeaderName: "x-internal-dispatch-token",
+      expectedToken: token,
+      signingSecret,
+      requireLoopbackSource: true,
+    });
+
+    expect(verified).toBeNull();
+  });
+
+  it("accepts valid signed requests from loopback source when loopback is required", async () => {
+    const method = "POST";
+    const path = "/api/internal/audit/security-event";
+    const body = JSON.stringify({ action: "edge_host_rejected", requestId: "req_2", path, method });
+    const requestId = "audit-test-request-loopback-pass";
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const token = "audit-token-abcdefghijklmnopqrstuvwxyz1234";
+    const signingSecret = "audit-signing-secret-abcdefghijklmnopqrstuvwxyz12";
+    const signature = signRequest(signingSecret, {
+      method,
+      path,
+      requestId,
+      timestamp,
+      body,
+    });
+
+    const request = new Request(`http://127.0.0.1:3000${path}`, {
+      method,
+      headers: {
+        "x-internal-audit-token": token,
+        "x-internal-request-id": requestId,
+        "x-internal-request-ts": timestamp,
+        "x-internal-request-signature": signature,
+      },
+      body,
+    });
+
+    const verified = await verifyInternalRequestAuth({
+      request,
+      expectedPath: path,
+      tokenHeaderName: "x-internal-audit-token",
+      expectedToken: token,
+      signingSecret,
+      requireLoopbackSource: true,
+    });
+
+    expect(verified).not.toBeNull();
+    expect(verified?.requestId).toBe(requestId);
+  });
 });

@@ -11,10 +11,10 @@ export async function GET(request: Request, context: { params: Promise<{ nextaut
 }
 
 export async function POST(request: Request, context: { params: Promise<{ nextauth?: string[] }> }) {
+  const clientIp = await getClientIp();
   const ipRateLimit = await withRateLimit("nextauth-post", 30, 60);
   if (ipRateLimit) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", clientIp, undefined, {
       action: "nextauth-post",
       scope: "ip",
     });
@@ -27,14 +27,13 @@ export async function POST(request: Request, context: { params: Promise<{ nextau
 
   const identifierRateLimit = await withRateLimitByIdentifier(
     "nextauth-post-action",
-    actionIdentifier,
+    `${actionIdentifier}:${clientIp}`,
     120,
     60,
   );
 
   if (identifierRateLimit) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
+    await logAudit("rate_limit_exceeded", clientIp, undefined, {
       action: "nextauth-post",
       scope: "action",
     });

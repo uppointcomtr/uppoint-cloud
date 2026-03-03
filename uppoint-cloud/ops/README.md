@@ -276,6 +276,11 @@ ls -lah /opt/backups/postgres
 - `x-internal-request-ts`
 - `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
 
+Production guard:
+
+- internal routes require loopback source (`127.0.0.1` / `::1`) in addition to token + signature checks.
+- keep dispatcher traffic local (`--resolve cloud.uppoint.com.tr:443:127.0.0.1` default in script).
+
 `verify-audit-integrity.sh` performs read-only integrity validation for `AuditLog.metadata.integrity` chain:
 - allows legacy rows before first integrity-enabled record
 - requires contiguous `previousHash -> hash` linkage once integrity chain starts

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
+import { withIdempotency } from "@/lib/http/idempotency";
 import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
 import { revokeSessionJti } from "@/lib/session-revocation";
 
@@ -31,46 +32,48 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  // Rate limit: 20 attempts per minute per IP — sufficient for multi-device logout, blocks flood.
-  const rateLimitResponse = await withRateLimit("logout", 20, 60);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, { action: "logout", scope: "ip" });
-    return rateLimitResponse;
-  }
+  return withIdempotency("auth:logout", async () => {
+    // Rate limit: 20 attempts per minute per IP — sufficient for multi-device logout, blocks flood.
+    const rateLimitResponse = await withRateLimit("logout", 20, 60);
+    if (rateLimitResponse) {
+      const limitedIp = await getClientIp();
+      await logAudit("rate_limit_exceeded", limitedIp, undefined, { action: "logout", scope: "ip" });
+      return rateLimitResponse;
+    }
 
-  const ip = await getClientIp();
-  const session = await auth();
-  const useSecureCookie = usesSecureSessionCookie(request);
-  const token = await getToken({
-    req: request,
-    secret: env.AUTH_SECRET,
-    secureCookie: useSecureCookie,
-    cookieName: useSecureCookie
-      ? "__Secure-next-auth.session-token"
-      : "next-auth.session-token",
-  });
-
-  const rateLimitIdentifier = typeof token?.sessionJti === "string"
-    ? token.sessionJti
-    : (session?.user?.id ?? "anonymous");
-
-  const identifierRateLimit = await withRateLimitByIdentifier("logout-session", rateLimitIdentifier, 30, 60);
-  if (identifierRateLimit) {
-    await logAudit("rate_limit_exceeded", ip, session?.user?.id, {
-      action: "logout",
-      scope: "session",
+    const ip = await getClientIp();
+    const session = await auth();
+    const useSecureCookie = usesSecureSessionCookie(request);
+    const token = await getToken({
+      req: request,
+      secret: env.AUTH_SECRET,
+      secureCookie: useSecureCookie,
+      cookieName: useSecureCookie
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
     });
-    return identifierRateLimit;
-  }
 
-  if (typeof token?.sessionJti === "string" && typeof token.exp === "number") {
-    const expiresAt = new Date(token.exp * 1000);
-    await revokeSessionJti({ jti: token.sessionJti, expiresAt });
-    await logAudit("session_revoked", ip, session?.user?.id, { reason: "logout", scope: "single-session" });
-  }
+    const rateLimitIdentifier = typeof token?.sessionJti === "string"
+      ? token.sessionJti
+      : (session?.user?.id ?? "anonymous");
 
-  await logAudit("logout_success", ip, session?.user?.id);
+    const identifierRateLimit = await withRateLimitByIdentifier("logout-session", rateLimitIdentifier, 30, 60);
+    if (identifierRateLimit) {
+      await logAudit("rate_limit_exceeded", ip, session?.user?.id, {
+        action: "logout",
+        scope: "session",
+      });
+      return identifierRateLimit;
+    }
 
-  return NextResponse.json(ok({ accepted: true }), { status: 200 });
+    if (typeof token?.sessionJti === "string" && typeof token.exp === "number") {
+      const expiresAt = new Date(token.exp * 1000);
+      await revokeSessionJti({ jti: token.sessionJti, expiresAt });
+      await logAudit("session_revoked", ip, session?.user?.id, { reason: "logout", scope: "single-session" });
+    }
+
+    await logAudit("logout_success", ip, session?.user?.id);
+
+    return NextResponse.json(ok({ accepted: true }), { status: 200 });
+  });
 }

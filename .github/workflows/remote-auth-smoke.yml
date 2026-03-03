@@ -59,6 +59,9 @@ jobs:
       - name: Verify workflow layout
         run: npm run verify:workflow-layout
 
+      - name: Verify repository/app root contract
+        run: npm run verify:repo-layout
+
       - name: Enforce mutation coverage for nightly schedule
         if: github.event_name == 'schedule'
         env:

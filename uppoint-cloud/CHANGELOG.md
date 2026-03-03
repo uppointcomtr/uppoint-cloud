@@ -1,5 +1,39 @@
 # Changelog
 
+## 2026-03-03 (security closure: internal source hardening + audit delete guard + logout idempotency)
+
+### Fixed
+- Closed internal operational endpoint exposure gap (`F4`):
+  - `lib/security/internal-request-auth.ts` now supports `requireLoopbackSource` and rejects validly signed requests from non-loopback sources when enabled.
+  - `app/api/internal/audit/security-event/route.ts` and `app/api/internal/notifications/dispatch/route.ts` now enforce loopback-only internal source in production.
+  - `proxy.ts` now sends edge security audit events to loopback by default (`http://127.0.0.1:3000/api/internal/audit/security-event`) with optional override via `INTERNAL_AUDIT_ENDPOINT_URL`.
+  - `ops/nginx/cloud.uppoint.com.tr.conf` now restricts `/api/internal/*` to loopback clients.
+- Closed NextAuth secondary limiter scoping weakness (`F5`):
+  - `app/api/auth/[...nextauth]/route.ts` now keys secondary limiter by `action + clientIp`.
+- Closed audit-log delete immutability gap (`F8`):
+  - Added migration `prisma/migrations/20260303200000_enforce_audit_log_delete_guard/migration.sql`.
+  - `AuditLog` deletes are now blocked unless retention guard session setting is explicitly enabled.
+  - `scripts/cleanup-db.sh` now enables retention guard only for controlled cleanup delete query.
+  - `scripts/verify-audit-integrity.mjs` now checks required immutable triggers (`tr_audit_log_no_update`, `tr_audit_log_no_delete`).
+- Closed logout duplicate-submission risk (`F9`):
+  - `app/api/auth/logout/route.ts` is now wrapped with `withIdempotency("auth:logout", ...)`.
+
+### Added
+- Closed repository/app-root drift ambiguity (`F6`) with explicit contract checks:
+  - Added `scripts/check-repo-root-contract.sh`.
+  - Added `npm run verify:repo-layout` and wired into `npm run verify`.
+  - Added workflow step in `/opt/.github/workflows/remote-auth-smoke.yml` to enforce this contract.
+- Closed instances module boundary guardrail gap (`F7`) with enforceable tests:
+  - Added `tests/instances/instances-surface-guardrail.test.ts` to enforce tenant guard presence on future `/instances` entry points and block direct hypervisor coupling in `modules/instances/server`.
+- Added regression tests:
+  - `tests/security/internal-request-auth.test.ts` now covers loopback-required accept/reject behavior.
+  - `tests/auth/nextauth-route-rate-limit.test.ts` verifies NextAuth secondary limiter key includes action + IP.
+
+### Changed
+- Documentation updates:
+  - `README.md` now documents `INTERNAL_AUDIT_ENDPOINT_URL`, loopback enforcement for internal routes, and `verify:repo-layout`.
+  - `ops/README.md` now documents loopback-only internal route production guard.
+
 ## 2026-03-03 (security closure: robust hash compare + verify idempotency + audit completeness)
 
 ### Fixed

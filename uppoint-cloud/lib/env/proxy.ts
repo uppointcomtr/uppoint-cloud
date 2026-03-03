@@ -7,6 +7,7 @@ const proxyEnvSchema = z.object({
   UPPOINT_ALLOWED_ORIGINS: z.string().optional(),
   INTERNAL_AUDIT_TOKEN: z.string().min(32).optional(),
   INTERNAL_AUDIT_SIGNING_SECRET: z.string().min(32).optional(),
+  INTERNAL_AUDIT_ENDPOINT_URL: z.string().url().optional(),
   AUTH_SECRET: z.string().min(32).optional(),
 }).superRefine((input, context) => {
   if (input.NODE_ENV !== "production") {
@@ -37,6 +38,7 @@ const parsedProxyEnv = proxyEnvSchema.safeParse({
   UPPOINT_ALLOWED_ORIGINS: process.env.UPPOINT_ALLOWED_ORIGINS,
   INTERNAL_AUDIT_TOKEN: process.env.INTERNAL_AUDIT_TOKEN,
   INTERNAL_AUDIT_SIGNING_SECRET: process.env.INTERNAL_AUDIT_SIGNING_SECRET,
+  INTERNAL_AUDIT_ENDPOINT_URL: process.env.INTERNAL_AUDIT_ENDPOINT_URL,
   AUTH_SECRET: process.env.AUTH_SECRET,
 });
 

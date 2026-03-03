@@ -107,6 +107,28 @@ function hashesEqual(expected, actual) {
 }
 
 async function main() {
+  const triggerRows = await prisma.$queryRaw`
+    SELECT t.tgname AS name
+    FROM pg_trigger t
+    INNER JOIN pg_class c ON c.oid = t.tgrelid
+    WHERE c.relname = 'AuditLog'
+      AND t.tgname IN ('tr_audit_log_no_update', 'tr_audit_log_no_delete')
+      AND t.tgenabled = 'O'
+  `;
+  const enabledTriggerNames = new Set(
+    Array.isArray(triggerRows)
+      ? triggerRows
+        .map((row) => (row && typeof row === "object" && "name" in row ? row.name : null))
+        .filter((value) => typeof value === "string")
+      : [],
+  );
+
+  if (!enabledTriggerNames.has("tr_audit_log_no_update") || !enabledTriggerNames.has("tr_audit_log_no_delete")) {
+    console.error("[audit-integrity] FAIL immutable trigger set is incomplete on AuditLog");
+    process.exitCode = 1;
+    return;
+  }
+
   let cursorId = null;
   let inspected = 0;
   let legacySkipped = 0;

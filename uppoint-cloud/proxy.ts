@@ -32,12 +32,12 @@ const ALLOWED_ORIGINS = resolveAllowedOrigins({
 const INTERNAL_AUDIT_TOKEN = proxyEnv.INTERNAL_AUDIT_TOKEN;
 const INTERNAL_AUDIT_SIGNING_SECRET = proxyEnv.INTERNAL_AUDIT_SIGNING_SECRET;
 const INTERNAL_AUDIT_URL = (() => {
-  if (!proxyEnv.NEXT_PUBLIC_APP_URL) {
-    return null;
-  }
-
   try {
-    return new URL("/api/internal/audit/security-event", proxyEnv.NEXT_PUBLIC_APP_URL).toString();
+    if (proxyEnv.INTERNAL_AUDIT_ENDPOINT_URL) {
+      return new URL(proxyEnv.INTERNAL_AUDIT_ENDPOINT_URL).toString();
+    }
+
+    return "http://127.0.0.1:3000/api/internal/audit/security-event";
   } catch {
     return null;
   }
@@ -68,12 +68,12 @@ async function hmacSha256Hex(secret: string, value: string): Promise<string> {
   return toHex(signature);
 }
 const INTERNAL_AUDIT_ORIGIN = (() => {
-  if (!proxyEnv.NEXT_PUBLIC_APP_URL) {
+  if (!INTERNAL_AUDIT_URL) {
     return null;
   }
 
   try {
-    return new URL(proxyEnv.NEXT_PUBLIC_APP_URL).origin;
+    return new URL(INTERNAL_AUDIT_URL).origin;
   } catch {
     return null;
   }

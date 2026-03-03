@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash, createHmac } from "crypto";
+import { isIP } from "net";
 
 import { timingSafeEqualText } from "@/lib/security/constant-time";
 
@@ -44,6 +45,7 @@ export interface VerifyInternalRequestInput {
   signingSecret: string;
   maxSkewSeconds?: number;
   requestIdHeaderName?: string;
+  requireLoopbackSource?: boolean;
 }
 
 export interface VerifiedInternalRequest {
@@ -66,6 +68,66 @@ function parseRequestId(rawRequestId: string | null): string | null {
   }
 
   return requestId;
+}
+
+function normalizeIp(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const withoutPort = trimmed.match(/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/)
+    ? trimmed.replace(/:\d+$/, "")
+    : trimmed;
+  const normalized = withoutPort.startsWith("::ffff:")
+    ? withoutPort.slice("::ffff:".length)
+    : withoutPort;
+
+  return isIP(normalized) ? normalized : null;
+}
+
+function extractRightmostForwardedIp(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const parts = value
+    .split(",")
+    .map((part) => normalizeIp(part))
+    .filter((part): part is string => Boolean(part));
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  return parts[parts.length - 1] ?? null;
+}
+
+function isLoopbackIp(value: string | null): boolean {
+  if (!value) {
+    return false;
+  }
+
+  return value === "127.0.0.1" || value === "::1" || value === "localhost";
+}
+
+function isLoopbackSource(request: Request): boolean {
+  const requestUrl = new URL(request.url);
+  if (isLoopbackIp(normalizeIp(requestUrl.hostname) ?? requestUrl.hostname.toLowerCase())) {
+    return true;
+  }
+
+  const realIp = normalizeIp(request.headers.get("x-real-ip"));
+  if (isLoopbackIp(realIp)) {
+    return true;
+  }
+
+  const forwardedIp = extractRightmostForwardedIp(request.headers.get("x-forwarded-for"));
+  return isLoopbackIp(forwardedIp);
 }
 
 export async function verifyInternalRequestAuth(
@@ -112,6 +174,10 @@ export async function verifyInternalRequestAuth(
   const expectedSignature = buildHmacSignature(input.signingSecret, canonical);
 
   if (!equalsConstantTime(signature, expectedSignature)) {
+    return null;
+  }
+
+  if (input.requireLoopbackSource && !isLoopbackSource(input.request)) {
     return null;
   }
 

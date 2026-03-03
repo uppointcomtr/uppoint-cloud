@@ -111,7 +111,7 @@ if [ "$AUDIT_LOG_ARCHIVE_BEFORE_DELETE" = "true" ]; then
   fi
 fi
 
-AL_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"AuditLog\" WHERE \"createdAt\" < NOW() - INTERVAL '${AUDIT_LOG_RETENTION_DAYS} days' RETURNING id) SELECT count(*) FROM d;")
+AL_DELETED=$("${PSQL[@]}" -c "WITH retention_guard AS (SELECT set_config('uppoint.audit_retention_delete', '1', true)), d AS (DELETE FROM \"AuditLog\" WHERE \"createdAt\" < NOW() - INTERVAL '${AUDIT_LOG_RETENTION_DAYS} days' RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] AuditLog (>${AUDIT_LOG_RETENTION_DAYS} gün): ${AL_DELETED} satır silindi"
 
 # 7. RegistrationVerificationChallenge — süresi dolmuş kayıtlar
