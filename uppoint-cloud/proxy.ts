@@ -31,6 +31,7 @@ const ALLOWED_ORIGINS = resolveAllowedOrigins({
 });
 const INTERNAL_AUDIT_TOKEN = proxyEnv.INTERNAL_AUDIT_TOKEN;
 const INTERNAL_AUDIT_SIGNING_SECRET = proxyEnv.INTERNAL_AUDIT_SIGNING_SECRET;
+const INTERNAL_AUTH_TRANSPORT_MODE = proxyEnv.INTERNAL_AUTH_TRANSPORT_MODE;
 const INTERNAL_AUDIT_URL = (() => {
   try {
     if (proxyEnv.INTERNAL_AUDIT_ENDPOINT_URL) {
@@ -160,6 +161,7 @@ function isTrustedInternalAuditIngress(request: NextRequest, pathname: string): 
   const requestId = request.headers.get("x-internal-request-id")?.trim();
   const timestamp = request.headers.get("x-internal-request-ts")?.trim();
   const signature = request.headers.get("x-internal-request-signature")?.trim();
+  const transport = request.headers.get("x-internal-transport")?.trim();
 
   const isLoopbackSource =
     requestHost === "127.0.0.1"
@@ -171,7 +173,8 @@ function isTrustedInternalAuditIngress(request: NextRequest, pathname: string): 
     Boolean(token && token.length >= 32)
     && Boolean(requestId && requestId.length >= 12 && requestId.length <= 128)
     && Boolean(timestamp && /^\d{10,}$/.test(timestamp))
-    && Boolean(signature && /^[a-f0-9]{64}$/i.test(signature));
+    && Boolean(signature && /^[a-f0-9]{64}$/i.test(signature))
+    && transport === INTERNAL_AUTH_TRANSPORT_MODE;
 
   return isLoopbackSource && hasShape;
 }
@@ -211,6 +214,7 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
         "x-internal-audit-token": INTERNAL_AUDIT_TOKEN,
         "x-internal-request-ts": timestamp,
         "x-internal-request-signature": signature,
+        "x-internal-transport": INTERNAL_AUTH_TRANSPORT_MODE,
       },
       body,
     });

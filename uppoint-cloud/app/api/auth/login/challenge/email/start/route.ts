@@ -4,7 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   LoginChallengeError,
   startEmailLoginChallenge,
@@ -19,17 +19,17 @@ function buildNeutralStartResponse() {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:login-email-start", async () => {
-  // Rate limit: 10 attempts per 15 minutes per IP
-  const rateLimitResponse = await withRateLimit("login-email-start", 10, 900);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "login-email-start",
-      scope: "ip",
-    });
-    return rateLimitResponse;
+  const ipGuard = await enforceFailClosedIpRateLimit({
+    rateLimitAction: "login-email-start",
+    rateLimitMax: 10,
+    rateLimitWindowSeconds: 900,
+    auditActionName: "login-email-start",
+    auditScope: "ip",
+  });
+  if (ipGuard.blockedResponse) {
+    return ipGuard.blockedResponse;
   }
-  const ip = await getClientIp();
+  const ip = ipGuard.ip;
 
   let payload: unknown;
 
@@ -43,12 +43,16 @@ export async function POST(request: Request) {
   const email = typeof rawPayload.email === "string" ? rawPayload.email.trim().toLowerCase() : "";
 
   if (email) {
-    const identifierRateLimit = await withRateLimitByIdentifier("login-email-start-account", email, 8, 900);
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "login-email-start-account",
+      identifier: email,
+      rateLimitMax: 8,
+      rateLimitWindowSeconds: 900,
+      auditActionName: "login-email-start",
+      auditScope: "email",
+      ip,
+    });
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "login-email-start",
-        scope: "email",
-      });
       return identifierRateLimit;
     }
   }

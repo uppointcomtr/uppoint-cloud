@@ -167,6 +167,130 @@ interface RateLimitCheckResult {
   retryAfterSeconds?: number;
 }
 
+interface AdaptiveRateLimitContext {
+  fingerprintHash: string | null;
+  asnBucket: string | null;
+}
+
+interface AdaptiveRateLimitInput {
+  action: string;
+  windowSeconds: number;
+  identifier?: string;
+  includeDeviceAndAsnSignals?: boolean;
+  includeIdentifierDeviceSignal?: boolean;
+}
+
+function parseBooleanEnv(value: unknown, fallback: boolean): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  switch (value.trim().toLowerCase()) {
+    case "1":
+    case "true":
+    case "yes":
+      return true;
+    case "0":
+    case "false":
+    case "no":
+      return false;
+    default:
+      return fallback;
+  }
+}
+
+function parseIntegerEnv(value: unknown, fallback: number, min: number, max: number): number {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string"
+      ? Number.parseInt(value, 10)
+      : Number.NaN;
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(max, Math.trunc(parsed)));
+}
+
+function normalizeHeaderName(value: string | undefined, fallback: string): string {
+  const trimmed = value?.trim().toLowerCase();
+  return trimmed && trimmed.length > 0 ? trimmed : fallback;
+}
+
+function sanitizeFingerprintInput(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length < 8 || trimmed.length > 256) {
+    return null;
+  }
+
+  if (!/^[A-Za-z0-9._:-]+$/.test(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+function normalizeAsn(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const digits = value.replace(/\D/g, "");
+  if (!digits || digits.length > 10) {
+    return null;
+  }
+
+  return digits;
+}
+
+function buildNetworkBucket(ip: string | null): string | null {
+  if (!ip || ip === "unknown") {
+    return null;
+  }
+
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) {
+    const [a, b] = ip.split(".");
+    if (!a || !b) {
+      return null;
+    }
+    return `ipv4:${a}.${b}.0.0/16`;
+  }
+
+  if (ip.includes(":")) {
+    const normalized = ip.toLowerCase();
+    const bucket = normalized
+      .split(":")
+      .slice(0, 4)
+      .join(":");
+    return bucket.length > 0 ? `ipv6:${bucket}::/64` : null;
+  }
+
+  return null;
+}
+
+function buildRateLimitErrorResponse(input: { retryAfterSeconds: number; max: number; windowSeconds: number }): Response {
+  return Response.json(
+    { success: false, error: "TOO_MANY_REQUESTS" },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(input.retryAfterSeconds),
+        "X-RateLimit-Limit": String(input.max),
+        "X-RateLimit-Window-Seconds": String(input.windowSeconds),
+      },
+    },
+  );
+}
+
 async function checkPrismaFallbackRateLimit(
   action: string,
   subject: string,
@@ -261,6 +385,128 @@ export function normalizeRateLimitIdentifier(value: string): string {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex");
 }
 
+async function resolveAdaptiveRateLimitContext(ip: string | null): Promise<AdaptiveRateLimitContext> {
+  const headersList = await headers();
+
+  const fingerprintHeader = normalizeHeaderName(
+    process.env.AUTH_DEVICE_FINGERPRINT_HEADER,
+    "x-device-fingerprint",
+  );
+  const asnHeader = normalizeHeaderName(
+    process.env.AUTH_CLIENT_ASN_HEADER,
+    "x-client-asn",
+  );
+
+  const explicitFingerprint = sanitizeFingerprintInput(headersList.get(fingerprintHeader));
+  const fallbackFingerprint = [
+    headersList.get("user-agent")?.trim() ?? "",
+    headersList.get("accept-language")?.trim() ?? "",
+  ].join("|");
+  const fingerprintSource = explicitFingerprint ?? fallbackFingerprint;
+  const fingerprintHash = fingerprintSource.length > 0
+    ? createHash("sha256").update(fingerprintSource).digest("hex")
+    : null;
+
+  const explicitAsn = normalizeAsn(
+    headersList.get(asnHeader)
+      ?? headersList.get("x-asn")
+      ?? headersList.get("cf-connecting-asn"),
+  );
+  const networkBucket = buildNetworkBucket(ip);
+  const asnBucket = explicitAsn
+    ? `asn:${explicitAsn}`
+    : networkBucket
+      ? `net:${networkBucket}`
+      : null;
+
+  return {
+    fingerprintHash,
+    asnBucket,
+  };
+}
+
+async function withAdaptiveRateLimit(input: AdaptiveRateLimitInput): Promise<Response | null> {
+  const adaptiveEnabled = parseBooleanEnv(process.env.AUTH_ADAPTIVE_RATE_LIMIT_ENABLED, true);
+  if (!adaptiveEnabled) {
+    return null;
+  }
+
+  const resolvedIp = await resolveClientIpFromHeaders();
+  if (!resolvedIp && env.NODE_ENV === "production") {
+    return Response.json(
+      { success: false, error: "RATE_LIMIT_CONTEXT_UNAVAILABLE" },
+      { status: 503 },
+    );
+  }
+
+  const context = await resolveAdaptiveRateLimitContext(resolvedIp ?? "unknown");
+  const adaptiveWindowSeconds = parseIntegerEnv(
+    process.env.AUTH_ADAPTIVE_WINDOW_SECONDS,
+    Math.max(60, input.windowSeconds),
+    30,
+    3600,
+  );
+  const adaptiveDeviceMax = parseIntegerEnv(process.env.AUTH_ADAPTIVE_DEVICE_MAX, 30, 5, 5000);
+  const adaptiveAsnMax = parseIntegerEnv(process.env.AUTH_ADAPTIVE_ASN_MAX, 180, 5, 10000);
+  const adaptiveIdentifierDeviceMax = parseIntegerEnv(
+    process.env.AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX,
+    12,
+    3,
+    1000,
+  );
+
+  if (input.includeDeviceAndAsnSignals !== false && context.fingerprintHash) {
+    const fingerprintResult = await checkRateLimit(
+      `${input.action}:adaptive:device`,
+      `fp:${context.fingerprintHash}`,
+      adaptiveDeviceMax,
+      adaptiveWindowSeconds,
+    );
+    if (!fingerprintResult.allowed) {
+      return buildRateLimitErrorResponse({
+        retryAfterSeconds: fingerprintResult.retryAfterSeconds ?? adaptiveWindowSeconds,
+        max: adaptiveDeviceMax,
+        windowSeconds: adaptiveWindowSeconds,
+      });
+    }
+  }
+
+  if (input.includeDeviceAndAsnSignals !== false && context.asnBucket) {
+    const asnResult = await checkRateLimit(
+      `${input.action}:adaptive:asn`,
+      context.asnBucket,
+      adaptiveAsnMax,
+      adaptiveWindowSeconds,
+    );
+    if (!asnResult.allowed) {
+      return buildRateLimitErrorResponse({
+        retryAfterSeconds: asnResult.retryAfterSeconds ?? adaptiveWindowSeconds,
+        max: adaptiveAsnMax,
+        windowSeconds: adaptiveWindowSeconds,
+      });
+    }
+  }
+
+  if (input.includeIdentifierDeviceSignal !== false && input.identifier && context.fingerprintHash) {
+    const normalizedIdentifier = normalizeRateLimitIdentifier(input.identifier);
+    const identifierDeviceResult = await checkRateLimit(
+      `${input.action}:adaptive:id-device`,
+      `id:${normalizedIdentifier}:fp:${context.fingerprintHash}`,
+      adaptiveIdentifierDeviceMax,
+      adaptiveWindowSeconds,
+    );
+    if (!identifierDeviceResult.allowed) {
+      return buildRateLimitErrorResponse({
+        retryAfterSeconds: identifierDeviceResult.retryAfterSeconds ?? adaptiveWindowSeconds,
+        max: adaptiveIdentifierDeviceMax,
+        windowSeconds: adaptiveWindowSeconds,
+      });
+    }
+  }
+
+  return null;
+}
+
 /**
  * Extracts the real client IP from request headers.
  * Prefers X-Real-IP and falls back to a trusted parse of X-Forwarded-For.
@@ -342,19 +588,21 @@ export async function withRateLimit(
   const result = await checkRateLimit(action, rateLimitSubject, max, windowSeconds);
 
   if (!result.allowed) {
-    const retryAfter = result.retryAfterSeconds ?? windowSeconds;
+    return buildRateLimitErrorResponse({
+      retryAfterSeconds: result.retryAfterSeconds ?? windowSeconds,
+      max,
+      windowSeconds,
+    });
+  }
 
-    return Response.json(
-      { success: false, error: "TOO_MANY_REQUESTS" },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfter),
-          "X-RateLimit-Limit": String(max),
-          "X-RateLimit-Window-Seconds": String(windowSeconds),
-        },
-      },
-    );
+  const adaptiveResponse = await withAdaptiveRateLimit({
+    action,
+    windowSeconds,
+    includeDeviceAndAsnSignals: true,
+    includeIdentifierDeviceSignal: false,
+  });
+  if (adaptiveResponse) {
+    return adaptiveResponse;
   }
 
   return null;
@@ -373,19 +621,22 @@ export async function withRateLimitByIdentifier(
   const result = await checkRateLimit(action, `id:${normalizedIdentifier}`, max, windowSeconds);
 
   if (!result.allowed) {
-    const retryAfter = result.retryAfterSeconds ?? windowSeconds;
+    return buildRateLimitErrorResponse({
+      retryAfterSeconds: result.retryAfterSeconds ?? windowSeconds,
+      max,
+      windowSeconds,
+    });
+  }
 
-    return Response.json(
-      { success: false, error: "TOO_MANY_REQUESTS" },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(retryAfter),
-          "X-RateLimit-Limit": String(max),
-          "X-RateLimit-Window-Seconds": String(windowSeconds),
-        },
-      },
-    );
+  const adaptiveResponse = await withAdaptiveRateLimit({
+    action,
+    windowSeconds,
+    identifier,
+    includeDeviceAndAsnSignals: false,
+    includeIdentifierDeviceSignal: true,
+  });
+  if (adaptiveResponse) {
+    return adaptiveResponse;
   }
 
   return null;

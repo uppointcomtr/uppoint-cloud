@@ -61,6 +61,15 @@ Use the canonical findings register to keep audit results stable across rounds:
 - Close findings only with explicit verification evidence
 - Include UI break risk (`High/Medium/Low/None`) per finding
 
+## Security maximization plan
+
+The current top-5 hardening roadmap is tracked in:
+
+- [ops/SECURITY_MAXIMIZATION_PLAN.md](/opt/uppoint-cloud/ops/SECURITY_MAXIMIZATION_PLAN.md)
+- Runtime inventory (services + cron): [ops/RUNTIME_SERVICES_AND_CRON.md](/opt/uppoint-cloud/ops/RUNTIME_SERVICES_AND_CRON.md)
+
+Use this as the canonical follow-up plan for high-impact hardening tasks (mTLS rollout, immutable audit anchoring, rotation runbook, abuse-response automation).
+
 ## Environment variables
 
 Create and maintain `.env` with real values (do not commit it):
@@ -74,6 +83,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `INTERNAL_DISPATCH_TOKEN` (required in production; secures internal notification dispatcher route)
 - `INTERNAL_AUDIT_SIGNING_SECRET` (required in production; HMAC signing key for internal audit ingest requests)
 - `INTERNAL_DISPATCH_SIGNING_SECRET` (required in production; HMAC signing key for notification dispatch requests)
+- `INTERNAL_AUTH_TRANSPORT_MODE` (optional, default `loopback-hmac-v1`; set `mtls-hmac-v1` only after trusted mTLS headers are configured at reverse proxy)
 - `INTERNAL_AUDIT_ENDPOINT_URL` (optional override; defaults to loopback `http://127.0.0.1:3000/api/internal/audit/security-event`)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
@@ -103,6 +113,9 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 - `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
 - `AUDIT_LOG_SIGNING_SECRET` (optional, min 32 chars; defaults to `AUTH_SECRET` when unset)
+- `AUDIT_ANCHOR_SIGNING_SECRET` (recommended, min 32 chars; signer for external audit-chain anchor export)
+- `AUDIT_ANCHOR_SIGNING_KEY_ID` (optional key identifier included in exported anchor records)
+- `AUDIT_ANCHOR_OUTPUT_PATH` (optional, default `/opt/backups/audit/audit-anchor.jsonl`)
 - `NOTIFICATION_PAYLOAD_SECRET` (required in production; encrypts notification outbox payload at rest)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
@@ -112,6 +125,12 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_NGINX_DRIFT_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
 - `UPPOINT_EDGE_AUDIT_ALERT_LOOKBACK_MINUTES` (optional, default `15`)
 - `UPPOINT_EDGE_AUDIT_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
+- `AUTH_ABUSE_LOOKBACK_MINUTES` (optional, default `15`)
+- `AUTH_ABUSE_THRESHOLD_RATE_LIMIT_EXCEEDED` (optional, default `60`)
+- `AUTH_ABUSE_THRESHOLD_LOGIN_OTP_FAILED` (optional, default `30`)
+- `AUTH_ABUSE_THRESHOLD_LOGIN_CHALLENGE_START_FAILED` (optional, default `30`)
+- `AUTH_ABUSE_THRESHOLD_PASSWORD_RESET_FAILED` (optional, default `20`)
+- `AUTH_ABUSE_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
 
 ## Upstash rate limit activation
 
@@ -179,9 +198,12 @@ npm run typecheck
 npm run test
 npm run test:e2e
 npm run build:deploy
+npm run verify:security-gate
 npm run verify:nginx-drift
 npm run verify:edge-audit-emit
 npm run verify:audit-integrity
+npm run audit:anchor:export
+npm run verify:auth-abuse
 ```
 
 `npm run test:e2e` defaults to mutation coverage (`E2E_ALLOW_MUTATIONS=1`) against an isolated local server on `127.0.0.1:3101`. Set `E2E_ALLOW_MUTATIONS=0` only for explicit read-only smoke.

@@ -25,14 +25,21 @@ const CASES: InternalRouteGuardrailCase[] = [
 ];
 
 describe("internal route auth guardrail", () => {
-  it.each(CASES)("enforces loopback, signed auth and replay guard for $label", (testCase) => {
+  it.each(CASES)("enforces internal route guard and replay guard for $label", (testCase) => {
     const source = readFileSync(path.join(process.cwd(), testCase.routePath), "utf8");
 
-    expect(source).toContain("verifyInternalRequestAuth({");
+    expect(source).toContain("enforceInternalRouteGuard({");
     expect(source).toContain(`expectedPath: "${testCase.expectedPathLiteral}"`);
     expect(source).toContain(`tokenHeaderName: "${testCase.expectedTokenHeaderName}"`);
-    expect(source).toContain("requireLoopbackSource: env.NODE_ENV === \"production\"");
-    expect(source).toContain("withRateLimit(");
     expect(source).toContain("withRateLimitByIdentifier(");
+  });
+
+  it("keeps signed internal auth verification centralized in the internal route guard", () => {
+    const source = readFileSync(path.join(process.cwd(), "lib/security/internal-route-guard.ts"), "utf8");
+
+    expect(source).toContain("verifyInternalRequestAuth({");
+    expect(source).toContain("requireLoopbackSource: env.NODE_ENV === \"production\"");
+    expect(source).toContain("transportMode: env.INTERNAL_AUTH_TRANSPORT_MODE");
+    expect(source).toContain("enforceFailClosedIpRateLimit(");
   });
 });

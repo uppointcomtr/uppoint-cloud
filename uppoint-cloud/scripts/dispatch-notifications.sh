@@ -21,11 +21,18 @@ trap cleanup EXIT
 
 INTERNAL_DISPATCH_TOKEN="${INTERNAL_DISPATCH_TOKEN:-}"
 INTERNAL_DISPATCH_SIGNING_SECRET="${INTERNAL_DISPATCH_SIGNING_SECRET:-}"
+INTERNAL_AUTH_TRANSPORT_MODE="${INTERNAL_AUTH_TRANSPORT_MODE:-}"
 if [ -z "$INTERNAL_DISPATCH_TOKEN" ]; then
   INTERNAL_DISPATCH_TOKEN="$(read_env_value "$ENV_FILE" "INTERNAL_DISPATCH_TOKEN")"
 fi
 if [ -z "$INTERNAL_DISPATCH_SIGNING_SECRET" ]; then
   INTERNAL_DISPATCH_SIGNING_SECRET="$(read_env_value "$ENV_FILE" "INTERNAL_DISPATCH_SIGNING_SECRET")"
+fi
+if [ -z "$INTERNAL_AUTH_TRANSPORT_MODE" ]; then
+  INTERNAL_AUTH_TRANSPORT_MODE="$(read_env_value "$ENV_FILE" "INTERNAL_AUTH_TRANSPORT_MODE")"
+fi
+if [ -z "$INTERNAL_AUTH_TRANSPORT_MODE" ]; then
+  INTERNAL_AUTH_TRANSPORT_MODE="loopback-hmac-v1"
 fi
 
 if [ -z "$INTERNAL_DISPATCH_TOKEN" ]; then
@@ -66,6 +73,7 @@ process.stdout.write(createHmac("sha256", secret).update(canonical).digest("hex"
   printf 'x-internal-dispatch-token: %s\n' "$INTERNAL_DISPATCH_TOKEN"
   printf 'x-internal-request-ts: %s\n' "$REQUEST_TS"
   printf 'x-internal-request-signature: %s\n' "$REQUEST_SIGNATURE"
+  printf 'x-internal-transport: %s\n' "$INTERNAL_AUTH_TRANSPORT_MODE"
   printf 'origin: https://%s\n' "$DOMAIN"
 } > "$HEADER_FILE"
 

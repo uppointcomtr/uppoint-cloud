@@ -4,8 +4,8 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
-import { withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
-import { verifyInternalRequestAuth } from "@/lib/security/internal-request-auth";
+import { withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceInternalRouteGuard } from "@/lib/security/internal-route-guard";
 
 const securityEventSchema = z.object({
   action: z.enum(["edge_host_rejected", "edge_origin_rejected"]),
@@ -19,29 +19,26 @@ const securityEventSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const ipRateLimitResponse = await withRateLimit("internal-audit-security-event", 300, 60);
-  if (ipRateLimitResponse) {
-    return ipRateLimitResponse;
-  }
-
-  const verifiedRequest = await verifyInternalRequestAuth({
+  const internalGuard = await enforceInternalRouteGuard({
     request,
     expectedPath: "/api/internal/audit/security-event",
     tokenHeaderName: "x-internal-audit-token",
     expectedToken: env.INTERNAL_AUDIT_TOKEN ?? "",
     signingSecret: env.INTERNAL_AUDIT_SIGNING_SECRET ?? "",
-    requireLoopbackSource: env.NODE_ENV === "production",
+    ipRateLimit: {
+      action: "internal-audit-security-event",
+      max: 300,
+      windowSeconds: 60,
+    },
+    unauthorizedAuditAction: "internal_audit_security_event_unauthorized",
   });
 
-  if (!verifiedRequest) {
-    const requestId = request.headers.get("x-internal-request-id")?.trim();
-    await logAudit("internal_audit_security_event_unauthorized", "unknown", undefined, {
-      requestId: requestId && requestId.length > 0 ? requestId.slice(0, 128) : undefined,
-      result: "FAILURE",
-      reason: "INVALID_INTERNAL_REQUEST_AUTH",
-    });
-    return NextResponse.json(fail("UNAUTHORIZED"), { status: 401 });
+  if (internalGuard.blockedResponse) {
+    return internalGuard.blockedResponse;
   }
+
+  const verifiedRequest = internalGuard.verifiedRequest;
+  const ip = internalGuard.ip;
 
   const replayRateLimitResponse = await withRateLimitByIdentifier(
     "internal-audit-security-event-replay",
@@ -50,7 +47,7 @@ export async function POST(request: Request) {
     300,
   );
   if (replayRateLimitResponse) {
-    await logAudit("internal_audit_security_event_replay_blocked", "unknown", undefined, {
+    await logAudit("internal_audit_security_event_replay_blocked", ip, undefined, {
       requestId: verifiedRequest.requestId,
       result: "FAILURE",
       reason: "REPLAY_OR_DUPLICATE_REQUEST_ID",
@@ -62,7 +59,7 @@ export async function POST(request: Request) {
   try {
     payload = JSON.parse(verifiedRequest.rawBody);
   } catch {
-    await logAudit("internal_audit_security_event_invalid_body", "unknown", undefined, {
+    await logAudit("internal_audit_security_event_invalid_body", ip, undefined, {
       requestId: verifiedRequest.requestId,
       reason: "JSON_PARSE_FAILED",
       result: "FAILURE",
@@ -72,7 +69,7 @@ export async function POST(request: Request) {
 
   const parsed = securityEventSchema.safeParse(payload);
   if (!parsed.success) {
-    await logAudit("internal_audit_security_event_invalid_body", "unknown", undefined, {
+    await logAudit("internal_audit_security_event_invalid_body", ip, undefined, {
       requestId: verifiedRequest.requestId,
       reason: "SCHEMA_VALIDATION_FAILED",
       result: "FAILURE",
@@ -91,7 +88,7 @@ export async function POST(request: Request) {
     return identifierRateLimitResponse;
   }
 
-  await logAudit(event.action, "unknown", undefined, {
+  await logAudit(event.action, ip, undefined, {
     requestId: event.requestId,
     path: event.path,
     method: event.method,

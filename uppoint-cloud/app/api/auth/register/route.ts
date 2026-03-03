@@ -4,7 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   RegisterVerificationChallengeError,
   REGISTER_CODE_TTL_MINUTES,
@@ -27,18 +27,17 @@ function normalizePhoneForRateLimit(value: string | null): string | null {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:register", async () => {
-  // Rate limit: 5 registration attempts per 10 minutes per IP
-  const rateLimitResponse = await withRateLimit("register", 5, 600);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "register",
-      scope: "ip",
-    });
-    return rateLimitResponse;
+  const ipGuard = await enforceFailClosedIpRateLimit({
+    rateLimitAction: "register",
+    rateLimitMax: 5,
+    rateLimitWindowSeconds: 600,
+    auditActionName: "register",
+    auditScope: "ip",
+  });
+  if (ipGuard.blockedResponse) {
+    return ipGuard.blockedResponse;
   }
-
-  const ip = await getClientIp();
+  const ip = ipGuard.ip;
 
   let payload: unknown;
 
@@ -57,23 +56,31 @@ export async function POST(request: Request) {
   );
 
   if (normalizedEmail) {
-    const identifierRateLimit = await withRateLimitByIdentifier("register-email", normalizedEmail, 3, 600);
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "register-email",
+      identifier: normalizedEmail,
+      rateLimitMax: 3,
+      rateLimitWindowSeconds: 600,
+      auditActionName: "register",
+      auditScope: "email",
+      ip,
+    });
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "register",
-        scope: "email",
-      });
       return identifierRateLimit;
     }
   }
 
   if (normalizedPhone) {
-    const phoneIdentifierRateLimit = await withRateLimitByIdentifier("register-phone", normalizedPhone, 3, 600);
+    const phoneIdentifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "register-phone",
+      identifier: normalizedPhone,
+      rateLimitMax: 3,
+      rateLimitWindowSeconds: 600,
+      auditActionName: "register",
+      auditScope: "phone",
+      ip,
+    });
     if (phoneIdentifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "register",
-        scope: "phone",
-      });
       return phoneIdentifierRateLimit;
     }
   }

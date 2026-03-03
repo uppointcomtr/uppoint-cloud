@@ -95,6 +95,8 @@ Do not jump straight into changes without first confirming the local context and
 * Read the failing file and the surrounding context before applying a fix
 * Prefer the smallest verified fix that addresses the actual failure
 * After fixing a failure, rerun the relevant failing command first, then rerun the full verification sequence
+* Keep `npm run verify:security-gate` available as the canonical local security gate for security-sensitive changes
+* For auth, internal API, tenant isolation, audit, notification, or security-ops changes, run `npm run verify:security-gate` before recommending commit/push readiness
 * Keep repository-root `.github/workflows/remote-auth-smoke.yml` active as the canonical nightly remote auth smoke check
 * Remote smoke must run nightly and remain runnable on-demand via `workflow_dispatch`
 * Use `https://cloud.uppoint.com.tr` as the default remote smoke target unless explicitly changed
@@ -245,10 +247,12 @@ When relevant, assess against:
 * Tenant isolation is a hard security boundary, not a UI concern
 * Never trust tenant context coming from the client without server-side verification
 * Every tenant-scoped database query, mutation, background job, webhook handler, export operation, and cache key must enforce tenant scoping explicitly
+* Tenant-scoped data access in `db/` and `lib/` layers must use explicit tenant filters or approved scoped repositories; do not rely on caller-side filtering
 * Do not rely on client-side filters for tenant isolation
 * Do not allow cross-tenant data leakage through logs, caches, exports, support tooling, or background processing
 * Platform-level support or administrative access to tenant data must be explicit, minimized, and auditable
 * Assume breach: any missing tenant scope is treated as a potential security incident
+* Keep tenant guardrail tests aligned with real code surfaces (`app/`, `modules/`, `db/`, `lib/`) and treat coverage drift as a blocker for security sign-off
 
 ## Folder structure rules
 
@@ -376,9 +380,11 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Every auth endpoint must have two rate-limit layers: (1) IP-based and (2) identifier-based (email/phone/challengeId); omitting either enables credential stuffing
 * All responses that could reveal user existence, account state, or registration status must be neutral; different HTTP status codes or machine-readable errors can become information leaks
 * In security-critical paths, infrastructure failure must be fail-closed (reject, do not pass); fail-open is only acceptable where explicitly documented for business continuity
+* Security-critical dependency failures (rate-limit backend, token verification, internal auth checks, audit persistence/signing) must be handled fail-closed with explicit machine-readable error codes
 * Registration verification is OTP-only: create the user account only after required OTP challenges are verified; do not rely on email-link verification for registration
 * Keep legacy email-link verification deprecated by default: `GET /api/auth/verify-email` and `POST /api/auth/verify-email` must remain `410 ENDPOINT_DEPRECATED` unless explicit owner approval is given
 * Treat inter-service and internal calls as untrusted unless explicitly authenticated and authorized
+* Internal service-to-service calls must use token + request-signature verification by default and remain compatible with future mTLS enforcement for privileged internal routes
 
 ## Authorization and RBAC rules
 
@@ -435,6 +441,7 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Distinguish logs, metrics, traces, and audit data; they serve different purposes
 * Log enough context for diagnosis without leaking secrets or tenant-sensitive data
 * Operationally important failures should be measurable and alertable
+* Maintain an immutable external audit anchor process (hash-chain export/verification to append-only storage) so DB compromise cannot fully erase forensic evidence
 
 ## Quality rules
 
@@ -514,12 +521,14 @@ After every meaningful change:
 * run type checks: `npx tsc --noEmit` or the repository-defined type-check script if one exists
 * run tests: `npm test`
 * run production build verification: `npm run build`
+* run security gate when the change touches security-sensitive surfaces: `npm run verify:security-gate`
 
 ### Verification matrix
 
 | Context | Required command set | Notes |
 | --- | --- | --- |
 | Local code change (pre-commit) | `npm run lint` → `npx tsc --noEmit` → `npm test` → `npm run build` | Baseline verification for all meaningful changes |
+| Security-sensitive change (auth/internal/audit/tenant/ops security) | `npm run verify:security-gate` | Includes baseline checks plus security guardrails and environment-aware integrity checks |
 | Deployment on production host | `npm run lint` → `npx tsc --noEmit` → `npm test` → `npm run build` → `npm run build:deploy` | `build:deploy` is deploy/restart, not standard verification |
 | Nightly/remote smoke | GitHub Actions `remote-auth-smoke.yml` (`schedule` + `workflow_dispatch`) | Default target: `https://cloud.uppoint.com.tr`; keep token-gated health support active |
 | Incident/hotfix validation | Same as local baseline + targeted smoke for changed surface | Do not skip full baseline unless owner explicitly approves |

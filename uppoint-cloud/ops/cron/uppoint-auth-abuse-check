@@ -1,0 +1,6 @@
+# Uppoint Cloud auth abuse signal check (every 5 minutes)
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Reads audit signals and triggers alert channels on threshold breaches.
+*/5 * * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-auth-abuse-check.lock /opt/uppoint-cloud/scripts/run-auth-abuse-check.sh >> /var/log/uppoint-auth-abuse-check.log 2>&1

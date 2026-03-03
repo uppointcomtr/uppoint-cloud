@@ -4,7 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   completePasswordResetChallenge,
   PasswordResetChallengeError,
@@ -12,18 +12,17 @@ import {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:forgot-password-complete", async () => {
-  // Rate limit: 5 attempts per 10 minutes per IP
-  const rateLimitResponse = await withRateLimit("forgot-password-complete", 5, 600);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "forgot-password-complete",
-      scope: "ip",
-    });
-    return rateLimitResponse;
+  const ipGuard = await enforceFailClosedIpRateLimit({
+    rateLimitAction: "forgot-password-complete",
+    rateLimitMax: 5,
+    rateLimitWindowSeconds: 600,
+    auditActionName: "forgot-password-complete",
+    auditScope: "ip",
+  });
+  if (ipGuard.blockedResponse) {
+    return ipGuard.blockedResponse;
   }
-
-  const ip = await getClientIp();
+  const ip = ipGuard.ip;
 
   let payload: unknown;
 
@@ -37,12 +36,16 @@ export async function POST(request: Request) {
   const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
 
   if (challengeId) {
-    const identifierRateLimit = await withRateLimitByIdentifier("forgot-password-complete-challenge", challengeId, 6, 900);
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "forgot-password-complete-challenge",
+      identifier: challengeId,
+      rateLimitMax: 6,
+      rateLimitWindowSeconds: 900,
+      auditActionName: "forgot-password-complete",
+      auditScope: "challenge",
+      ip,
+    });
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "forgot-password-complete",
-        scope: "challenge",
-      });
       return identifierRateLimit;
     }
   }

@@ -1,5 +1,13 @@
 # Production Serving Guide (`cloud.uppoint.com.tr`)
 
+Security hardening roadmap reference:
+
+- [SECURITY_MAXIMIZATION_PLAN.md](/opt/uppoint-cloud/ops/SECURITY_MAXIMIZATION_PLAN.md)
+- [Secret Rotation Runbook](/opt/uppoint-cloud/ops/runbooks/secret-rotation.md)
+- [Runtime Services and Cron Catalog](/opt/uppoint-cloud/ops/RUNTIME_SERVICES_AND_CRON.md)
+- Run security gate before security-sensitive release decisions:
+  - `cd /opt/uppoint-cloud && npm run verify:security-gate`
+
 ## 1. Application runtime under `/opt/uppoint-cloud`
 
 ```bash
@@ -51,6 +59,7 @@ INTERNAL_AUDIT_TOKEN=replace-with-strong-random-token
 INTERNAL_DISPATCH_TOKEN=replace-with-strong-random-token
 INTERNAL_AUDIT_SIGNING_SECRET=replace-with-strong-random-secret
 INTERNAL_DISPATCH_SIGNING_SECRET=replace-with-strong-random-secret
+INTERNAL_AUTH_TRANSPORT_MODE=loopback-hmac-v1
 NOTIFICATION_PAYLOAD_SECRET=replace-with-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
@@ -58,6 +67,16 @@ HEALTHCHECK_TOKEN=replace-with-strong-random-token
 UPPOINT_ALLOWED_HOSTS=cloud.uppoint.com.tr
 UPPOINT_ALLOWED_ORIGINS=https://cloud.uppoint.com.tr
 AUDIT_FALLBACK_LOG_PATH=/var/log/uppoint-cloud/audit-fallback.log
+AUDIT_ANCHOR_SIGNING_SECRET=replace-with-strong-random-secret
+AUDIT_ANCHOR_SIGNING_KEY_ID=prod-kms-key-2026-01
+AUDIT_ANCHOR_OUTPUT_PATH=/opt/backups/audit/audit-anchor.jsonl
+WORM_S3_BUCKET=uppoint-audit-immutable
+WORM_S3_REGION=eu-central-1
+WORM_S3_PREFIX=cloud.uppoint.com.tr/audit-anchor
+WORM_S3_ENDPOINT_URL=
+WORM_AUDIT_OBJECT_LOCK_MODE=COMPLIANCE
+WORM_AUDIT_RETENTION_DAYS=365
+WORM_AUDIT_STORAGE_CLASS=STANDARD_IA
 ```
 
 This matches the shipped systemd unit (`EnvironmentFile=/opt/uppoint-cloud/.env`).
@@ -246,7 +265,10 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-backup /etc/cron.d/uppoint-
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-replication /etc/cron.d/uppoint-audit-anchor-replication
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-replication /etc/cron.d/uppoint-auth-abuse-check
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -260,6 +282,9 @@ sudo /opt/uppoint-cloud/scripts/backup-db.sh
 sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
 sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
+sudo /opt/uppoint-cloud/scripts/export-audit-anchor.sh
+sudo /opt/uppoint-cloud/scripts/replicate-audit-anchor.sh
+sudo /opt/uppoint-cloud/scripts/run-auth-abuse-check.sh
 ls -lah /opt/backups/postgres
 ```
 
@@ -279,6 +304,8 @@ ls -lah /opt/backups/postgres
 Production guard:
 
 - internal routes require loopback source (`127.0.0.1` / `::1`) in addition to token + signature checks.
+- `INTERNAL_AUTH_TRANSPORT_MODE=loopback-hmac-v1` is the default and must be present on signed internal requests via `x-internal-transport`.
+- For staged mTLS rollout use `INTERNAL_AUTH_TRANSPORT_MODE=mtls-hmac-v1` only after Nginx is configured to set trusted client-cert headers (`x-ssl-client-verify`, `x-ssl-client-serial`) for internal calls.
 - keep dispatcher traffic local (`--resolve cloud.uppoint.com.tr:443:127.0.0.1` default in script).
 
 `verify-audit-integrity.sh` performs read-only integrity validation for `AuditLog.metadata.integrity` chain:
@@ -287,6 +314,12 @@ Production guard:
 - verifies `v2` rows with cryptographic HMAC recomputation
 - treats `v1` rows as legacy continuity-only (chain enforced, hash recomputation skipped)
 - fails on missing/invalid chain metadata after cutover
+
+`replicate-audit-anchor.sh` pushes the latest JSONL anchor record to off-host S3 object-lock storage:
+- requires `aws` cli and valid cloud credentials (IAM user/role)
+- uploads with `ObjectLockMode` (`COMPLIANCE` or `GOVERNANCE`) and retention window
+- verifies object lock metadata via `head-object`
+- deduplicates by last replicated anchor hash (`/var/lib/uppoint-cloud/audit-anchor-replication.state`)
 
 ## 9. Redis backup automation
 

@@ -38,13 +38,14 @@ describe("verifyInternalRequestAuth", () => {
       body,
     });
 
-    const request = new Request(`https://cloud.uppoint.com.tr${path}`, {
+    const request = new Request(`http://127.0.0.1:3000${path}`, {
       method,
       headers: {
         "x-internal-dispatch-token": token,
         "x-internal-request-id": requestId,
         "x-internal-request-ts": timestamp,
         "x-internal-request-signature": signature,
+        "x-internal-transport": "loopback-hmac-v1",
       },
       body,
     });
@@ -55,6 +56,7 @@ describe("verifyInternalRequestAuth", () => {
       tokenHeaderName: "x-internal-dispatch-token",
       expectedToken: token,
       signingSecret,
+      transportMode: "loopback-hmac-v1",
     });
 
     expect(verified).not.toBeNull();
@@ -85,6 +87,7 @@ describe("verifyInternalRequestAuth", () => {
         "x-internal-request-id": requestId,
         "x-internal-request-ts": staleTimestamp,
         "x-internal-request-signature": signature,
+        "x-internal-transport": "loopback-hmac-v1",
       },
       body,
     });
@@ -96,6 +99,7 @@ describe("verifyInternalRequestAuth", () => {
       expectedToken: token,
       signingSecret,
       maxSkewSeconds: 300,
+      transportMode: "loopback-hmac-v1",
     });
 
     expect(verified).toBeNull();
@@ -123,6 +127,7 @@ describe("verifyInternalRequestAuth", () => {
           timestamp,
           body: "tampered",
         }),
+        "x-internal-transport": "loopback-hmac-v1",
       },
       body,
     });
@@ -133,6 +138,7 @@ describe("verifyInternalRequestAuth", () => {
       tokenHeaderName: "x-internal-dispatch-token",
       expectedToken: token,
       signingSecret,
+      transportMode: "loopback-hmac-v1",
     });
 
     expect(verified).toBeNull();
@@ -160,6 +166,7 @@ describe("verifyInternalRequestAuth", () => {
         "x-internal-dispatch-token": token,
         "x-internal-request-ts": timestamp,
         "x-internal-request-signature": signature,
+        "x-internal-transport": "loopback-hmac-v1",
       },
       body,
     });
@@ -170,6 +177,7 @@ describe("verifyInternalRequestAuth", () => {
       tokenHeaderName: "x-internal-dispatch-token",
       expectedToken: token,
       signingSecret,
+      transportMode: "loopback-hmac-v1",
     });
 
     expect(verified).toBeNull();
@@ -199,6 +207,7 @@ describe("verifyInternalRequestAuth", () => {
         "x-internal-request-ts": timestamp,
         "x-internal-request-signature": signature,
         "x-real-ip": "203.0.113.22",
+        "x-internal-transport": "loopback-hmac-v1",
       },
       body,
     });
@@ -210,6 +219,7 @@ describe("verifyInternalRequestAuth", () => {
       expectedToken: token,
       signingSecret,
       requireLoopbackSource: true,
+      transportMode: "loopback-hmac-v1",
     });
 
     expect(verified).toBeNull();
@@ -238,6 +248,7 @@ describe("verifyInternalRequestAuth", () => {
         "x-internal-request-id": requestId,
         "x-internal-request-ts": timestamp,
         "x-internal-request-signature": signature,
+        "x-internal-transport": "loopback-hmac-v1",
       },
       body,
     });
@@ -249,9 +260,51 @@ describe("verifyInternalRequestAuth", () => {
       expectedToken: token,
       signingSecret,
       requireLoopbackSource: true,
+      transportMode: "loopback-hmac-v1",
     });
 
     expect(verified).not.toBeNull();
     expect(verified?.requestId).toBe(requestId);
+  });
+
+  it("rejects requests when transport header does not match expected mode", async () => {
+    const method = "POST";
+    const path = "/api/internal/notifications/dispatch";
+    const body = "";
+    const requestId = "dispatch-test-request-transport-mismatch";
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const token = "dispatch-token-abcdefghijklmnopqrstuvwxyz12";
+    const signingSecret = "dispatch-signing-secret-abcdefghijklmnopqrstuvwxyz";
+    const signature = signRequest(signingSecret, {
+      method,
+      path,
+      requestId,
+      timestamp,
+      body,
+    });
+
+    const request = new Request(`http://127.0.0.1:3000${path}`, {
+      method,
+      headers: {
+        "x-internal-dispatch-token": token,
+        "x-internal-request-id": requestId,
+        "x-internal-request-ts": timestamp,
+        "x-internal-request-signature": signature,
+        "x-internal-transport": "mtls-hmac-v1",
+      },
+      body,
+    });
+
+    const verified = await verifyInternalRequestAuth({
+      request,
+      expectedPath: path,
+      tokenHeaderName: "x-internal-dispatch-token",
+      expectedToken: token,
+      signingSecret,
+      requireLoopbackSource: true,
+      transportMode: "loopback-hmac-v1",
+    });
+
+    expect(verified).toBeNull();
   });
 });

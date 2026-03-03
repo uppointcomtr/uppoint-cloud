@@ -1,0 +1,6 @@
+# Uppoint Cloud audit chain external anchor export (daily at 03:40)
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Exports current audit chain head hash to external append-only JSONL sink.
+40 3 * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-audit-anchor-export.lock /opt/uppoint-cloud/scripts/export-audit-anchor.sh >> /var/log/uppoint-audit-anchor-export.log 2>&1

@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
 import { withIdempotency } from "@/lib/http/idempotency";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { revokeSessionJti } from "@/lib/session-revocation";
 
 function usesSecureSessionCookie(request: NextRequest): boolean {
@@ -33,15 +33,17 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   return withIdempotency("auth:logout", async () => {
-    // Rate limit: 20 attempts per minute per IP — sufficient for multi-device logout, blocks flood.
-    const rateLimitResponse = await withRateLimit("logout", 20, 60);
-    if (rateLimitResponse) {
-      const limitedIp = await getClientIp();
-      await logAudit("rate_limit_exceeded", limitedIp, undefined, { action: "logout", scope: "ip" });
-      return rateLimitResponse;
+    const ipGuard = await enforceFailClosedIpRateLimit({
+      rateLimitAction: "logout",
+      rateLimitMax: 20,
+      rateLimitWindowSeconds: 60,
+      auditActionName: "logout",
+      auditScope: "ip",
+    });
+    if (ipGuard.blockedResponse) {
+      return ipGuard.blockedResponse;
     }
-
-    const ip = await getClientIp();
+    const ip = ipGuard.ip;
     const session = await auth();
     const useSecureCookie = usesSecureSessionCookie(request);
     const token = await getToken({
@@ -57,12 +59,17 @@ export async function POST(request: NextRequest) {
       ? token.sessionJti
       : (session?.user?.id ?? "anonymous");
 
-    const identifierRateLimit = await withRateLimitByIdentifier("logout-session", rateLimitIdentifier, 30, 60);
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "logout-session",
+      identifier: rateLimitIdentifier,
+      rateLimitMax: 30,
+      rateLimitWindowSeconds: 60,
+      auditActionName: "logout",
+      auditScope: "session",
+      ip,
+      userId: session?.user?.id,
+    });
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, session?.user?.id, {
-        action: "logout",
-        scope: "session",
-      });
       return identifierRateLimit;
     }
 

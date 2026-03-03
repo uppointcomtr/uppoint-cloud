@@ -3,10 +3,8 @@ import path from "path";
 import { describe, expect, it } from "vitest";
 
 const APPROVED_DIRECT_TENANT_QUERY_FILES = new Set([
-  "modules/tenant/server/scope.ts",
-  "modules/tenant/server/user-tenant.ts",
+  "db/repositories/tenant-repository.ts",
   "modules/auth/server/register-verification-challenge.ts",
-  "modules/auth/server/user-lifecycle.ts",
 ]);
 
 const TENANT_INPUT_GUARD_EXEMPT_FILES = new Set([

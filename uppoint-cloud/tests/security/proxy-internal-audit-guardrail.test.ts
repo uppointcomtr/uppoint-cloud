@@ -11,6 +11,7 @@ describe("proxy internal audit ingress guardrail", () => {
     expect(proxySource).toContain('request.headers.get("x-real-ip")');
     expect(proxySource).toContain('request.headers.get("x-internal-audit-token")');
     expect(proxySource).toContain('request.headers.get("x-internal-request-signature")');
+    expect(proxySource).toContain('request.headers.get("x-internal-transport")');
     expect(proxySource).toContain('const trustedInternalAuditIngress = isTrustedInternalAuditIngress(request, pathname)');
     expect(proxySource).toContain("!trustedInternalAuditIngress && !isAllowedHost");
     expect(proxySource).toContain("!trustedInternalAuditIngress && isApiMutation");
@@ -20,6 +21,7 @@ describe("proxy internal audit ingress guardrail", () => {
     const proxySource = readFileSync(path.join(process.cwd(), "proxy.ts"), "utf8");
 
     expect(proxySource).toContain('"x-real-ip": "127.0.0.1"');
+    expect(proxySource).toContain('"x-internal-transport": INTERNAL_AUTH_TRANSPORT_MODE');
     expect(proxySource).toContain("[edge-audit-emit] failed");
   });
 });

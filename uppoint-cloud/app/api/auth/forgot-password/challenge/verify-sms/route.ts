@@ -4,7 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   PasswordResetChallengeError,
   verifyPasswordResetSmsCode,
@@ -12,17 +12,17 @@ import {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:forgot-password-verify-sms", async () => {
-  // Rate limit: 10 attempts per 15 minutes per IP
-  const rateLimitResponse = await withRateLimit("forgot-password-verify-sms", 10, 900);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "forgot-password-verify-sms",
-      scope: "ip",
-    });
-    return rateLimitResponse;
+  const ipGuard = await enforceFailClosedIpRateLimit({
+    rateLimitAction: "forgot-password-verify-sms",
+    rateLimitMax: 10,
+    rateLimitWindowSeconds: 900,
+    auditActionName: "forgot-password-verify-sms",
+    auditScope: "ip",
+  });
+  if (ipGuard.blockedResponse) {
+    return ipGuard.blockedResponse;
   }
-  const ip = await getClientIp();
+  const ip = ipGuard.ip;
 
   let payload: unknown;
 
@@ -36,12 +36,16 @@ export async function POST(request: Request) {
   const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
 
   if (challengeId) {
-    const identifierRateLimit = await withRateLimitByIdentifier("forgot-password-verify-sms-challenge", challengeId, 8, 900);
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "forgot-password-verify-sms-challenge",
+      identifier: challengeId,
+      rateLimitMax: 8,
+      rateLimitWindowSeconds: 900,
+      auditActionName: "forgot-password-verify-sms",
+      auditScope: "challenge",
+      ip,
+    });
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "forgot-password-verify-sms",
-        scope: "challenge",
-      });
       return identifierRateLimit;
     }
   }

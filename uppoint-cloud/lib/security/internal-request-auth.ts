@@ -43,6 +43,7 @@ export interface VerifyInternalRequestInput {
   tokenHeaderName: string;
   expectedToken: string;
   signingSecret: string;
+  transportMode?: "loopback-hmac-v1" | "mtls-hmac-v1";
   maxSkewSeconds?: number;
   requestIdHeaderName?: string;
   requireLoopbackSource?: boolean;
@@ -130,6 +131,20 @@ function isLoopbackSource(request: Request): boolean {
   return isLoopbackIp(forwardedIp);
 }
 
+function isMtlsVerified(request: Request): boolean {
+  const verified = request.headers.get("x-ssl-client-verify")?.trim().toUpperCase();
+  if (verified !== "SUCCESS") {
+    return false;
+  }
+
+  const certSerial = request.headers.get("x-ssl-client-serial")?.trim();
+  if (!certSerial || certSerial.length < 4) {
+    return false;
+  }
+
+  return /^[A-Fa-f0-9:]+$/.test(certSerial);
+}
+
 export async function verifyInternalRequestAuth(
   input: VerifyInternalRequestInput,
 ): Promise<VerifiedInternalRequest | null> {
@@ -178,6 +193,21 @@ export async function verifyInternalRequestAuth(
   }
 
   if (input.requireLoopbackSource && !isLoopbackSource(input.request)) {
+    return null;
+  }
+
+  const transportMode = input.transportMode ?? "loopback-hmac-v1";
+  const declaredTransport = input.request.headers.get("x-internal-transport")?.trim();
+
+  if (declaredTransport !== transportMode) {
+    return null;
+  }
+
+  if (transportMode === "loopback-hmac-v1" && !isLoopbackSource(input.request)) {
+    return null;
+  }
+
+  if (transportMode === "mtls-hmac-v1" && !isMtlsVerified(input.request)) {
     return null;
   }
 

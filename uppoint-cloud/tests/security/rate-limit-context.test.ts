@@ -83,6 +83,7 @@ describe("withRateLimit context handling", () => {
     const response = await withRateLimit("login-email-start", 10, 900);
 
     expect(response).toBeNull();
-    expect(mocks.transaction).toHaveBeenCalledTimes(1);
+    // Base IP limiter + adaptive device + adaptive ASN/network limiter.
+    expect(mocks.transaction).toHaveBeenCalledTimes(3);
   });
 });

@@ -8,6 +8,7 @@ const proxyEnvSchema = z.object({
   INTERNAL_AUDIT_TOKEN: z.string().min(32).optional(),
   INTERNAL_AUDIT_SIGNING_SECRET: z.string().min(32).optional(),
   INTERNAL_AUDIT_ENDPOINT_URL: z.string().url().optional(),
+  INTERNAL_AUTH_TRANSPORT_MODE: z.enum(["loopback-hmac-v1", "mtls-hmac-v1"]).default("loopback-hmac-v1"),
   AUTH_SECRET: z.string().min(32).optional(),
 }).superRefine((input, context) => {
   if (input.NODE_ENV !== "production") {
@@ -39,6 +40,7 @@ const parsedProxyEnv = proxyEnvSchema.safeParse({
   INTERNAL_AUDIT_TOKEN: process.env.INTERNAL_AUDIT_TOKEN,
   INTERNAL_AUDIT_SIGNING_SECRET: process.env.INTERNAL_AUDIT_SIGNING_SECRET,
   INTERNAL_AUDIT_ENDPOINT_URL: process.env.INTERNAL_AUDIT_ENDPOINT_URL,
+  INTERNAL_AUTH_TRANSPORT_MODE: process.env.INTERNAL_AUTH_TRANSPORT_MODE,
   AUTH_SECRET: process.env.AUTH_SECRET,
 });
 

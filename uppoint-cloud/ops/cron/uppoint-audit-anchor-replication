@@ -1,0 +1,6 @@
+# Uppoint Cloud audit anchor off-host WORM replication (daily at 03:50)
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Replicates latest audit anchor record to off-host immutable object-lock storage.
+50 3 * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-audit-anchor-replication.lock /opt/uppoint-cloud/scripts/replicate-audit-anchor.sh >> /var/log/uppoint-audit-anchor-replication.log 2>&1

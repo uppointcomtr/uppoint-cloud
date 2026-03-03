@@ -2,7 +2,7 @@ import "server-only";
 
 import { TenantRole } from "@prisma/client";
 
-import { prisma } from "@/db/client";
+import { findTenantMembershipForAccess } from "@/db/repositories/tenant-repository";
 import { logAudit } from "@/lib/audit-log";
 
 const roleRank: Record<TenantRole, number> = {
@@ -23,25 +23,7 @@ interface TenantScopeDependencies {
 }
 
 const defaultDependencies: TenantScopeDependencies = {
-  findMembership: async ({ tenantId, userId }) =>
-    prisma.tenantMembership.findUnique({
-      where: {
-        tenantId_userId: {
-          tenantId,
-          userId,
-        },
-      },
-      select: {
-        tenantId: true,
-        userId: true,
-        role: true,
-        tenant: {
-          select: {
-            deletedAt: true,
-          },
-        },
-      },
-    }),
+  findMembership: async ({ tenantId, userId }) => findTenantMembershipForAccess({ tenantId, userId }),
 };
 
 export function hasRequiredTenantRole(role: TenantRole, minimumRole: TenantRole): boolean {

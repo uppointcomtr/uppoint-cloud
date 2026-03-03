@@ -2,7 +2,7 @@ import "server-only";
 
 import { TenantRole } from "@prisma/client";
 
-import { prisma } from "@/db/client";
+import { findUserTenantMembershipsForContext } from "@/db/repositories/tenant-repository";
 import { assertTenantAccess } from "@/modules/tenant/server/scope";
 
 interface ResolveUserTenantDependencies {
@@ -12,19 +12,9 @@ interface ResolveUserTenantDependencies {
 
 const defaultDependencies: ResolveUserTenantDependencies = {
   findMemberships: async (userId) =>
-    prisma.tenantMembership.findMany({
-      where: {
-        userId,
-        tenant: {
-          deletedAt: null,
-        },
-      },
-      orderBy: { createdAt: "asc" },
+    findUserTenantMembershipsForContext({
+      userId,
       take: 2,
-      select: {
-        tenantId: true,
-        role: true,
-      },
     }),
   assertAccess: async ({ tenantId, userId, minimumRole }) => assertTenantAccess({ tenantId, userId, minimumRole }),
 };

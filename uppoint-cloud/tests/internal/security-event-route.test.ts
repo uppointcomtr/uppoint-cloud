@@ -4,11 +4,13 @@ const {
   logAuditMock,
   withRateLimitMock,
   withRateLimitByIdentifierMock,
+  getClientIpMock,
   verifyInternalRequestAuthMock,
 } = vi.hoisted(() => ({
   logAuditMock: vi.fn(),
   withRateLimitMock: vi.fn(),
   withRateLimitByIdentifierMock: vi.fn(),
+  getClientIpMock: vi.fn().mockResolvedValue("unknown"),
   verifyInternalRequestAuthMock: vi.fn(),
 }));
 
@@ -19,6 +21,7 @@ vi.mock("@/lib/audit-log", () => ({
 vi.mock("@/lib/rate-limit", () => ({
   withRateLimit: withRateLimitMock,
   withRateLimitByIdentifier: withRateLimitByIdentifierMock,
+  getClientIp: getClientIpMock,
 }));
 
 vi.mock("@/lib/security/internal-request-auth", () => ({

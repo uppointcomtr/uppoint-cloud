@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=/opt/uppoint-cloud/scripts/lib/env-reader.sh
+source "${SCRIPT_DIR}/lib/env-reader.sh"
+ENV_FILE="${PROJECT_ROOT}/.env"
+
+cd "${PROJECT_ROOT}"
+
+echo "[security-gate] baseline verification: lint + typecheck + tests + build"
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+
+echo "[security-gate] contract guardrails: workflow layout + repo layout"
+npm run verify:workflow-layout
+npm run verify:repo-layout
+
+AUDIT_INTEGRITY_DATABASE_URL="${AUDIT_INTEGRITY_DATABASE_URL:-}"
+DATABASE_URL="${DATABASE_URL:-}"
+if [ -z "${AUDIT_INTEGRITY_DATABASE_URL}" ]; then
+  AUDIT_INTEGRITY_DATABASE_URL="$(read_env_value "${ENV_FILE}" "AUDIT_INTEGRITY_DATABASE_URL")"
+fi
+if [ -z "${DATABASE_URL}" ]; then
+  DATABASE_URL="$(read_env_value "${ENV_FILE}" "DATABASE_URL")"
+fi
+
+if [ -n "${AUDIT_INTEGRITY_DATABASE_URL}" ]; then
+  echo "[security-gate] audit integrity verification via AUDIT_INTEGRITY_DATABASE_URL"
+  DATABASE_URL="${AUDIT_INTEGRITY_DATABASE_URL}" npm run verify:audit-integrity
+elif [ -n "${DATABASE_URL}" ]; then
+  echo "[security-gate] audit integrity verification via DATABASE_URL"
+  DATABASE_URL="${DATABASE_URL}" npm run verify:audit-integrity
+else
+  echo "[security-gate] skip verify:audit-integrity (DATABASE_URL/AUDIT_INTEGRITY_DATABASE_URL is not set)"
+fi
+
+if [ -f "/etc/nginx/conf.d/uppoint-rate-limit.conf" ]; then
+  echo "[security-gate] nginx drift verification"
+  npm run verify:nginx-drift
+else
+  echo "[security-gate] skip verify:nginx-drift (/etc/nginx/conf.d/uppoint-rate-limit.conf not found)"
+fi
+
+if command -v systemctl >/dev/null 2>&1 && systemctl cat uppoint-cloud.service >/dev/null 2>&1; then
+  echo "[security-gate] edge-audit emit verification"
+  npm run verify:edge-audit-emit
+else
+  echo "[security-gate] skip verify:edge-audit-emit (uppoint-cloud.service not available)"
+fi
+
+echo "[security-gate] completed successfully"

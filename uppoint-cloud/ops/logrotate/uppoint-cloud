@@ -96,6 +96,36 @@ su root adm
     create 640 root adm
 }
 
+/var/log/uppoint-audit-anchor-export.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
+/var/log/uppoint-audit-anchor-replication.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
+/var/log/uppoint-auth-abuse-check.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
 /var/log/uppoint-cloud/audit-fallback.log {
     daily
     rotate 30

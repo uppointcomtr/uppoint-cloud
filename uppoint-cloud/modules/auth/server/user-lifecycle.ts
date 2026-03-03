@@ -1,5 +1,11 @@
 import "server-only";
 
+import {
+  countActiveTenantMembers,
+  deleteUserTenantMemberships,
+  findUserTenantIds,
+  softDeleteTenantIfActive,
+} from "@/db/repositories/tenant-repository";
 import { prisma } from "@/db/client";
 import { logAudit } from "@/lib/audit-log";
 
@@ -38,35 +44,17 @@ const defaultDependencies: SoftDeleteDependencies = {
       await tx.passwordResetToken.deleteMany({ where: { userId } });
       await tx.registrationVerificationChallenge.deleteMany({ where: { userId } });
 
-      const memberships = await tx.tenantMembership.findMany({
-        where: { userId },
-        select: { tenantId: true },
-      });
+      const memberships = await findUserTenantIds({ userId }, tx);
 
       if (memberships.length > 0) {
-        await tx.tenantMembership.deleteMany({ where: { userId } });
+        await deleteUserTenantMemberships({ userId }, tx);
 
-        const tenantIds = [...new Set(memberships.map((membership) => membership.tenantId))];
+        const tenantIds = [...new Set(memberships)];
         for (const tenantId of tenantIds) {
-          const remainingActiveMembers = await tx.tenantMembership.count({
-            where: {
-              tenantId,
-              user: {
-                deletedAt: null,
-              },
-            },
-          });
+          const remainingActiveMembers = await countActiveTenantMembers({ tenantId }, tx);
 
           if (remainingActiveMembers === 0) {
-            await tx.tenant.updateMany({
-              where: {
-                id: tenantId,
-                deletedAt: null,
-              },
-              data: {
-                deletedAt: now,
-              },
-            });
+            await softDeleteTenantIfActive({ tenantId, now }, tx);
           }
         }
       }

@@ -3,34 +3,31 @@ import { NextResponse } from "next/server";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
-import { withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
-import { verifyInternalRequestAuth } from "@/lib/security/internal-request-auth";
+import { withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceInternalRouteGuard } from "@/lib/security/internal-route-guard";
 import { dispatchNotificationOutboxBatch } from "@/modules/notifications/server/outbox";
 
 export async function POST(request: Request) {
-  const ipRateLimitResponse = await withRateLimit("internal-notification-dispatch", 120, 60);
-  if (ipRateLimitResponse) {
-    return ipRateLimitResponse;
-  }
-
-  const verifiedRequest = await verifyInternalRequestAuth({
+  const internalGuard = await enforceInternalRouteGuard({
     request,
     expectedPath: "/api/internal/notifications/dispatch",
     tokenHeaderName: "x-internal-dispatch-token",
     expectedToken: env.INTERNAL_DISPATCH_TOKEN ?? "",
     signingSecret: env.INTERNAL_DISPATCH_SIGNING_SECRET ?? "",
-    requireLoopbackSource: env.NODE_ENV === "production",
+    ipRateLimit: {
+      action: "internal-notification-dispatch",
+      max: 120,
+      windowSeconds: 60,
+    },
+    unauthorizedAuditAction: "internal_dispatch_unauthorized",
   });
 
-  if (!verifiedRequest) {
-    const requestId = request.headers.get("x-internal-request-id")?.trim();
-    await logAudit("internal_dispatch_unauthorized", "unknown", undefined, {
-      requestId: requestId && requestId.length > 0 ? requestId.slice(0, 128) : undefined,
-      result: "FAILURE",
-      reason: "INVALID_INTERNAL_REQUEST_AUTH",
-    });
-    return NextResponse.json(fail("UNAUTHORIZED"), { status: 401 });
+  if (internalGuard.blockedResponse) {
+    return internalGuard.blockedResponse;
   }
+
+  const verifiedRequest = internalGuard.verifiedRequest;
+  const ip = internalGuard.ip;
 
   if (verifiedRequest.rawBody.trim().length > 0) {
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
@@ -43,7 +40,7 @@ export async function POST(request: Request) {
     300,
   );
   if (replayRateLimitResponse) {
-    await logAudit("internal_dispatch_replay_blocked", "unknown", undefined, {
+    await logAudit("internal_dispatch_replay_blocked", ip, undefined, {
       requestId: verifiedRequest.requestId,
       result: "FAILURE",
       reason: "REPLAY_OR_DUPLICATE_REQUEST_ID",
@@ -56,7 +53,7 @@ export async function POST(request: Request) {
       batchSize: 50,
     });
 
-    await logAudit("internal_dispatch_success", "unknown", undefined, {
+    await logAudit("internal_dispatch_success", ip, undefined, {
       requestId: verifiedRequest.requestId,
       inspected: result.inspected,
       sent: result.sent,
@@ -66,7 +63,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(ok(result), { status: 200 });
   } catch (error) {
-    await logAudit("internal_dispatch_failed", "unknown", undefined, {
+    await logAudit("internal_dispatch_failed", ip, undefined, {
       requestId: verifiedRequest.requestId,
       result: "FAILURE",
       reason: "DISPATCH_FAILED",

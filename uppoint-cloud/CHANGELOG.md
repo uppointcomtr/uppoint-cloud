@@ -1,5 +1,93 @@
 # Changelog
 
+## 2026-03-03 (ops hardening: cron activation + off-host WORM anchor replication + runtime catalog)
+
+### Added
+- Added off-host immutable replication script for audit anchors:
+  - `scripts/replicate-audit-anchor.sh`
+  - Uploads latest exported anchor to S3 object-lock target (`COMPLIANCE`/`GOVERNANCE`) and validates lock metadata via `head-object`.
+  - Maintains replication state in `/var/lib/uppoint-cloud/audit-anchor-replication.state`.
+- Added cron template for replication:
+  - `ops/cron/uppoint-audit-anchor-replication`
+- Added npm command:
+  - `npm run audit:anchor:replicate`
+- Added runtime operations inventory document:
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+
+### Changed
+- Activated new production cron jobs on host (`/etc/cron.d`):
+  - `uppoint-audit-anchor-export`
+  - `uppoint-auth-abuse-check`
+- Expanded operations docs:
+  - `ops/README.md` now includes object-lock replication env vars, replication cron install command, and manual verification command.
+  - `README.md` now links runtime services/cron catalog.
+- Extended logrotate coverage:
+  - `ops/logrotate/uppoint-cloud` now rotates `/var/log/uppoint-audit-anchor-replication.log`.
+
+## 2026-03-03 (security hardening: internal transport contract + tenant repository boundary + audit anchoring + abuse automation)
+
+### Added
+- Added tenant repository boundary for tenant model access:
+  - `db/repositories/tenant-repository.ts`
+  - Centralizes tenant membership/tenant query operations used by auth + tenant modules.
+- Added external audit-anchor export pipeline:
+  - `scripts/export-audit-anchor.mjs`
+  - `scripts/export-audit-anchor.sh`
+  - `ops/cron/uppoint-audit-anchor-export`
+  - `npm run audit:anchor:export`
+- Added auth abuse signal automation:
+  - `scripts/check-auth-abuse-signals.mjs`
+  - `scripts/run-auth-abuse-check.sh`
+  - `scripts/alert-auth-abuse.sh`
+  - `ops/cron/uppoint-auth-abuse-check`
+  - `npm run verify:auth-abuse`
+- Added operations runbook:
+  - `ops/runbooks/secret-rotation.md`
+
+### Changed
+- Internal signed-route transport contract is now explicit and env-governed:
+  - Added `INTERNAL_AUTH_TRANSPORT_MODE` validation in:
+    - `lib/env/server.ts`
+    - `lib/env/proxy.ts`
+  - `proxy.ts` now stamps internal audit emit requests with `x-internal-transport` and validates trusted ingress shape against this header.
+  - `scripts/dispatch-notifications.sh` now sends `x-internal-transport`.
+- Refactored tenant usage to repository boundary:
+  - `modules/tenant/server/scope.ts`
+  - `modules/tenant/server/user-tenant.ts`
+  - `modules/auth/server/user-lifecycle.ts`
+  - `tests/tenant/tenant-guardrail.test.ts` allowlist updated to repository-centric enforcement.
+- Updated internal auth guardrails and tests:
+  - `tests/internal/internal-route-guardrail.test.ts`
+  - `tests/security/internal-request-auth.test.ts`
+  - `tests/security/proxy-internal-audit-guardrail.test.ts`
+- Updated operations and environment docs:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/SECURITY_MAXIMIZATION_PLAN.md`
+  - `ops/logrotate/uppoint-cloud`
+
+## 2026-03-03 (security governance: security gate + hardening roadmap codified)
+
+### Added
+- Added dedicated security gate command:
+  - `scripts/verify-security-gate.sh`
+  - `npm run verify:security-gate`
+  - Gate runs baseline verification plus layout guardrails and environment-aware integrity/drift checks.
+- Added top-5 hardening roadmap document:
+  - `ops/SECURITY_MAXIMIZATION_PLAN.md`
+  - Tracks next high-impact controls: internal mTLS, immutable external audit anchoring, secret rotation operations, and abuse-response automation.
+
+### Changed
+- Updated `AGENTS.md` with five additional security governance controls:
+  - mandatory use of `verify:security-gate` for security-sensitive surfaces,
+  - explicit tenant-scope enforcement requirement in `db/` and `lib/` layers,
+  - fail-closed requirement for security-critical dependency failures,
+  - requirement that internal calls remain compatible with future mTLS,
+  - immutable external audit-anchor requirement for forensic resilience.
+- Updated docs to reference new security roadmap and gate:
+  - `README.md`
+  - `ops/README.md`
+
 ## 2026-03-03 (security closure: session invalidation, deprecated fail-closed, internal payload audit, auth-priority outbox)
 
 ### Fixed

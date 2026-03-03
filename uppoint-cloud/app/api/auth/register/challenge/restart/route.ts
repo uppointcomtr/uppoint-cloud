@@ -4,7 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   RegisterVerificationChallengeError,
   restartRegisterVerificationChallenge,
@@ -12,18 +12,17 @@ import {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:register-verify-restart", async () => {
-  // Rate limit: 5 attempts per 10 minutes per IP
-  const rateLimitResponse = await withRateLimit("register-verify-restart", 5, 600);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "register-verify-restart",
-      scope: "ip",
-    });
-    return rateLimitResponse;
+  const ipGuard = await enforceFailClosedIpRateLimit({
+    rateLimitAction: "register-verify-restart",
+    rateLimitMax: 5,
+    rateLimitWindowSeconds: 600,
+    auditActionName: "register-verify-restart",
+    auditScope: "ip",
+  });
+  if (ipGuard.blockedResponse) {
+    return ipGuard.blockedResponse;
   }
-
-  const ip = await getClientIp();
+  const ip = ipGuard.ip;
 
   let payload: unknown;
 
@@ -37,18 +36,17 @@ export async function POST(request: Request) {
   const challengeId = typeof rawPayload.challengeId === "string" ? rawPayload.challengeId.trim() : "";
 
   if (challengeId) {
-    const identifierRateLimit = await withRateLimitByIdentifier(
-      "register-verify-restart-challenge",
-      challengeId,
-      5,
-      600,
-    );
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "register-verify-restart-challenge",
+      identifier: challengeId,
+      rateLimitMax: 5,
+      rateLimitWindowSeconds: 600,
+      auditActionName: "register-verify-restart",
+      auditScope: "challengeId",
+      ip,
+    });
 
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "register-verify-restart",
-        scope: "challengeId",
-      });
       return identifierRateLimit;
     }
   }

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   LoginChallengeError,
   startPhoneLoginChallenge,
@@ -24,17 +24,17 @@ function normalizePhoneForRateLimit(value: string): string {
 
 export async function POST(request: Request) {
   return withIdempotency("auth:login-phone-start", async () => {
-  // Rate limit: 10 attempts per 15 minutes per IP
-  const rateLimitResponse = await withRateLimit("login-phone-start", 10, 900);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "login-phone-start",
-      scope: "ip",
-    });
-    return rateLimitResponse;
+  const ipGuard = await enforceFailClosedIpRateLimit({
+    rateLimitAction: "login-phone-start",
+    rateLimitMax: 10,
+    rateLimitWindowSeconds: 900,
+    auditActionName: "login-phone-start",
+    auditScope: "ip",
+  });
+  if (ipGuard.blockedResponse) {
+    return ipGuard.blockedResponse;
   }
-  const ip = await getClientIp();
+  const ip = ipGuard.ip;
 
   let payload: unknown;
 
@@ -49,12 +49,16 @@ export async function POST(request: Request) {
   const normalizedPhone = normalizePhoneForRateLimit(phone);
 
   if (normalizedPhone) {
-    const identifierRateLimit = await withRateLimitByIdentifier("login-phone-start-account", normalizedPhone, 8, 900);
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "login-phone-start-account",
+      identifier: normalizedPhone,
+      rateLimitMax: 8,
+      rateLimitWindowSeconds: 900,
+      auditActionName: "login-phone-start",
+      auditScope: "phone",
+      ip,
+    });
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "login-phone-start",
-        scope: "phone",
-      });
       return identifierRateLimit;
     }
   }

@@ -4,22 +4,22 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
-import { getClientIp, withRateLimit, withRateLimitByIdentifier } from "@/lib/rate-limit";
+import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { startPasswordResetChallenge } from "@/modules/auth/server/password-reset-challenge";
 
 export async function POST(request: Request) {
   return withIdempotency("auth:forgot-password-start", async () => {
-  // Rate limit: 5 attempts per 10 minutes per IP
-  const rateLimitResponse = await withRateLimit("forgot-password-challenge-start", 5, 600);
-  if (rateLimitResponse) {
-    const limitedIp = await getClientIp();
-    await logAudit("rate_limit_exceeded", limitedIp, undefined, {
-      action: "forgot-password-challenge-start",
-      scope: "ip",
-    });
-    return rateLimitResponse;
+  const ipGuard = await enforceFailClosedIpRateLimit({
+    rateLimitAction: "forgot-password-challenge-start",
+    rateLimitMax: 5,
+    rateLimitWindowSeconds: 600,
+    auditActionName: "forgot-password-challenge-start",
+    auditScope: "ip",
+  });
+  if (ipGuard.blockedResponse) {
+    return ipGuard.blockedResponse;
   }
-  const ip = await getClientIp();
+  const ip = ipGuard.ip;
 
   let payload: unknown;
 
@@ -33,18 +33,17 @@ export async function POST(request: Request) {
   const email = typeof rawPayload.email === "string" ? rawPayload.email.trim().toLowerCase() : "";
 
   if (email) {
-    const identifierRateLimit = await withRateLimitByIdentifier(
-      "forgot-password-challenge-start-account",
-      email,
-      5,
-      600,
-    );
+    const identifierRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "forgot-password-challenge-start-account",
+      identifier: email,
+      rateLimitMax: 5,
+      rateLimitWindowSeconds: 600,
+      auditActionName: "forgot-password-challenge-start",
+      auditScope: "email",
+      ip,
+    });
 
     if (identifierRateLimit) {
-      await logAudit("rate_limit_exceeded", ip, undefined, {
-        action: "forgot-password-challenge-start",
-        scope: "email",
-      });
       return identifierRateLimit;
     }
   }
