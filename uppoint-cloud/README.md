@@ -118,6 +118,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUDIT_ANCHOR_SIGNING_KEY_ID` (optional key identifier included in exported anchor records)
 - `AUDIT_ANCHOR_OUTPUT_PATH` (optional, default `/opt/backups/audit/audit-anchor.jsonl`)
 - `UPPOINT_CLOSED_SYSTEM_MODE` (recommended `true`; default closed-system/no off-host egress mode)
+- `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION` (optional, default `false`; explicit off-host replication kill switch)
 - `NOTIFICATION_PAYLOAD_SECRET` (required in production; encrypts notification outbox payload at rest)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
@@ -133,11 +134,19 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUTH_ABUSE_THRESHOLD_LOGIN_CHALLENGE_START_FAILED` (optional, default `30`)
 - `AUTH_ABUSE_THRESHOLD_PASSWORD_RESET_FAILED` (optional, default `20`)
 - `AUTH_ABUSE_ALERT_COOLDOWN_MINUTES` (optional, default `60`)
+- `SECURITY_SLO_LOOKBACK_MINUTES` (optional, default `60`)
+- `SECURITY_SLO_MAX_LOGIN_OTP_FAILED` (optional, default `120`)
+- `SECURITY_SLO_MAX_PASSWORD_RESET_FAILED` (optional, default `60`)
+- `SECURITY_SLO_MAX_RATE_LIMIT_EXCEEDED` (optional, default `300`)
+- `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (optional, default `0.25`)
+- `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (optional, default `20`; minimum terminal delivery sample before failure-ratio alerts are enforced)
 
 Closed-system deployment policy:
 - Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.
 - Do not enable off-host replication/third-party alert sinks unless explicitly approved.
-- `npm run audit:anchor:replicate` skips when closed mode is active.
+- `npm run audit:anchor:replicate` skips unless both conditions are true:
+  - `UPPOINT_CLOSED_SYSTEM_MODE=false`
+  - `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`
 
 ## Upstash rate limit activation
 
@@ -211,6 +220,7 @@ npm run verify:edge-audit-emit
 npm run verify:audit-integrity
 npm run audit:anchor:export
 npm run verify:auth-abuse
+npm run verify:security-slo
 ```
 
 `npm run test:e2e` defaults to mutation coverage (`E2E_ALLOW_MUTATIONS=1`) against an isolated local server on `127.0.0.1:3101`. Set `E2E_ALLOW_MUTATIONS=0` only for explicit read-only smoke.
@@ -240,8 +250,10 @@ Periodic server-side drift enforcement:
 ```bash
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-nginx-drift-check /etc/cron.d/uppoint-nginx-drift-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-edge-audit-emit-check /etc/cron.d/uppoint-edge-audit-emit-check
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-slo-report /etc/cron.d/uppoint-security-slo-report
 sudo chmod 644 /etc/cron.d/uppoint-nginx-drift-check
 sudo chmod 644 /etc/cron.d/uppoint-edge-audit-emit-check
+sudo chmod 644 /etc/cron.d/uppoint-security-slo-report
 ```
 
 Optional alert channels for drift + edge-audit emit failures:

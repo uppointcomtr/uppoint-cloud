@@ -21,6 +21,7 @@ systemctl status uppoint-tune.service
 Closed-system policy note:
 - Default mode is `UPPOINT_CLOSED_SYSTEM_MODE=true`.
 - In this mode, off-host replication jobs must remain disabled.
+- Even when closed mode is disabled, off-host replication remains blocked unless `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`.
 
 | File | Schedule | Purpose | Log file |
 | --- | --- | --- | --- |
@@ -31,8 +32,9 @@ Closed-system policy note:
 | `uppoint-notification-dispatch` | every minute | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` |
 | `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` |
 | `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` |
-| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (disabled in closed mode) |
+| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (disabled unless explicitly enabled) |
 | `uppoint-auth-abuse-check` | `*/5 * * * *` | Auth abuse threshold monitoring + alerts | `/var/log/uppoint-auth-abuse-check.log` |
+| `uppoint-security-slo-report` | `*/15 * * * *` | Security SLO breach detection from audit + outbox signals | `/var/log/uppoint-security-slo-report.log` |
 | `uppoint-auth-rate-limit-tune` | daily | Report-only auth limiter tuning | `/var/log/uppoint-auth-rate-limit-tune.log` |
 | `uppoint-health-probe` | periodic | Health probe | `/var/log/uppoint-health-probe.log` |
 | `uppoint-nginx-drift-check` | periodic | Nginx drift verification | `/var/log/uppoint-nginx-drift-check.log` |
@@ -44,6 +46,7 @@ Validation commands:
 ls -la /etc/cron.d/uppoint-*
 tail -n 100 /var/log/uppoint-audit-anchor-replication.log
 tail -n 100 /var/log/uppoint-auth-abuse-check.log
+tail -n 100 /var/log/uppoint-security-slo-report.log
 tail -n 100 /var/log/uppoint-postgres-restore-drill.log
 ```
 

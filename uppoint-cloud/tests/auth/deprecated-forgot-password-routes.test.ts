@@ -29,6 +29,7 @@ describe("deprecated forgot-password routes", () => {
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "ENDPOINT_DEPRECATED",
+      code: "ENDPOINT_DEPRECATED",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "deprecated_endpoint_access",
@@ -47,6 +48,7 @@ describe("deprecated forgot-password routes", () => {
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "ENDPOINT_DEPRECATED",
+      code: "ENDPOINT_DEPRECATED",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "deprecated_endpoint_access",

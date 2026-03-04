@@ -68,6 +68,7 @@ describe("withRateLimit context handling", () => {
     await expect(response?.json()).resolves.toEqual({
       success: false,
       error: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+      code: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
     });
   });
 

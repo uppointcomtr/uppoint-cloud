@@ -72,6 +72,7 @@ AUDIT_ANCHOR_SIGNING_SECRET=replace-with-strong-random-secret
 AUDIT_ANCHOR_SIGNING_KEY_ID=prod-kms-key-2026-01
 AUDIT_ANCHOR_OUTPUT_PATH=/opt/backups/audit/audit-anchor.jsonl
 UPPOINT_CLOSED_SYSTEM_MODE=true
+UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=false
 WORM_S3_BUCKET=uppoint-audit-immutable
 WORM_S3_REGION=eu-central-1
 WORM_S3_PREFIX=cloud.uppoint.com.tr/audit-anchor
@@ -270,7 +271,8 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/up
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-slo-report /etc/cron.d/uppoint-security-slo-report
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -287,6 +289,7 @@ sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
 sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
 sudo /opt/uppoint-cloud/scripts/export-audit-anchor.sh
 sudo /opt/uppoint-cloud/scripts/run-auth-abuse-check.sh
+sudo /opt/uppoint-cloud/scripts/run-security-slo-report.sh
 ls -lah /opt/backups/postgres
 ```
 
@@ -333,8 +336,21 @@ PostgreSQL restore drill:
 Closed-system default:
 - Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.
 - Do not install `uppoint-audit-anchor-replication` cron.
-- `replicate-audit-anchor.sh` exits with skip in closed mode.
+- `replicate-audit-anchor.sh` exits with skip unless both are explicitly set:
+  - `UPPOINT_CLOSED_SYSTEM_MODE=false`
+  - `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`
 - Enable off-host replication only with explicit owner approval and documented exception.
+
+Security SLO report:
+- `run-security-slo-report.sh` evaluates security thresholds using `AuditLog` and `NotificationOutbox` over a lookback window.
+- Configure optional thresholds in `.env`:
+  - `SECURITY_SLO_LOOKBACK_MINUTES` (default `60`)
+  - `SECURITY_SLO_MAX_LOGIN_OTP_FAILED` (default `120`)
+  - `SECURITY_SLO_MAX_PASSWORD_RESET_FAILED` (default `60`)
+  - `SECURITY_SLO_MAX_RATE_LIMIT_EXCEEDED` (default `300`)
+  - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (default `0.25`)
+  - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (default `20`; minimum terminal delivery sample before ratio alerting)
+- Exit code `1` indicates threshold breach and should be treated as an alert signal.
 
 ## 9. Redis backup automation
 
@@ -416,6 +432,7 @@ Covered logs:
 - `/var/log/uppoint-cloud/dispatch-notifications.log`
 - `/var/log/uppoint-nginx-drift-check.log`
 - `/var/log/uppoint-audit-integrity-check.log`
+- `/var/log/uppoint-security-slo-report.log`
 - `/var/log/uppoint-cloud/audit-fallback.log`
 - `/var/log/postgresql/*.log`
 

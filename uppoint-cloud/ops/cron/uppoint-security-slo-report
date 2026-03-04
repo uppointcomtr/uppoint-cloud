@@ -1,0 +1,6 @@
+# Uppoint Cloud security SLO report (every 15 minutes)
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Produces an objective security SLO report from audit + outbox delivery signals.
+*/15 * * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-security-slo-report.lock /opt/uppoint-cloud/scripts/run-security-slo-report.sh >> /var/log/uppoint-security-slo-report.log 2>&1

@@ -395,7 +395,11 @@ export async function withIdempotency(
   if (process.env.NODE_ENV === "production" && usedGlobalFallback) {
     // Security-sensitive: reject cross-client ambiguous idempotency scope in production.
     return Response.json(
-      { success: false, error: "IDEMPOTENCY_SCOPE_UNRESOLVED" },
+      {
+        success: false,
+        error: "IDEMPOTENCY_SCOPE_UNRESOLVED",
+        code: "IDEMPOTENCY_SCOPE_UNRESOLVED",
+      },
       { status: 400 },
     );
   }
@@ -411,7 +415,11 @@ export async function withIdempotency(
   } catch {
     // Security-sensitive: fail closed when idempotency storage is unavailable.
     return Response.json(
-      { success: false, error: "IDEMPOTENCY_STORAGE_UNAVAILABLE" },
+      {
+        success: false,
+        error: "IDEMPOTENCY_STORAGE_UNAVAILABLE",
+        code: "IDEMPOTENCY_STORAGE_UNAVAILABLE",
+      },
       {
         status: 503,
         headers: {
@@ -428,7 +436,11 @@ export async function withIdempotency(
     }
 
     return Response.json(
-      { success: false, error: "IDEMPOTENCY_IN_PROGRESS" },
+      {
+        success: false,
+        error: "IDEMPOTENCY_IN_PROGRESS",
+        code: "IDEMPOTENCY_IN_PROGRESS",
+      },
       {
         status: 409,
         headers: {

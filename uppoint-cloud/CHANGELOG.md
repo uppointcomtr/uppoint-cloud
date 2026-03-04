@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-03-04 (security/ops closure: F28-F33)
+
+### Fixed
+- Closed security error-envelope drift (`F28`):
+  - `lib/http/response.ts` now supports explicit `code` on failure payloads.
+  - `lib/rate-limit.ts` and `lib/http/idempotency.ts` now return `{ success:false, error, code }` for machine-readable failure handling.
+  - `modules/auth/components/shared/request-utils.ts` response contract now includes optional `code`.
+- Closed audit fallback continuity gap (`F29`):
+  - `lib/audit-log.ts` now recovers previous fallback chain hash from last valid fallback log entry when chain-state file is missing/corrupt.
+  - Added regression case in `tests/auth/audit-fallback-integrity.test.ts`.
+- Closed tenant guardrail coverage gap in scripts layer (`F30`):
+  - `tests/tenant/tenant-guardrail.test.ts` now scans `scripts/` for direct tenant-table queries.
+- Closed off-host replication safety gap (`F31`):
+  - `scripts/replicate-audit-anchor.sh` now requires explicit `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true` in addition to closed-system opt-out.
+  - Updated `README.md`, `ops/README.md`, `ops/RUNTIME_SERVICES_AND_CRON.md` with the dual-control requirement.
+- Closed future admin/support authorization baseline gap (`F32`):
+  - added deny-by-default platform permission primitives in `modules/auth/server/platform-rbac.ts`.
+  - added guardrail tests `tests/security/platform-rbac.test.ts` and `tests/security/platform-route-guardrail.test.ts`.
+- Closed security-SLO verification gap in security gate (`F33`):
+  - added `scripts/check-security-slo.mjs` and wrapper `scripts/run-security-slo-report.sh`.
+  - wired `npm run verify:security-slo` into `scripts/verify-security-gate.sh`.
+  - added cron template `ops/cron/uppoint-security-slo-report` and logrotate coverage for `/var/log/uppoint-security-slo-report.log`.
+  - added `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (default `20`) to avoid low-sample false positives on notification failure-ratio alerts.
+
+### Changed
+- Ops docs and findings registry updated:
+  - `FINDINGS_REGISTER.md` now tracks and closes `F28`–`F33` with evidence.
+  - `ops/README.md` and runtime cron catalog include security SLO monitoring procedures.
+
 ## 2026-03-04 (security/architecture closure: F23-F27)
 
 ### Fixed

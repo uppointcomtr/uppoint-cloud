@@ -137,6 +137,7 @@ describe("withIdempotency", () => {
     expect(await response.json()).toEqual({
       success: false,
       error: "IDEMPOTENCY_SCOPE_UNRESOLVED",
+      code: "IDEMPOTENCY_SCOPE_UNRESOLVED",
     });
     expect(handler).not.toHaveBeenCalled();
     expect(mocks.findUnique).not.toHaveBeenCalled();
@@ -161,6 +162,7 @@ describe("withIdempotency", () => {
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "IDEMPOTENCY_STORAGE_UNAVAILABLE",
+      code: "IDEMPOTENCY_STORAGE_UNAVAILABLE",
     });
     expect(handler).not.toHaveBeenCalled();
   });

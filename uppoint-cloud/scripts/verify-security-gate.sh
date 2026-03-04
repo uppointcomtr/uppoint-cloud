@@ -38,6 +38,17 @@ else
   echo "[security-gate] skip verify:audit-integrity (DATABASE_URL/AUDIT_INTEGRITY_DATABASE_URL is not set)"
 fi
 
+if [ -n "${DATABASE_URL}" ] || [ -n "${AUDIT_INTEGRITY_DATABASE_URL}" ]; then
+  echo "[security-gate] security SLO verification"
+  if [ -n "${AUDIT_INTEGRITY_DATABASE_URL}" ]; then
+    DATABASE_URL="${AUDIT_INTEGRITY_DATABASE_URL}" npm run verify:security-slo
+  else
+    DATABASE_URL="${DATABASE_URL}" npm run verify:security-slo
+  fi
+else
+  echo "[security-gate] skip verify:security-slo (DATABASE_URL/AUDIT_INTEGRITY_DATABASE_URL is not set)"
+fi
+
 if [ -f "/etc/nginx/conf.d/uppoint-rate-limit.conf" ]; then
   echo "[security-gate] nginx drift verification"
   npm run verify:nginx-drift

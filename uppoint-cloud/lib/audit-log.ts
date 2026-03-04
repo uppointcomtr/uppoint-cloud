@@ -149,16 +149,20 @@ async function ensureAuditFallbackChainStatePath(): Promise<boolean> {
 
 async function readAuditFallbackPreviousHash(): Promise<string | null> {
   if (!(await ensureAuditFallbackChainStatePath())) {
-    return null;
+    return readAuditFallbackPreviousHashFromLog();
   }
 
   try {
     const raw = await readFile(AUDIT_FALLBACK_CHAIN_STATE_PATH, { encoding: "utf8" });
     const value = raw.trim().toLowerCase();
-    return /^[a-f0-9]{64}$/.test(value) ? value : null;
+    if (/^[a-f0-9]{64}$/.test(value)) {
+      return value;
+    }
   } catch {
-    return null;
+    // fall through to log-based recovery
   }
+
+  return readAuditFallbackPreviousHashFromLog();
 }
 
 async function writeAuditFallbackPreviousHash(hash: string): Promise<void> {
@@ -175,6 +179,51 @@ async function writeAuditFallbackPreviousHash(hash: string): Promise<void> {
   } catch {
     // Do not throw from audit fallback state sink.
   }
+}
+
+async function readAuditFallbackPreviousHashFromLog(): Promise<string | null> {
+  if (!(await ensureAuditFallbackPath())) {
+    return null;
+  }
+
+  try {
+    const raw = await readFile(AUDIT_FALLBACK_LOG_PATH, { encoding: "utf8" });
+    const lines = raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      const line = lines[index];
+      if (!line) {
+        continue;
+      }
+
+      try {
+        const parsed = JSON.parse(line) as Record<string, unknown>;
+        const fallbackIntegrity = parsed.fallbackIntegrity;
+        if (!fallbackIntegrity || typeof fallbackIntegrity !== "object") {
+          continue;
+        }
+
+        const hash = (fallbackIntegrity as Record<string, unknown>).hash;
+        if (typeof hash !== "string") {
+          continue;
+        }
+
+        const normalized = hash.trim().toLowerCase();
+        if (/^[a-f0-9]{64}$/.test(normalized)) {
+          return normalized;
+        }
+      } catch {
+        continue;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function buildAuditFallbackIntegrityMetadata(

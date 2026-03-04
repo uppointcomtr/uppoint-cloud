@@ -279,7 +279,7 @@ function buildNetworkBucket(ip: string | null): string | null {
 
 function buildRateLimitErrorResponse(input: { retryAfterSeconds: number; max: number; windowSeconds: number }): Response {
   return Response.json(
-    { success: false, error: "TOO_MANY_REQUESTS" },
+    { success: false, error: "TOO_MANY_REQUESTS", code: "TOO_MANY_REQUESTS" },
     {
       status: 429,
       headers: {
@@ -434,7 +434,11 @@ async function withAdaptiveRateLimit(input: AdaptiveRateLimitInput): Promise<Res
   const resolvedIp = await resolveClientIpFromHeaders();
   if (!resolvedIp && env.NODE_ENV === "production") {
     return Response.json(
-      { success: false, error: "RATE_LIMIT_CONTEXT_UNAVAILABLE" },
+      {
+        success: false,
+        error: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+        code: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+      },
       { status: 503 },
     );
   }
@@ -579,7 +583,11 @@ export async function withRateLimit(
   if (!ip && env.NODE_ENV === "production") {
     // Security-sensitive: production auth endpoints fail closed when trusted client IP cannot be resolved.
     return Response.json(
-      { success: false, error: "RATE_LIMIT_CONTEXT_UNAVAILABLE" },
+      {
+        success: false,
+        error: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+        code: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+      },
       { status: 503 },
     );
   }

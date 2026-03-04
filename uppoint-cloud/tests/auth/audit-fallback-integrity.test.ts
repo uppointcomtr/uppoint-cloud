@@ -69,4 +69,37 @@ describe("audit fallback integrity chain", () => {
     );
     expect(writeFileMock).toHaveBeenCalledTimes(1);
   });
+
+  it("recovers previous hash from fallback log when chain-state file is missing", async () => {
+    const previousHash = "b".repeat(64);
+    readFileMock.mockImplementation(async (path: string) => {
+      if (path.includes("audit-fallback-chain.state")) {
+        throw new Error("ENOENT");
+      }
+
+      if (path.includes("audit-fallback.log")) {
+        return JSON.stringify({
+          fallbackIntegrity: {
+            version: "fallback/v1",
+            hash: previousHash,
+            signature: "c".repeat(64),
+          },
+        });
+      }
+
+      throw new Error("ENOENT");
+    });
+
+    await logAudit("password_reset_failed", "203.0.113.2", "user_2", {
+      reason: "DB_DOWN",
+    });
+
+    expect(appendFileMock).toHaveBeenCalledTimes(1);
+    const [, line] = appendFileMock.mock.calls[0] as [string, string];
+    const parsed = JSON.parse(line.trim()) as Record<string, unknown>;
+    const fallbackIntegrity = parsed.fallbackIntegrity as Record<string, unknown>;
+
+    expect(fallbackIntegrity.previousHash).toBe(previousHash);
+    expect(fallbackIntegrity.hash).toMatch(/^[a-f0-9]{64}$/);
+  });
 });

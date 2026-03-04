@@ -16,6 +16,8 @@ const APPROVED_TENANT_SCOPED_MODEL_FILES = new Set([
   "modules/notifications/server/outbox.ts",
 ]);
 
+const APPROVED_SCRIPT_TENANT_QUERY_FILES = new Set<string>([]);
+
 function collectFilesRecursively(rootDir: string): string[] {
   const entries = readdirSync(rootDir);
   const files: string[] = [];
@@ -196,6 +198,33 @@ describe("tenant authorization guardrail", () => {
       }
 
       if (!APPROVED_TENANT_SCOPED_MODEL_FILES.has(relativePath)) {
+        violations.push(relativePath);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it("blocks direct tenant table queries in scripts unless explicitly approved", () => {
+    const scriptsDir = path.join(process.cwd(), "scripts");
+    const scriptFiles = collectFilesRecursively(scriptsDir).filter((filePath) =>
+      /\.(?:sh|bash|mjs|js|ts|sql)$/.test(filePath),
+    );
+    const violations: string[] = [];
+
+    for (const filePath of scriptFiles) {
+      const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      const source = readFileSync(filePath, "utf8");
+      const touchesTenantTables =
+        /"(?:Tenant|TenantMembership)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source)
+        || /\btenantMembership\b/i.test(source)
+        || /\btenantId_userId\b/i.test(source);
+
+      if (!touchesTenantTables) {
+        continue;
+      }
+
+      if (!APPROVED_SCRIPT_TENANT_QUERY_FILES.has(relativePath)) {
         violations.push(relativePath);
       }
     }

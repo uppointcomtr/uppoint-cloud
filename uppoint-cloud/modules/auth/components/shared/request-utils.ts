@@ -4,6 +4,7 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
+  code?: string;
 }
 
 export function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {

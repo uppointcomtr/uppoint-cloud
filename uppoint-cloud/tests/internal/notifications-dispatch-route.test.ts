@@ -62,6 +62,7 @@ describe("internal notifications dispatch route", () => {
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "UNAUTHORIZED",
+      code: "UNAUTHORIZED",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "internal_dispatch_unauthorized",

@@ -37,6 +37,7 @@ describe("deprecated auth routes fail closed without trusted rate-limit context 
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+      code: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "deprecated_endpoint_access",
@@ -59,6 +60,7 @@ describe("deprecated auth routes fail closed without trusted rate-limit context 
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+      code: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "deprecated_endpoint_access",
@@ -81,6 +83,7 @@ describe("deprecated auth routes fail closed without trusted rate-limit context 
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
+      code: "RATE_LIMIT_CONTEXT_UNAVAILABLE",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "deprecated_endpoint_access",

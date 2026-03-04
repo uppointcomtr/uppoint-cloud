@@ -56,6 +56,7 @@ describe("internal security event route", () => {
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "UNAUTHORIZED",
+      code: "UNAUTHORIZED",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "internal_audit_security_event_unauthorized",
@@ -123,6 +124,7 @@ describe("internal security event route", () => {
     await expect(response.json()).resolves.toEqual({
       success: false,
       error: "INVALID_BODY",
+      code: "INVALID_BODY",
     });
     expect(logAuditMock).toHaveBeenCalledWith(
       "internal_audit_security_event_invalid_body",
