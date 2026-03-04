@@ -146,6 +146,16 @@ su root adm
     create 640 root adm
 }
 
+/var/log/uppoint-security-gate-weekly.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
 /var/log/uppoint-cloud/audit-fallback.log {
     daily
     rotate 30

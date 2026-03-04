@@ -1,0 +1,7 @@
+# Uppoint Cloud full security gate verification (weekly)
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Runs full local security gate (lint/typecheck/tests/build + security checks).
+# Weekly schedule keeps runtime validation active even without code changes.
+30 5 * * 0 root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-security-gate-weekly.lock /opt/uppoint-cloud/scripts/verify-security-gate.sh >> /var/log/uppoint-security-gate-weekly.log 2>&1

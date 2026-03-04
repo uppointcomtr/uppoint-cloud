@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-03-04 (ops hardening: weekly security-gate cron activation)
+
+### Added
+- Added weekly security-gate cron template:
+  - `ops/cron/uppoint-security-gate-weekly`
+  - Schedule: every Sunday `05:30`
+  - Runs full `scripts/verify-security-gate.sh` and writes `/var/log/uppoint-security-gate-weekly.log`.
+
+### Changed
+- Updated operations runtime inventory and docs:
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `ops/README.md`
+- Extended log rotation coverage:
+  - `ops/logrotate/uppoint-cloud` now rotates `/var/log/uppoint-security-gate-weekly.log`.
+
 ## 2026-03-04 (ops closure: runtime deploy drift + cron governance drift)
 
 ### Fixed

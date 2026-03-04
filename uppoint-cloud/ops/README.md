@@ -275,7 +275,8 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/up
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-slo-report /etc/cron.d/uppoint-security-slo-report
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-gate-weekly /etc/cron.d/uppoint-security-gate-weekly
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report /etc/cron.d/uppoint-security-gate-weekly
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -365,6 +366,11 @@ Security SLO report:
   - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (default `20`; minimum terminal delivery sample before ratio alerting)
 - Exit code `1` indicates threshold breach and should be treated as an alert signal.
 
+Weekly security gate cron:
+- `uppoint-security-gate-weekly` runs `scripts/verify-security-gate.sh` every Sunday at `05:30`.
+- Purpose: periodic full-stack verification even when no deployment happened that week.
+- Output log: `/var/log/uppoint-security-gate-weekly.log`.
+
 ## 9. Redis backup automation
 
 Install cron entry:
@@ -446,6 +452,7 @@ Covered logs:
 - `/var/log/uppoint-nginx-drift-check.log`
 - `/var/log/uppoint-audit-integrity-check.log`
 - `/var/log/uppoint-security-slo-report.log`
+- `/var/log/uppoint-security-gate-weekly.log`
 - `/var/log/uppoint-cloud/audit-fallback.log`
 - `/var/log/postgresql/*.log`
 
