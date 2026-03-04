@@ -3,7 +3,19 @@ import "server-only";
 import crypto from "crypto";
 import { z } from "zod";
 
-import { prisma } from "@/db/client";
+import {
+  clearFailedLoginAttempts,
+  consumeLoginTokenAndCleanupChallenges,
+  createLoginChallenge,
+  deleteLoginChallengesForUserAndMode,
+  findActiveUserByEmailForLogin,
+  findActiveUserByPhoneForLogin,
+  findLoginChallengeById,
+  findLoginChallengeByTokenHash,
+  incrementLoginChallengeAttempts,
+  markLoginChallengeVerifiedAndStoreToken,
+  registerFailedPasswordAttemptAtomic as registerFailedPasswordAttemptAtomicRepository,
+} from "@/db/repositories/auth-login-repository";
 import { env } from "@/lib/env";
 import { timingSafeEqualHex } from "@/lib/security/constant-time";
 import { getLoginSchema } from "@/modules/auth/schemas/auth-schemas";
@@ -73,19 +85,12 @@ function expiresAtFrom(now: Date, minutes: number): Date {
 
 async function registerFailedPasswordAttemptAtomic(input: { userId: string; now: Date }): Promise<void> {
   const lockUntil = expiresAtFrom(input.now, LOGIN_PASSWORD_LOCK_MINUTES);
-
-  // Security-sensitive: single SQL update avoids read-modify-write races under concurrent failures.
-  await prisma.$executeRaw`
-    UPDATE "User"
-    SET
-      "failedLoginAttempts" = "failedLoginAttempts" + 1,
-      "lockedUntil" = CASE
-        WHEN ("failedLoginAttempts" + 1) >= ${LOGIN_PASSWORD_MAX_ATTEMPTS} THEN ${lockUntil}
-        ELSE "lockedUntil"
-      END
-    WHERE "id" = ${input.userId}
-      AND "deletedAt" IS NULL
-  `;
+  await registerFailedPasswordAttemptAtomicRepository({
+    userId: input.userId,
+    now: input.now,
+    maxAttempts: LOGIN_PASSWORD_MAX_ATTEMPTS,
+    lockUntil,
+  });
 }
 
 function buildEmailOtpMessage(options: {
@@ -168,46 +173,12 @@ interface StartEmailLoginDependencies {
 }
 
 const defaultStartEmailLoginDependencies: StartEmailLoginDependencies = {
-  findUserByEmail: async (email) =>
-    prisma.user.findFirst({
-      where: { email, deletedAt: null },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        passwordHash: true,
-        emailVerified: true,
-        failedLoginAttempts: true,
-        lockedUntil: true,
-      },
-    }),
+  findUserByEmail: async (email) => findActiveUserByEmailForLogin(email),
   verifyPassword,
   registerFailedPasswordAttempt: registerFailedPasswordAttemptAtomic,
-  clearFailedPasswordAttempts: async (userId) => {
-    await prisma.user.updateMany({
-      where: {
-        id: userId,
-        deletedAt: null,
-      },
-      data: {
-        failedLoginAttempts: 0,
-        lockedUntil: null,
-      },
-    });
-  },
-  deleteChallengesForUserAndMode: async (userId, mode) => {
-    await prisma.loginChallenge.deleteMany({ where: { userId, mode } });
-  },
-  createChallenge: async (input) =>
-    prisma.loginChallenge.create({
-      data: {
-        userId: input.userId,
-        mode: input.mode,
-        codeHash: input.codeHash,
-        codeExpiresAt: input.codeExpiresAt,
-      },
-      select: { id: true },
-    }),
+  clearFailedPasswordAttempts: async (userId) => clearFailedLoginAttempts(userId),
+  deleteChallengesForUserAndMode: async (userId, mode) => deleteLoginChallengesForUserAndMode(userId, mode),
+  createChallenge: async (input) => createLoginChallenge(input),
   sendEmailOtp: async (input) => enqueueEmailNotification({
     userId: input.userId,
     to: input.to,
@@ -320,59 +291,12 @@ interface StartPhoneLoginDependencies {
 }
 
 const defaultStartPhoneLoginDependencies: StartPhoneLoginDependencies = {
-  findUserByPhone: async (phone) => {
-    const user = await prisma.user.findFirst({
-      where: { phone, deletedAt: null },
-      select: {
-        id: true,
-        phone: true,
-        passwordHash: true,
-        emailVerified: true,
-        failedLoginAttempts: true,
-        lockedUntil: true,
-      },
-    });
-
-    if (!user?.phone) {
-      return null;
-    }
-
-    return {
-      id: user.id,
-      phone: user.phone,
-      passwordHash: user.passwordHash,
-      emailVerified: user.emailVerified,
-      failedLoginAttempts: user.failedLoginAttempts,
-      lockedUntil: user.lockedUntil,
-    };
-  },
+  findUserByPhone: async (phone) => findActiveUserByPhoneForLogin(phone),
   verifyPassword,
   registerFailedPasswordAttempt: registerFailedPasswordAttemptAtomic,
-  clearFailedPasswordAttempts: async (userId) => {
-    await prisma.user.updateMany({
-      where: {
-        id: userId,
-        deletedAt: null,
-      },
-      data: {
-        failedLoginAttempts: 0,
-        lockedUntil: null,
-      },
-    });
-  },
-  deleteChallengesForUserAndMode: async (userId, mode) => {
-    await prisma.loginChallenge.deleteMany({ where: { userId, mode } });
-  },
-  createChallenge: async (input) =>
-    prisma.loginChallenge.create({
-      data: {
-        userId: input.userId,
-        mode: input.mode,
-        codeHash: input.codeHash,
-        codeExpiresAt: input.codeExpiresAt,
-      },
-      select: { id: true },
-    }),
+  clearFailedPasswordAttempts: async (userId) => clearFailedLoginAttempts(userId),
+  deleteChallengesForUserAndMode: async (userId, mode) => deleteLoginChallengesForUserAndMode(userId, mode),
+  createChallenge: async (input) => createLoginChallenge(input),
   sendSmsOtp: async (input) => enqueueSmsNotification({
     userId: input.userId,
     to: input.to,
@@ -478,58 +402,9 @@ interface VerifyLoginCodeDependencies {
 }
 
 const defaultVerifyLoginCodeDependencies: VerifyLoginCodeDependencies = {
-  findChallengeById: async (id) =>
-    prisma.loginChallenge.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        userId: true,
-        mode: true,
-        codeHash: true,
-        codeExpiresAt: true,
-        codeAttempts: true,
-        verifiedAt: true,
-      },
-    }),
-  incrementCodeAttempts: async (id) => {
-    const result = await prisma.loginChallenge.updateMany({
-      where: {
-        id,
-        codeAttempts: {
-          lt: LOGIN_MAX_ATTEMPTS,
-        },
-      },
-      data: {
-        codeAttempts: {
-          increment: 1,
-        },
-      },
-    });
-    return result.count;
-  },
-  markVerifiedAndStoreLoginToken: async (input) => {
-    const result = await prisma.loginChallenge.updateMany({
-      where: {
-        id: input.id,
-        mode: input.mode,
-        codeHash: input.expectedCodeHash,
-        codeAttempts: {
-          lt: input.maxAttempts,
-        },
-        codeExpiresAt: {
-          gt: input.now,
-        },
-        verifiedAt: null,
-      },
-      data: {
-        verifiedAt: input.now,
-        loginTokenHash: input.loginTokenHash,
-        loginTokenExpiresAt: input.loginTokenExpiresAt,
-        loginTokenUsedAt: null,
-      },
-    });
-    return result.count === 1;
-  },
+  findChallengeById: async (id) => findLoginChallengeById(id),
+  incrementCodeAttempts: async (id) => incrementLoginChallengeAttempts(id, LOGIN_MAX_ATTEMPTS),
+  markVerifiedAndStoreLoginToken: async (input) => markLoginChallengeVerifiedAndStoreToken(input),
   now: () => new Date(),
   hashValue,
   generateLoginToken,
@@ -624,76 +499,8 @@ interface ConsumeLoginTokenDependencies {
 }
 
 const defaultConsumeLoginTokenDependencies: ConsumeLoginTokenDependencies = {
-  findChallengeByTokenHash: async (tokenHash) =>
-    prisma.loginChallenge.findFirst({
-      where: {
-        loginTokenHash: tokenHash,
-      },
-      select: {
-        id: true,
-        userId: true,
-        loginTokenExpiresAt: true,
-        loginTokenUsedAt: true,
-        verifiedAt: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            tokenVersion: true,
-            deletedAt: true,
-          },
-        },
-      },
-    }),
-  consumeTokenAndCleanupChallenges: async (input) => {
-    return prisma.$transaction(async (tx) => {
-      const consumed = await tx.loginChallenge.updateMany({
-        where: {
-          id: input.challengeId,
-          userId: input.userId,
-          loginTokenHash: input.tokenHash,
-          loginTokenUsedAt: null,
-          verifiedAt: {
-            not: null,
-          },
-          loginTokenExpiresAt: {
-            gt: input.now,
-          },
-        },
-        data: { loginTokenUsedAt: input.now },
-      });
-
-      if (consumed.count !== 1) {
-        return false;
-      }
-
-      const updatedUser = await tx.user.updateMany({
-        where: {
-          id: input.userId,
-          deletedAt: null,
-        },
-        data: {
-          lastLoginAt: input.now,
-          failedLoginAttempts: 0,
-          lockedUntil: null,
-        },
-      });
-
-      if (updatedUser.count !== 1) {
-        throw new Error("LOGIN_TOKEN_USER_NOT_ACTIVE");
-      }
-
-      await tx.loginChallenge.deleteMany({
-        where: {
-          userId: input.userId,
-          id: { not: input.challengeId },
-        },
-      });
-
-      return true;
-    });
-  },
+  findChallengeByTokenHash: async (tokenHash) => findLoginChallengeByTokenHash(tokenHash),
+  consumeTokenAndCleanupChallenges: async (input) => consumeLoginTokenAndCleanupChallenges(input),
   now: () => new Date(),
   hashValue,
 };

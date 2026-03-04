@@ -129,4 +129,27 @@ if [ "$HTTP_CODE" != "200" ]; then
   exit 1
 fi
 
-echo "[dispatch-notifications] OK ${DISPATCH_URL}"
+SUMMARY="$(
+  REQUEST_ID="$REQUEST_ID" BODY_FILE="$BODY_FILE" node -e '
+const fs = require("fs");
+
+const requestId = process.env.REQUEST_ID || "unknown";
+const bodyFile = process.env.BODY_FILE || "";
+let payload = {};
+
+try {
+  payload = JSON.parse(fs.readFileSync(bodyFile, "utf8"));
+} catch {
+  payload = {};
+}
+
+const data = payload && typeof payload === "object" ? payload.data : null;
+const inspected = data && typeof data.inspected === "number" ? data.inspected : "unknown";
+const sent = data && typeof data.sent === "number" ? data.sent : "unknown";
+const failed = data && typeof data.failed === "number" ? data.failed : "unknown";
+
+process.stdout.write(`requestId=${requestId} inspected=${inspected} sent=${sent} failed=${failed}`);
+'
+)"
+
+echo "[dispatch-notifications] OK ${SUMMARY} url=${DISPATCH_URL}"

@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-03-04 (security/ops closure: F41-F45 + SLO calibration)
+
+### Fixed
+- Closed nginx drift gate fail-open gap (`F41`):
+  - `scripts/verify-security-gate.sh` now runs nginx drift verification with `RATE_LIMIT_DRIFT_POLICY=enforce-baseline` by default.
+- Closed auth repository-boundary drift (`F42`):
+  - Added repository layer files:
+    - `db/repositories/auth-login-repository.ts`
+    - `db/repositories/auth-register-repository.ts`
+    - `db/repositories/auth-password-reset-repository.ts`
+    - `db/repositories/auth-user-repository.ts`
+  - Refactored:
+    - `modules/auth/server/login-challenge.ts`
+    - `modules/auth/server/register-verification-challenge.ts`
+    - `modules/auth/server/password-reset-challenge.ts`
+    - `modules/auth/server/user-lifecycle.ts`
+  - Added guardrail test: `tests/auth/auth-repository-boundary.test.ts` (blocks direct `prisma.*` usage in `modules/auth/server`).
+- Closed proxy error-envelope contract gap (`F43`):
+  - `proxy.ts` edge host/origin rejection responses now include stable `code` field.
+- Closed restore-drill evidence gap (`F44`):
+  - Executed check-only restore drill and wrote canonical runtime evidence to `/var/log/uppoint-postgres-restore-drill.log`.
+- Closed dispatch forensic log gap (`F45`):
+  - `scripts/dispatch-notifications.sh` success logs now include `requestId`, `inspected`, `sent`, `failed`.
+
+### Changed
+- Calibrated production SLO tolerance:
+  - runtime `.env` value set to `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE=5`.
+- Updated findings registry:
+  - `FINDINGS_REGISTER.md` now includes and closes `F41`–`F45`.
+
+### Added
+- New guardrail tests:
+  - `tests/security/security-gate-nginx-drift-policy-guardrail.test.ts`
+  - `tests/security/proxy-error-envelope-guardrail.test.ts`
+  - `tests/security/dispatch-notifications-log-guardrail.test.ts`
+
 ## 2026-03-04 (security hardening: outbox terminal audit + tenant filter + SLO absolute alert)
 
 ### Fixed

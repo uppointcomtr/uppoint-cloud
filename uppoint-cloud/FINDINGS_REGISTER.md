@@ -79,6 +79,11 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F38 | Notification outbox terminal delivery failures were not audited at message level | observability/security-monitoring | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `modules/notifications/server/outbox.ts`, `lib/audit-log.ts`, `tests/auth/notification-outbox.test.ts` | Emit `notification_delivery_terminal_failed` audit events when a message reaches terminal `FAILED` status |
 | F39 | Tenant ID lookup in user lifecycle did not filter soft-deleted tenants | tenant-isolation/data-consistency | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `db/repositories/tenant-repository.ts`, `tests/tenant/tenant-repository.test.ts` | Ensure `findUserTenantIds` applies `tenant.deletedAt: null` filter |
 | F40 | Security SLO notification alerting had low-volume blind spot | observability/ops | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-security-slo.mjs`, `tests/security/security-slo-script-guardrail.test.ts`, `ops/README.md` | Add absolute FAILED-count alert threshold (`SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE`) alongside ratio-based alerting |
+| F41 | Security gate nginx drift check was warn-mode by default instead of baseline-enforced | security/ops-hardening | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/verify-security-gate.sh`, `scripts/check-nginx-config-drift.sh` | Security gate must run nginx drift with `RATE_LIMIT_DRIFT_POLICY=enforce-baseline` by default when nginx rate-limit config is present |
+| F42 | Auth server module mixed business logic with direct Prisma access (repository boundary drift) | architecture/security-boundary | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `modules/auth/server/*.ts`, `db/repositories/auth-*.ts`, `tests/auth/auth-repository-boundary.test.ts` | Route auth data access through `db/repositories/auth-*` and enforce guardrail preventing direct `prisma.*` usage in `modules/auth/server` |
+| F43 | Proxy security error envelope lacked stable `code` field | api/security-contract | Low | Low | closed | 2026-03-04 | 2026-03-04 | codex | `proxy.ts` | Edge proxy security denials must include machine-readable `code` alongside `error` |
+| F44 | Restore-drill runtime evidence gap (weekly job present but no current execution artifact) | operational/readiness | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `/etc/cron.d/uppoint-postgres-restore-drill`, `/var/log/uppoint-postgres-restore-drill.log` | Generate fresh check-only restore-drill execution evidence in canonical log path |
+| F45 | Notification dispatch cron logs were too coarse for incident forensics | observability/ops | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/dispatch-notifications.sh`, `/var/log/uppoint-cloud/dispatch-notifications.log` | Include requestId and dispatch counters (`inspected/sent/failed`) in cron dispatch success logs |
 
 ## Change Log (Register-only)
 
@@ -127,6 +132,11 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F38 | Closed: outbox dispatch now emits message-level terminal failure audits | `modules/notifications/server/outbox.ts`, `tests/auth/notification-outbox.test.ts` |
 | 2026-03-04 | F39 | Closed: tenant ID lookup now excludes soft-deleted tenant rows in user lifecycle path | `db/repositories/tenant-repository.ts`, `tests/tenant/tenant-repository.test.ts` |
 | 2026-03-04 | F40 | Closed: security SLO now includes absolute FAILED-count alert threshold | `scripts/check-security-slo.mjs`, `tests/security/security-slo-script-guardrail.test.ts`, `ops/README.md` |
+| 2026-03-04 | F41 | Closed: security gate now enforces nginx drift baseline policy by default when rate-limit config exists | `scripts/verify-security-gate.sh` |
+| 2026-03-04 | F42 | Closed: auth server data access moved to repository layer and guardrail test blocks direct prisma usage | `db/repositories/auth-*.ts`, `modules/auth/server/*.ts`, `tests/auth/auth-repository-boundary.test.ts` |
+| 2026-03-04 | F43 | Closed: proxy host/origin rejection responses now include stable `code` field | `proxy.ts` |
+| 2026-03-04 | F44 | Closed: restore-drill check-only run wrote fresh evidence into canonical cron log path | `/var/log/uppoint-postgres-restore-drill.log`, `scripts/run-restore-drill-with-report.sh --check-only` |
+| 2026-03-04 | F45 | Closed: dispatch cron success logs now include requestId and batch counters for better incident triage | `scripts/dispatch-notifications.sh` |
 
 ## Audit Output Contract
 

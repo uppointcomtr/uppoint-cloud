@@ -4,8 +4,20 @@ import crypto from "crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
-import { prisma } from "@/db/client";
-import { provisionDefaultTenantForUser } from "@/db/repositories/tenant-repository";
+import {
+  completeRegistrationVerification as completeRegistrationVerificationRepository,
+  createRegistrationChallenge,
+  deleteRegistrationChallengesByEmail,
+  findActiveUserIdByEmail,
+  findActiveUserIdByPhone,
+  findPendingRegistrationChallengeById,
+  findRegistrationChallengeForEmailVerify,
+  findRegistrationChallengeForSmsVerify,
+  incrementRegistrationEmailAttempts,
+  incrementRegistrationSmsAttempts,
+  markRegistrationEmailVerifiedAndStoreSmsCode,
+  replaceRegistrationChallengeByEmail as replaceRegistrationChallengeByEmailRepository,
+} from "@/db/repositories/auth-register-repository";
 import { env } from "@/lib/env";
 import { timingSafeEqualHex } from "@/lib/security/constant-time";
 import { getRegisterSchema } from "@/modules/auth/schemas/auth-schemas";
@@ -174,74 +186,11 @@ interface StartRegisterVerificationDependencies {
 }
 
 const defaultStartRegisterVerificationDependencies: StartRegisterVerificationDependencies = {
-  findActiveUserByEmail: async (email) =>
-    prisma.user.findFirst({
-      where: {
-        email,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-      },
-    }),
-  findActiveUserByPhone: async (phone) =>
-    prisma.user.findFirst({
-      where: {
-        phone,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-      },
-    }),
-  deletePendingChallengesByEmail: async (email) => {
-    await prisma.registrationVerificationChallenge.deleteMany({
-      where: {
-        email,
-      },
-    });
-  },
-  createPendingChallenge: async (input) =>
-    prisma.registrationVerificationChallenge.create({
-      data: {
-        email: input.email,
-        name: input.name,
-        phone: input.phone,
-        passwordHash: input.passwordHash,
-        emailCodeHash: input.emailCodeHash,
-        emailCodeExpiresAt: input.emailCodeExpiresAt,
-      },
-      select: {
-        id: true,
-      },
-    }),
-  replacePendingChallengeByEmail: async (input) =>
-    prisma.$transaction(async (tx) => {
-      // Security-sensitive: serialize per-email challenge replacement to avoid concurrent duplicate pending records.
-      await tx.$executeRaw`
-        SELECT pg_advisory_xact_lock(CAST(hashtext(${input.email}) AS bigint))
-      `;
-
-      await tx.registrationVerificationChallenge.deleteMany({
-        where: {
-          email: input.email,
-        },
-      });
-
-      return tx.registrationVerificationChallenge.create({
-        data: {
-          email: input.email,
-          name: input.name,
-          phone: input.phone,
-          passwordHash: input.passwordHash,
-          emailCodeHash: input.emailCodeHash,
-          emailCodeExpiresAt: input.emailCodeExpiresAt,
-        },
-        select: {
-          id: true,
-        },
-      });
-    }),
+  findActiveUserByEmail: async (email) => findActiveUserIdByEmail(email),
+  findActiveUserByPhone: async (phone) => findActiveUserIdByPhone(phone),
+  deletePendingChallengesByEmail: async (email) => deleteRegistrationChallengesByEmail(email),
+  createPendingChallenge: async (input) => createRegistrationChallenge(input),
+  replacePendingChallengeByEmail: async (input) => replaceRegistrationChallengeByEmailRepository(input),
   sendEmailCode: async (input) => {
     await enqueueEmailNotification({
       to: input.to,
@@ -362,18 +311,7 @@ interface RestartRegisterVerificationDependencies extends StartRegisterVerificat
 
 const defaultRestartRegisterVerificationDependencies: RestartRegisterVerificationDependencies = {
   ...defaultStartRegisterVerificationDependencies,
-  findPendingChallengeById: async (challengeId) =>
-    prisma.registrationVerificationChallenge.findUnique({
-      where: {
-        id: challengeId,
-      },
-      select: {
-        email: true,
-        name: true,
-        phone: true,
-        passwordHash: true,
-      },
-    }),
+  findPendingChallengeById: async (challengeId) => findPendingRegistrationChallengeById(challengeId),
 };
 
 export async function restartRegisterVerificationChallenge(
@@ -440,60 +378,13 @@ interface VerifyRegisterEmailCodeDependencies {
 }
 
 const defaultVerifyRegisterEmailCodeDependencies: VerifyRegisterEmailCodeDependencies = {
-  findChallengeById: async (id) =>
-    prisma.registrationVerificationChallenge.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        phone: true,
-        emailCodeHash: true,
-        emailCodeExpiresAt: true,
-        emailCodeAttempts: true,
-        emailCodeVerifiedAt: true,
-      },
+  findChallengeById: async (id) => findRegistrationChallengeForEmailVerify(id),
+  incrementEmailAttempts: async (id) => incrementRegistrationEmailAttempts(id, REGISTER_MAX_ATTEMPTS),
+  markEmailVerifiedAndStoreSmsCode: async (input) =>
+    markRegistrationEmailVerifiedAndStoreSmsCode({
+      ...input,
+      maxAttempts: REGISTER_MAX_ATTEMPTS,
     }),
-  incrementEmailAttempts: async (id) => {
-    const result = await prisma.registrationVerificationChallenge.updateMany({
-      where: {
-        id,
-        emailCodeAttempts: {
-          lt: REGISTER_MAX_ATTEMPTS,
-        },
-      },
-      data: {
-        emailCodeAttempts: {
-          increment: 1,
-        },
-      },
-    });
-
-    return result.count;
-  },
-  markEmailVerifiedAndStoreSmsCode: async (input) => {
-    const result = await prisma.registrationVerificationChallenge.updateMany({
-      where: {
-        id: input.id,
-        emailCodeHash: input.expectedEmailCodeHash,
-        emailCodeAttempts: {
-          lt: REGISTER_MAX_ATTEMPTS,
-        },
-        emailCodeExpiresAt: {
-          gt: input.now,
-        },
-        emailCodeVerifiedAt: null,
-      },
-      data: {
-        emailCodeVerifiedAt: input.now,
-        smsCodeHash: input.smsCodeHash,
-        smsCodeExpiresAt: input.smsCodeExpiresAt,
-        smsCodeAttempts: 0,
-      },
-    });
-
-    return result.count === 1;
-  },
   sendSmsCode: async (input) => {
     await enqueueSmsNotification({
       to: input.to,
@@ -621,112 +512,26 @@ interface VerifyRegisterSmsCodeDependencies {
 }
 
 const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencies = {
-  findChallengeById: async (id) =>
-    prisma.registrationVerificationChallenge.findUnique({
-      where: {
-        id,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        passwordHash: true,
-        smsCodeHash: true,
-        smsCodeExpiresAt: true,
-        smsCodeAttempts: true,
-        smsCodeVerifiedAt: true,
-        emailCodeVerifiedAt: true,
-      },
-    }),
-  incrementSmsAttempts: async (id) => {
-    const result = await prisma.registrationVerificationChallenge.updateMany({
-      where: {
-        id,
-        smsCodeAttempts: {
-          lt: REGISTER_MAX_ATTEMPTS,
-        },
-      },
-      data: {
-        smsCodeAttempts: {
-          increment: 1,
-        },
-      },
-    });
-
-    return result.count;
-  },
+  findChallengeById: async (id) => findRegistrationChallengeForSmsVerify(id),
+  incrementSmsAttempts: async (id) => incrementRegistrationSmsAttempts(id, REGISTER_MAX_ATTEMPTS),
   completeRegistrationVerification: async (input) => {
-    return prisma.$transaction(async (tx) => {
-      const consumed = await tx.registrationVerificationChallenge.updateMany({
-        where: {
-          id: input.challengeId,
-          emailCodeVerifiedAt: {
-            not: null,
-          },
-          smsCodeHash: input.expectedSmsCodeHash,
-          smsCodeExpiresAt: {
-            gt: input.now,
-          },
-          smsCodeAttempts: {
-            lt: REGISTER_MAX_ATTEMPTS,
-          },
-          smsCodeVerifiedAt: null,
-        },
-        data: {
-          smsCodeVerifiedAt: input.now,
-        },
+    try {
+      return await completeRegistrationVerificationRepository({
+        ...input,
+        maxAttempts: REGISTER_MAX_ATTEMPTS,
       });
-
-      if (consumed.count !== 1) {
-        return null;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError
+        && error.code === "P2002"
+      ) {
+        throw new RegisterVerificationChallengeError(
+          "REGISTRATION_CONFLICT",
+          "Registration data conflicts with an existing account",
+        );
       }
-
-      let userId: string;
-
-      try {
-        const user = await tx.user.create({
-          data: {
-            email: input.email,
-            name: input.name,
-            phone: input.phone,
-            passwordHash: input.passwordHash,
-            emailVerified: input.now,
-            phoneVerifiedAt: input.now,
-          },
-          select: {
-            id: true,
-          },
-        });
-        userId = user.id;
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError
-          && error.code === "P2002"
-        ) {
-          throw new RegisterVerificationChallengeError(
-            "REGISTRATION_CONFLICT",
-            "Registration data conflicts with an existing account",
-          );
-        }
-        throw error;
-      }
-
-      // Security-sensitive: every verified account is provisioned into an isolated tenant boundary by default.
-      await provisionDefaultTenantForUser({
-        userId,
-        slug: `usr-${userId}`,
-        name: `Workspace ${userId.slice(-6)}`,
-      }, tx);
-
-      await tx.registrationVerificationChallenge.deleteMany({
-        where: {
-          email: input.email,
-        },
-      });
-
-      return userId;
-    });
+      throw error;
+    }
   },
   now: () => new Date(),
   hashValue,

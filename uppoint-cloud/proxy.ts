@@ -282,7 +282,7 @@ export async function proxy(request: NextRequest) {
     });
     return withSecurityHeaders(
       NextResponse.json(
-        { success: false, error: "INVALID_HOST_HEADER" },
+        { success: false, error: "INVALID_HOST_HEADER", code: "INVALID_HOST_HEADER" },
         { status: 400 },
       ),
       requestId,
@@ -301,7 +301,7 @@ export async function proxy(request: NextRequest) {
     });
     return withSecurityHeaders(
       NextResponse.json(
-        { success: false, error: "INVALID_HOST_HEADER" },
+        { success: false, error: "INVALID_HOST_HEADER", code: "INVALID_HOST_HEADER" },
         { status: 400 },
       ),
       requestId,
@@ -323,7 +323,7 @@ export async function proxy(request: NextRequest) {
       });
       return withSecurityHeaders(
         NextResponse.json(
-          { success: false, error: "ORIGIN_NOT_ALLOWED" },
+          { success: false, error: "ORIGIN_NOT_ALLOWED", code: "ORIGIN_NOT_ALLOWED" },
           { status: 403 },
         ),
         requestId,

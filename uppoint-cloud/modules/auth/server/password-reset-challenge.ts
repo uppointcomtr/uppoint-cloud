@@ -3,7 +3,19 @@ import "server-only";
 import crypto from "crypto";
 import { z } from "zod";
 
-import { prisma } from "@/db/client";
+import {
+  completePasswordResetAndCleanup,
+  createPasswordResetChallenge,
+  deletePasswordResetChallengesForUser,
+  findActiveUserByEmailForPasswordReset,
+  findPasswordResetChallengeForComplete,
+  findPasswordResetChallengeForEmailVerify,
+  findPasswordResetChallengeForSmsVerify,
+  incrementPasswordResetEmailAttempts,
+  incrementPasswordResetSmsAttempts,
+  markPasswordResetEmailVerifiedAndStoreSmsCode,
+  markPasswordResetSmsVerifiedAndStoreResetToken,
+} from "@/db/repositories/auth-password-reset-repository";
 import { env } from "@/lib/env";
 import { timingSafeEqualHex } from "@/lib/security/constant-time";
 import { registerSchema } from "@/modules/auth/schemas/auth-schemas";
@@ -141,23 +153,9 @@ interface StartChallengeDependencies {
 }
 
 const defaultStartDependencies: StartChallengeDependencies = {
-  findUserByEmail: async (email) =>
-    prisma.user.findFirst({
-      where: { email, deletedAt: null },
-      select: { id: true, email: true, phone: true, name: true },
-    }),
-  deleteChallengesForUser: async (userId) => {
-    await prisma.passwordResetChallenge.deleteMany({ where: { userId } });
-  },
-  createChallenge: async (input) =>
-    prisma.passwordResetChallenge.create({
-      data: {
-        userId: input.userId,
-        emailCodeHash: input.emailCodeHash,
-        emailCodeExpiresAt: input.emailCodeExpiresAt,
-      },
-      select: { id: true },
-    }),
+  findUserByEmail: async (email) => findActiveUserByEmailForPasswordReset(email),
+  deleteChallengesForUser: async (userId) => deletePasswordResetChallengesForUser(userId),
+  createChallenge: async (input) => createPasswordResetChallenge(input),
   sendEmailCode: async (input) => {
     await enqueueEmailNotification({
       userId: input.userId,
@@ -251,61 +249,13 @@ interface VerifyEmailCodeDependencies {
 }
 
 const defaultVerifyEmailDependencies: VerifyEmailCodeDependencies = {
-  findChallengeById: async (id) =>
-    prisma.passwordResetChallenge.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        userId: true,
-        emailCodeHash: true,
-        emailCodeExpiresAt: true,
-        emailCodeAttempts: true,
-        emailCodeVerifiedAt: true,
-        user: {
-          select: {
-            phone: true,
-          },
-        },
-      },
+  findChallengeById: async (id) => findPasswordResetChallengeForEmailVerify(id),
+  incrementEmailAttempts: async (id) => incrementPasswordResetEmailAttempts(id, PASSWORD_RESET_MAX_ATTEMPTS),
+  markEmailVerifiedAndStoreSmsCode: async (input) =>
+    markPasswordResetEmailVerifiedAndStoreSmsCode({
+      ...input,
+      maxAttempts: PASSWORD_RESET_MAX_ATTEMPTS,
     }),
-  incrementEmailAttempts: async (id) => {
-    const result = await prisma.passwordResetChallenge.updateMany({
-      where: {
-        id,
-        emailCodeAttempts: {
-          lt: PASSWORD_RESET_MAX_ATTEMPTS,
-        },
-      },
-      data: {
-        emailCodeAttempts: {
-          increment: 1,
-        },
-      },
-    });
-    return result.count;
-  },
-  markEmailVerifiedAndStoreSmsCode: async (input) => {
-    const result = await prisma.passwordResetChallenge.updateMany({
-      where: {
-        id: input.id,
-        emailCodeHash: input.expectedEmailCodeHash,
-        emailCodeAttempts: {
-          lt: PASSWORD_RESET_MAX_ATTEMPTS,
-        },
-        emailCodeExpiresAt: {
-          gt: input.now,
-        },
-        emailCodeVerifiedAt: null,
-      },
-      data: {
-        emailCodeVerifiedAt: input.now,
-        smsCodeHash: input.smsCodeHash,
-        smsCodeExpiresAt: input.smsCodeExpiresAt,
-        smsCodeAttempts: 0,
-      },
-    });
-    return result.count === 1;
-  },
   sendSmsCode: async (input) => {
     await enqueueSmsNotification({
       userId: input.userId,
@@ -422,59 +372,13 @@ interface VerifySmsCodeDependencies {
 }
 
 const defaultVerifySmsDependencies: VerifySmsCodeDependencies = {
-  findChallengeById: async (id) =>
-    prisma.passwordResetChallenge.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        smsCodeHash: true,
-        smsCodeExpiresAt: true,
-        smsCodeAttempts: true,
-        smsCodeVerifiedAt: true,
-        emailCodeVerifiedAt: true,
-      },
+  findChallengeById: async (id) => findPasswordResetChallengeForSmsVerify(id),
+  incrementSmsAttempts: async (id) => incrementPasswordResetSmsAttempts(id, PASSWORD_RESET_MAX_ATTEMPTS),
+  markSmsVerifiedAndStoreResetToken: async (input) =>
+    markPasswordResetSmsVerifiedAndStoreResetToken({
+      ...input,
+      maxAttempts: PASSWORD_RESET_MAX_ATTEMPTS,
     }),
-  incrementSmsAttempts: async (id) => {
-    const result = await prisma.passwordResetChallenge.updateMany({
-      where: {
-        id,
-        smsCodeAttempts: {
-          lt: PASSWORD_RESET_MAX_ATTEMPTS,
-        },
-      },
-      data: {
-        smsCodeAttempts: {
-          increment: 1,
-        },
-      },
-    });
-    return result.count;
-  },
-  markSmsVerifiedAndStoreResetToken: async (input) => {
-    const result = await prisma.passwordResetChallenge.updateMany({
-      where: {
-        id: input.id,
-        emailCodeVerifiedAt: {
-          not: null,
-        },
-        smsCodeHash: input.expectedSmsCodeHash,
-        smsCodeAttempts: {
-          lt: PASSWORD_RESET_MAX_ATTEMPTS,
-        },
-        smsCodeExpiresAt: {
-          gt: input.now,
-        },
-        smsCodeVerifiedAt: null,
-      },
-      data: {
-        smsCodeVerifiedAt: input.now,
-        resetTokenHash: input.resetTokenHash,
-        resetTokenExpiresAt: input.resetTokenExpiresAt,
-        resetTokenUsedAt: null,
-      },
-    });
-    return result.count === 1;
-  },
   now: () => new Date(),
   hashValue,
   generateResetToken,
@@ -563,76 +467,9 @@ interface CompleteChallengeDependencies {
 }
 
 const defaultCompleteChallengeDependencies: CompleteChallengeDependencies = {
-  findChallengeById: async (id) =>
-    prisma.passwordResetChallenge.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        userId: true,
-        smsCodeVerifiedAt: true,
-        resetTokenHash: true,
-        resetTokenExpiresAt: true,
-        resetTokenUsedAt: true,
-      },
-    }),
+  findChallengeById: async (id) => findPasswordResetChallengeForComplete(id),
   hashPassword: async (password) => hashPassword(password, env.AUTH_BCRYPT_ROUNDS),
-  completePasswordUpdate: async (input) => {
-    return prisma.$transaction(async (tx) => {
-      const consumed = await tx.passwordResetChallenge.updateMany({
-        where: {
-          id: input.challengeId,
-          userId: input.userId,
-          smsCodeVerifiedAt: {
-            not: null,
-          },
-          resetTokenHash: input.expectedResetTokenHash,
-          resetTokenExpiresAt: {
-            gt: input.now,
-          },
-          resetTokenUsedAt: null,
-        },
-        data: { resetTokenUsedAt: input.now },
-      });
-
-      if (consumed.count !== 1) {
-        return false;
-      }
-
-      const updatedUser = await tx.user.updateMany({
-        where: {
-          id: input.userId,
-          deletedAt: null,
-        },
-        data: {
-          passwordHash: input.passwordHash,
-          tokenVersion: {
-            increment: 1,
-          },
-        },
-      });
-
-      if (updatedUser.count !== 1) {
-        throw new Error("PASSWORD_RESET_USER_NOT_ACTIVE");
-      }
-
-      await tx.passwordResetChallenge.deleteMany({
-        where: {
-          userId: input.userId,
-          id: { not: input.challengeId },
-        },
-      });
-
-      await tx.passwordResetToken.deleteMany({
-        where: { userId: input.userId },
-      });
-
-      await tx.session.deleteMany({
-        where: { userId: input.userId },
-      });
-
-      return true;
-    });
-  },
+  completePasswordUpdate: async (input) => completePasswordResetAndCleanup(input),
   hashValue,
   now: () => new Date(),
 };

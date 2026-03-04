@@ -51,7 +51,7 @@ fi
 
 if [ -f "/etc/nginx/conf.d/uppoint-rate-limit.conf" ]; then
   echo "[security-gate] nginx drift verification"
-  npm run verify:nginx-drift
+  RATE_LIMIT_DRIFT_POLICY="${RATE_LIMIT_DRIFT_POLICY:-enforce-baseline}" npm run verify:nginx-drift
 else
   echo "[security-gate] skip verify:nginx-drift (/etc/nginx/conf.d/uppoint-rate-limit.conf not found)"
 fi
