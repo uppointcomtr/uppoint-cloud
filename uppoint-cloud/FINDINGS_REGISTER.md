@@ -111,6 +111,11 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F58 | Findings register lacked explicit periodic revalidation window for closed findings | governance/audit-process | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `FINDINGS_REGISTER.md` | Add revalidation policy with 30-day freshness and required baseline evidence commands |
 | F59 | Runtime cron catalog lacked explicit alert-path mapping per job | docs/observability | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `ops/RUNTIME_SERVICES_AND_CRON.md` | Add `Alert path` column with local sink/optional channel mapping per cron |
 | F60 | AGENTS lacked explicit documentation sync trigger matrix across app/ops/findings docs | governance/process | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `AGENTS.md` | Add deterministic docs sync matrix to prevent policy/procedure drift |
+| F61 | Security gate lacked explicit optional remote read-only smoke enforcement path | security/testing-governance | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/verify-security-gate.sh`, `README.md`, `tests/security/verify-security-gate-script-guardrail.test.ts` | Add `SECURITY_GATE_REQUIRE_REMOTE_SMOKE` gate toggle and enforce read-only remote smoke (`E2E_ALLOW_MUTATIONS=0`) when enabled |
+| F62 | Findings freshness policy was documented but not machine-enforced | governance/verification | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-findings-freshness.mjs`, `scripts/verify-security-gate.sh`, `tests/security/findings-freshness-script-guardrail.test.ts` | Add findings freshness verifier and run it in security gate |
+| F63 | Restore-drill evidence freshness was not enforced in security gate | operational/resilience | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-restore-drill-freshness.sh`, `scripts/verify-security-gate.sh`, `tests/security/restore-drill-freshness-script-guardrail.test.ts` | Enforce restore-drill log freshness when restore-drill cron is present |
+| F64 | Security SLO low terminal-sample state was not explicitly signaled to operators | observability/ops | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-security-slo.mjs`, `scripts/run-security-slo-report.sh`, `tests/security/security-slo-script-guardrail.test.ts`, `ops/README.md` | Add low-sample advisory signal and configurable warning control (`SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE`) |
+| F65 | Root repository hygiene allowed persistent untracked runner directory drift | operational/governance | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `/opt/.gitignore` | Ignore `actions-runner/` in repo root to keep status noise out of security/ops verification loops |
 
 ## Change Log (Register-only)
 
@@ -179,6 +184,11 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F58 | Closed: findings register now enforces periodic revalidation and evidence freshness policy | `FINDINGS_REGISTER.md` |
 | 2026-03-04 | F59 | Closed: runtime cron catalog now includes alert-path mapping per scheduled job | `ops/RUNTIME_SERVICES_AND_CRON.md` |
 | 2026-03-04 | F60 | Closed: AGENTS now includes documentation sync matrix for policy/procedure alignment | `AGENTS.md` |
+| 2026-03-04 | F61 | Closed: security gate now supports explicit remote read-only smoke enforcement via `SECURITY_GATE_REQUIRE_REMOTE_SMOKE` | `scripts/verify-security-gate.sh`, `README.md`, `tests/security/verify-security-gate-script-guardrail.test.ts` |
+| 2026-03-04 | F62 | Closed: findings freshness is now machine-enforced in security gate | `scripts/check-findings-freshness.mjs`, `scripts/verify-security-gate.sh`, `tests/security/findings-freshness-script-guardrail.test.ts` |
+| 2026-03-04 | F63 | Closed: restore-drill freshness check added and wired into security gate | `scripts/check-restore-drill-freshness.sh`, `scripts/verify-security-gate.sh`, `tests/security/restore-drill-freshness-script-guardrail.test.ts` |
+| 2026-03-04 | F64 | Closed: security SLO now emits low terminal-sample advisory signal | `scripts/check-security-slo.mjs`, `scripts/run-security-slo-report.sh`, `ops/README.md` |
+| 2026-03-04 | F65 | Closed: root-level runner directory is now ignored in git status | `/opt/.gitignore` |
 
 ## Audit Output Contract
 

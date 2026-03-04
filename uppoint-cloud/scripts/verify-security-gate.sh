@@ -15,6 +15,9 @@ npm run typecheck
 npm run test
 npm run build
 
+echo "[security-gate] findings register freshness verification"
+npm run verify:findings-freshness
+
 echo "[security-gate] contract guardrails: workflow layout + repo layout"
 npm run verify:workflow-layout
 npm run verify:repo-layout
@@ -66,8 +69,20 @@ fi
 if ls /opt/backups/postgres/*.sql.gz >/dev/null 2>&1; then
   echo "[security-gate] restore drill artifact verification"
   npm run verify:restore-drill
+  echo "[security-gate] restore drill freshness verification"
+  npm run verify:restore-drill-freshness
 else
   echo "[security-gate] skip verify:restore-drill (no postgres backup artifact found)"
 fi
+
+case "${SECURITY_GATE_REQUIRE_REMOTE_SMOKE:-0}" in
+  1|true|TRUE|yes|YES)
+    echo "[security-gate] remote smoke verification (read-only)"
+    E2E_ALLOW_MUTATIONS=0 npm run test:e2e:remote
+    ;;
+  *)
+    echo "[security-gate] skip remote smoke verification (SECURITY_GATE_REQUIRE_REMOTE_SMOKE is not enabled)"
+    ;;
+esac
 
 echo "[security-gate] completed successfully"

@@ -9,5 +9,7 @@ describe("security slo script guardrail", () => {
 
     expect(source).toContain("SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE");
     expect(source).toContain("notification_delivery_failed_absolute");
+    expect(source).toContain("SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE");
+    expect(source).toContain("notification_terminal_sample_low");
   });
 });

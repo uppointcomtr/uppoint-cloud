@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-03-04 (security/governance closure: F61-F65)
+
+### Fixed
+- Closed remote smoke enforcement gap in security gate (`F61`):
+  - `scripts/verify-security-gate.sh` now supports `SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1`.
+  - When enabled, gate runs `npm run test:e2e:remote` in read-only mode (`E2E_ALLOW_MUTATIONS=0`).
+- Closed findings freshness enforcement gap (`F62`):
+  - Added `scripts/check-findings-freshness.mjs`.
+  - Added package script `verify:findings-freshness`.
+  - Wired into security gate.
+- Closed restore-drill freshness enforcement gap (`F63`):
+  - Added `scripts/check-restore-drill-freshness.sh`.
+  - Added package script `verify:restore-drill-freshness`.
+  - Wired into security gate (enforced when restore-drill cron is present).
+- Closed security SLO low-sample signaling gap (`F64`):
+  - `scripts/check-security-slo.mjs` now emits advisory `notification_terminal_sample_low`.
+  - Added `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` support.
+  - Updated `scripts/run-security-slo-report.sh` and ops docs.
+- Closed root repo hygiene drift (`F65`):
+  - Added `actions-runner/` to `/opt/.gitignore`.
+
+### Added
+- New guardrail tests:
+  - `tests/security/verify-security-gate-script-guardrail.test.ts`
+  - `tests/security/findings-freshness-script-guardrail.test.ts`
+  - `tests/security/restore-drill-freshness-script-guardrail.test.ts`
+
+### Changed
+- Updated docs:
+  - `README.md` verification section now includes findings/restore freshness checks and strict gate example.
+  - `ops/README.md` security SLO section now documents low-sample advisory behavior and related env key.
+  - `FINDINGS_REGISTER.md` now tracks/closed `F61`–`F65`.
+
 ## 2026-03-04 (docs/governance closure: F55-F60)
 
 ### Fixed

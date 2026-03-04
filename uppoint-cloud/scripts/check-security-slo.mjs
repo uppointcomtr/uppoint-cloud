@@ -21,6 +21,8 @@ const MIN_NOTIFICATION_TERMINAL_SAMPLE = Number.parseInt(
   process.env.SECURITY_SLO_MIN_NOTIFICATION_TERMINAL || "20",
   10,
 );
+const WARN_ON_LOW_NOTIFICATION_SAMPLE = (process.env.SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE || "true")
+  .toLowerCase();
 
 const ACTIONS = Object.keys(ACTION_THRESHOLDS);
 
@@ -38,6 +40,10 @@ function safeRatio(input, fallback) {
   }
 
   return input;
+}
+
+function isTruthy(rawValue) {
+  return ["1", "true", "yes", "on"].includes(String(rawValue || "").toLowerCase());
 }
 
 async function main() {
@@ -86,6 +92,7 @@ async function main() {
     : 0;
 
   const violations = [];
+  const advisories = [];
   for (const action of ACTIONS) {
     const threshold = safeInt(ACTION_THRESHOLDS[action], 1);
     const count = actionCounts[action] || 0;
@@ -119,6 +126,14 @@ async function main() {
       failed: notificationFailedCount,
     });
   }
+  if (terminalDeliveryCount < minNotificationTerminalSample && isTruthy(WARN_ON_LOW_NOTIFICATION_SAMPLE)) {
+    advisories.push({
+      type: "notification_terminal_sample_low",
+      terminal: terminalDeliveryCount,
+      minTerminalSample: minNotificationTerminalSample,
+      note: "Failure-ratio alerting is not active until minimum terminal sample is reached.",
+    });
+  }
 
   const report = {
     checkedAt: new Date().toISOString(),
@@ -136,12 +151,18 @@ async function main() {
       maxFailedAbsolute: maxNotificationFailedAbsolute,
       maxFailureRatio,
       minTerminalSample: minNotificationTerminalSample,
+      warnOnLowSample: isTruthy(WARN_ON_LOW_NOTIFICATION_SAMPLE),
     },
+    advisories,
     violations,
   };
 
   if (violations.length === 0) {
-    console.log(`[security-slo] OK lookback=${lookbackMinutes}m`);
+    if (advisories.length > 0) {
+      console.log(`[security-slo] WARN lookback=${lookbackMinutes}m advisories=${advisories.length}`);
+    } else {
+      console.log(`[security-slo] OK lookback=${lookbackMinutes}m`);
+    }
     console.log(JSON.stringify(report));
     return;
   }

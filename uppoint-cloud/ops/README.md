@@ -376,10 +376,12 @@ Security SLO report:
   - `SECURITY_SLO_MAX_LOGIN_OTP_FAILED` (default `120`)
   - `SECURITY_SLO_MAX_PASSWORD_RESET_FAILED` (default `60`)
   - `SECURITY_SLO_MAX_RATE_LIMIT_EXCEEDED` (default `300`)
-  - `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE` (default `3`; terminal sample thresholdu beklemeden mutlak FAILED sayısı alarmı)
+  - `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE` (default `5`; absolute terminal FAILED count threshold)
   - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (default `0.25`)
   - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (default `20`; minimum terminal delivery sample before ratio alerting)
+  - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (default `true`; advisory when terminal sample is below ratio activation window)
 - Exit code `1` indicates threshold breach and should be treated as an alert signal.
+- When low-sample advisory is active, the report prints `WARN` but keeps exit code `0` (informational signal, not a hard breach).
 
 Weekly security gate cron:
 - `uppoint-security-gate-weekly` runs `scripts/verify-security-gate.sh` every Sunday at `05:30`.
