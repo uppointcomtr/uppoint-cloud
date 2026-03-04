@@ -48,7 +48,11 @@ export async function enforceInternalRouteGuard(
     tokenHeaderName: input.tokenHeaderName,
     expectedToken: input.expectedToken,
     signingSecret: input.signingSecret,
-    requireLoopbackSource: env.NODE_ENV === "production",
+    // Loopback source is mandatory only for loopback-hmac transport.
+    // mTLS transport is authenticated by client cert headers + token + signature.
+    requireLoopbackSource:
+      env.NODE_ENV === "production"
+      && env.INTERNAL_AUTH_TRANSPORT_MODE === "loopback-hmac-v1",
     transportMode: env.INTERNAL_AUTH_TRANSPORT_MODE,
   });
 

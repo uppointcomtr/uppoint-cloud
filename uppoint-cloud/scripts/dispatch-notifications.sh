@@ -22,6 +22,19 @@ trap cleanup EXIT
 INTERNAL_DISPATCH_TOKEN="${INTERNAL_DISPATCH_TOKEN:-}"
 INTERNAL_DISPATCH_SIGNING_SECRET="${INTERNAL_DISPATCH_SIGNING_SECRET:-}"
 INTERNAL_AUTH_TRANSPORT_MODE="${INTERNAL_AUTH_TRANSPORT_MODE:-}"
+UPPOINT_CLOSED_SYSTEM_MODE="${UPPOINT_CLOSED_SYSTEM_MODE:-}"
+UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE="${UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE:-}"
+NODE_ENV="${NODE_ENV:-}"
+
+normalize_bool() {
+  local raw="${1:-}"
+  case "$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|on) printf 'true' ;;
+    0|false|no|off) printf 'false' ;;
+    *) printf '' ;;
+  esac
+}
+
 if [ -z "$INTERNAL_DISPATCH_TOKEN" ]; then
   INTERNAL_DISPATCH_TOKEN="$(read_env_value "$ENV_FILE" "INTERNAL_DISPATCH_TOKEN")"
 fi
@@ -31,8 +44,29 @@ fi
 if [ -z "$INTERNAL_AUTH_TRANSPORT_MODE" ]; then
   INTERNAL_AUTH_TRANSPORT_MODE="$(read_env_value "$ENV_FILE" "INTERNAL_AUTH_TRANSPORT_MODE")"
 fi
+if [ -z "$UPPOINT_CLOSED_SYSTEM_MODE" ]; then
+  UPPOINT_CLOSED_SYSTEM_MODE="$(read_env_value "$ENV_FILE" "UPPOINT_CLOSED_SYSTEM_MODE")"
+fi
+if [ -z "$UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE" ]; then
+  UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE="$(read_env_value "$ENV_FILE" "UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE")"
+fi
+if [ -z "$NODE_ENV" ]; then
+  NODE_ENV="$(read_env_value "$ENV_FILE" "NODE_ENV")"
+fi
 if [ -z "$INTERNAL_AUTH_TRANSPORT_MODE" ]; then
   INTERNAL_AUTH_TRANSPORT_MODE="loopback-hmac-v1"
+fi
+UPPOINT_CLOSED_SYSTEM_MODE="$(normalize_bool "${UPPOINT_CLOSED_SYSTEM_MODE:-true}")"
+UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE="$(normalize_bool "${UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE:-false}")"
+
+if [ "${INTERNAL_AUTH_TRANSPORT_MODE}" = "loopback-hmac-v1" ] && [ "${NODE_ENV}" = "production" ]; then
+  if [ "${DOMAIN}" != "cloud.uppoint.com.tr" ] || { [ "${CONNECT_IP}" != "127.0.0.1" ] && [ "${CONNECT_IP}" != "::1" ]; }; then
+    if [ "${UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE}" != "true" ] || [ "${UPPOINT_CLOSED_SYSTEM_MODE:-true}" = "true" ]; then
+      echo "[dispatch-notifications] FAIL: production loopback transport requires DOMAIN=cloud.uppoint.com.tr and CONNECT_IP=127.0.0.1/::1." >&2
+      echo "[dispatch-notifications] Set UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE=true and UPPOINT_CLOSED_SYSTEM_MODE=false only for explicit owner-approved exceptions." >&2
+      exit 1
+    fi
+  fi
 fi
 
 if [ -z "$INTERNAL_DISPATCH_TOKEN" ]; then

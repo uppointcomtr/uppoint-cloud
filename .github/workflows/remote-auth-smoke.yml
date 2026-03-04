@@ -62,15 +62,18 @@ jobs:
       - name: Verify repository/app root contract
         run: npm run verify:repo-layout
 
-      - name: Enforce mutation coverage for nightly schedule
+      - name: Guard against mutation smoke on production target
         if: github.event_name == 'schedule'
         env:
+          E2E_TARGET_BASE_URL: ${{ env.E2E_BASE_URL }}
           E2E_MUTATIONS_ENABLED: ${{ env.E2E_ALLOW_MUTATIONS }}
         run: |
           set -euo pipefail
-          if [ "${E2E_MUTATIONS_ENABLED}" != "1" ]; then
-            echo "Nightly run requires E2E_ALLOW_MUTATIONS=1 for mutation-path coverage."
-            echo "Set repository variable E2E_ALLOW_MUTATIONS=1 (or run workflow_dispatch with allow_mutations=1 in a safe environment)."
+          target="$(printf '%s' "${E2E_TARGET_BASE_URL}" | tr '[:upper:]' '[:lower:]')"
+          if [ "${E2E_MUTATIONS_ENABLED}" = "1" ] && [ "${target}" = "https://cloud.uppoint.com.tr" ]; then
+            echo "Refusing to run mutation smoke against production base URL."
+            echo "Set E2E_ALLOW_MUTATIONS=0 for nightly production smoke."
+            echo "Use workflow_dispatch allow_mutations=1 only with an isolated non-production target."
             exit 1
           fi
 

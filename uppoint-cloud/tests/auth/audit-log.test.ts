@@ -55,6 +55,13 @@ describe("logAudit", () => {
       reason: "INVALID_CODE",
       targetUserId: "target_42",
       token: "plaintext-value",
+      attempts: [
+        {
+          email: "first@example.com",
+          detail: "safe-message",
+        },
+        "Bearer abc.def.ghi",
+      ],
     });
 
     expect(createAuditLog).toHaveBeenCalledTimes(1);
@@ -83,6 +90,13 @@ describe("logAudit", () => {
             requestId: "req-123",
           }),
           token: "[REDACTED]",
+          attempts: [
+            {
+              email: "[REDACTED]",
+              detail: "safe-message",
+            },
+            "[REDACTED]",
+          ],
           integrity: expect.objectContaining({
             version: "v2",
             hash: expect.stringMatching(/^[a-f0-9]{64}$/),

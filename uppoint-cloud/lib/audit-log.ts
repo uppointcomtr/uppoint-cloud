@@ -143,20 +143,26 @@ function redactSensitiveMetadata(metadata: Record<string, unknown>): Record<stri
       continue;
     }
 
-    if (typeof value === "string" && SENSITIVE_VALUE_PATTERN.test(value)) {
-      output[key] = "[REDACTED]";
-      continue;
-    }
-
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      output[key] = redactSensitiveMetadata(value as Record<string, unknown>);
-      continue;
-    }
-
-    output[key] = value;
+    output[key] = redactSensitiveValue(value);
   }
 
   return output;
+}
+
+function redactSensitiveValue(value: unknown): unknown {
+  if (typeof value === "string") {
+    return SENSITIVE_VALUE_PATTERN.test(value) ? "[REDACTED]" : value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => redactSensitiveValue(entry));
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return redactSensitiveMetadata(value as Record<string, unknown>);
+  }
+
+  return value;
 }
 
 async function resolveRequestAuditContext(): Promise<AuditRequestContext> {

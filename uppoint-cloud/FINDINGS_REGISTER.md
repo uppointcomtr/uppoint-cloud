@@ -57,6 +57,10 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F16 | Internal security-event invalid payload attempts were not audited | observability/audit | Low | None | closed | 2026-03-03 | 2026-03-03 | codex | `app/api/internal/audit/security-event/route.ts`, `lib/audit-log.ts`, `tests/internal/security-event-route.test.ts` | Audit JSON parse/schema validation failures with structured reason and requestId |
 | F17 | Auth OTP notifications lacked explicit priority in outbox dispatch ordering | reliability/scale | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `modules/notifications/server/outbox.ts` | Prioritize `metadata.scope LIKE 'auth-%'` records in candidate ordering to reduce OTP latency under load |
 | F18 | Tenant-query guardrail did not scan infra layers (`db/`, `lib/`) | architecture/tenant-isolation | Medium | None | closed | 2026-03-03 | 2026-03-03 | codex | `tests/tenant/tenant-guardrail.test.ts` | Expand guardrail scan roots to include `db/` and `lib/` to prevent unreviewed direct tenant queries outside app/modules |
+| F19 | Internal mTLS transport was blocked by unconditional production loopback requirement | security/transport-auth | High | None | closed | 2026-03-04 | 2026-03-04 | codex | `lib/security/internal-route-guard.ts`, `tests/security/internal-request-auth.test.ts`, `tests/internal/internal-route-guardrail.test.ts` | Loopback source is enforced only for `loopback-hmac-v1`; `mtls-hmac-v1` remains protected with token + signature + verified mTLS headers |
+| F20 | Audit metadata redaction did not sanitize sensitive strings inside arrays | security/logging | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `lib/audit-log.ts`, `tests/auth/audit-log.test.ts` | Redaction must recurse into arrays and nested objects, masking sensitive values/keys consistently |
+| F21 | Notification dispatch script allowed unsafe production target override in loopback mode | security/ops | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/dispatch-notifications.sh`, `ops/README.md` | Production loopback mode blocks remote domain/IP overrides unless explicit approved exception flags are set |
+| F22 | Nightly remote smoke policy could permit mutation smoke against production base URL | operational/security-testing | Medium | Low | closed | 2026-03-04 | 2026-03-04 | codex | `/opt/.github/workflows/remote-auth-smoke.yml`, `README.md` | Scheduled workflow must fail when mutations are enabled against production URL; mutation smoke stays manual/non-production |
 
 ## Change Log (Register-only)
 
@@ -83,6 +87,10 @@ Record only register updates here (not general product changes).
 | 2026-03-03 | F16 | Closed: internal security-event route now audits invalid-body attempts | route + audit action + unit test |
 | 2026-03-03 | F17 | Closed: outbox dispatch ordering now prioritizes auth-scoped notifications | `modules/notifications/server/outbox.ts` |
 | 2026-03-03 | F18 | Closed: tenant direct-query guardrail scan now includes `db/` and `lib/` layers | `tests/tenant/tenant-guardrail.test.ts` |
+| 2026-03-04 | F19 | Closed: internal route guard now applies loopback requirement only for loopback transport mode, enabling secure mTLS transport path | `lib/security/internal-route-guard.ts` + internal auth tests |
+| 2026-03-04 | F20 | Closed: audit metadata redaction now traverses arrays and nested values | `lib/audit-log.ts`, `tests/auth/audit-log.test.ts` |
+| 2026-03-04 | F21 | Closed: production dispatch script now blocks unsafe remote override in loopback mode unless explicit approved exception flags are set | `scripts/dispatch-notifications.sh`, `ops/README.md` |
+| 2026-03-04 | F22 | Closed: nightly remote smoke now blocks production mutation mode and docs updated accordingly | `/opt/.github/workflows/remote-auth-smoke.yml`, `README.md` |
 
 ## Audit Output Contract
 

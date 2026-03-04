@@ -38,7 +38,8 @@ describe("internal route auth guardrail", () => {
     const source = readFileSync(path.join(process.cwd(), "lib/security/internal-route-guard.ts"), "utf8");
 
     expect(source).toContain("verifyInternalRequestAuth({");
-    expect(source).toContain("requireLoopbackSource: env.NODE_ENV === \"production\"");
+    expect(source).toContain("requireLoopbackSource:");
+    expect(source).toContain("env.INTERNAL_AUTH_TRANSPORT_MODE === \"loopback-hmac-v1\"");
     expect(source).toContain("transportMode: env.INTERNAL_AUTH_TRANSPORT_MODE");
     expect(source).toContain("enforceFailClosedIpRateLimit(");
   });

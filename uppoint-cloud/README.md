@@ -315,13 +315,10 @@ GitHub Actions nightly/ondemand remote smoke:
 - Manual run: `Actions -> Remote Auth Smoke -> Run workflow`
 - Optional manual input:
   - `allow_mutations=1` (only for isolated non-production environments)
-
-Nightly mutation coverage guard:
-- scheduled run now requires repository variable `E2E_ALLOW_MUTATIONS=1`.
-- verify with:
-```bash
-gh variable list -R uppointcomtr/uppoint-cloud | rg '^E2E_ALLOW_MUTATIONS'
-```
+- Nightly safety guard:
+  - scheduled runs must not execute mutation smoke against production target (`https://cloud.uppoint.com.tr`).
+  - keep `E2E_ALLOW_MUTATIONS=0` for nightly production smoke.
+  - run mutation smoke only via `workflow_dispatch` against isolated non-production base URLs.
 
 Optional CI audit-integrity check:
 - set repository secret `AUDIT_INTEGRITY_DATABASE_URL` (read-only DB URL recommended).

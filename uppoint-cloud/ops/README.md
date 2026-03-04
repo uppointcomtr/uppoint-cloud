@@ -302,10 +302,13 @@ ls -lah /opt/backups/postgres
 
 Production guard:
 
-- internal routes require loopback source (`127.0.0.1` / `::1`) in addition to token + signature checks.
 - `INTERNAL_AUTH_TRANSPORT_MODE=loopback-hmac-v1` is the default and must be present on signed internal requests via `x-internal-transport`.
+- In production + `loopback-hmac-v1`, internal routes require loopback source (`127.0.0.1` / `::1`) in addition to token + signature checks.
 - For staged mTLS rollout use `INTERNAL_AUTH_TRANSPORT_MODE=mtls-hmac-v1` only after Nginx is configured to set trusted client-cert headers (`x-ssl-client-verify`, `x-ssl-client-serial`) for internal calls.
 - keep dispatcher traffic local (`--resolve cloud.uppoint.com.tr:443:127.0.0.1` default in script).
+- `dispatch-notifications.sh` blocks production loopback-mode remote target overrides unless both of these are explicitly set for an owner-approved exception:
+  - `UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE=true`
+  - `UPPOINT_CLOSED_SYSTEM_MODE=false`
 
 `verify-audit-integrity.sh` performs read-only integrity validation for `AuditLog.metadata.integrity` chain:
 - allows legacy rows before first integrity-enabled record

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-03-04 (security/ops closure: internal transport, audit redaction, dispatch hardening, nightly smoke safety)
+
+### Fixed
+- Closed internal transport-mode mismatch in production guarding (`F19`):
+  - `lib/security/internal-route-guard.ts` now enforces loopback source only for `loopback-hmac-v1`.
+  - `mtls-hmac-v1` path remains protected by token + request signature + verified client-cert headers.
+- Closed audit metadata array redaction gap (`F20`):
+  - `lib/audit-log.ts` now recursively redacts sensitive strings/keys inside arrays and nested objects.
+- Closed production dispatch target override risk in loopback mode (`F21`):
+  - `scripts/dispatch-notifications.sh` now blocks non-local production loopback dispatch unless explicit exception flags are set.
+
+### Changed
+- Remote smoke nightly safety policy hardened (`F22`):
+  - `/opt/.github/workflows/remote-auth-smoke.yml` now fails scheduled runs when `E2E_ALLOW_MUTATIONS=1` targets `https://cloud.uppoint.com.tr`.
+  - Mutation smoke remains allowed via manual workflow dispatch against isolated non-production targets.
+- Documentation updated:
+  - `README.md` nightly smoke guidance aligned with production-safe mutation policy.
+  - `ops/README.md` dispatch override/transport guard behavior clarified.
+  - `FINDINGS_REGISTER.md` extended with `F19`–`F22` closure evidence.
+
 ## 2026-03-03 (closed-system policy: no off-host egress by default)
 
 ### Changed
