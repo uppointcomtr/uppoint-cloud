@@ -10,9 +10,6 @@ on:
         description: "Remote base URL (e.g. https://cloud.uppoint.com.tr)"
         required: false
         default: "https://cloud.uppoint.com.tr"
-      runner_labels_json:
-        description: 'Runner labels JSON (e.g. ["self-hosted","linux","x64"] or ["ubuntu-latest"])'
-        required: false
       allow_mutations:
         description: "Run mutating smoke cases (use only on isolated non-production env)"
         required: false
@@ -30,11 +27,11 @@ concurrency:
 jobs:
   smoke:
     name: Remote auth smoke (nightly)
-    runs-on: ${{ fromJSON(inputs.runner_labels_json || vars.E2E_RUNNER_LABELS_JSON || '["self-hosted"]') }}
+    runs-on: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}
     timeout-minutes: 20
     env:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
-      E2E_RUNNER_LABELS_JSON: ${{ inputs.runner_labels_json || vars.E2E_RUNNER_LABELS_JSON || '["self-hosted"]' }}
+      E2E_RUNNER_LABEL: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
       E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || vars.E2E_ALLOW_MUTATIONS || '0' }}
       E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '1' }}
@@ -51,7 +48,7 @@ jobs:
         run: echo "start_epoch=$(date -u +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Report runner labels
-        run: echo "Runner labels JSON: ${E2E_RUNNER_LABELS_JSON}"
+        run: echo "Runner label: ${E2E_RUNNER_LABEL}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -200,7 +197,7 @@ jobs:
             echo "- Result: ${JOB_STATUS}"
             echo "- Duration: ${duration_hms} (${duration_sec}s)"
             echo "- Base URL: ${E2E_BASE_URL}"
-            echo "- Runner labels: ${E2E_RUNNER_LABELS_JSON}"
+            echo "- Runner label: ${E2E_RUNNER_LABEL}"
             echo "- Mutations enabled: ${E2E_ALLOW_MUTATIONS}"
             echo "- E2E_HEALTHCHECK_TOKEN: ${health_token_state}"
             echo "- Health endpoint: ${HEALTH_RESULT:-unknown}"

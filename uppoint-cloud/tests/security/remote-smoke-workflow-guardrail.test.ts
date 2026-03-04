@@ -3,7 +3,7 @@ import path from "path";
 import { describe, expect, it } from "vitest";
 
 describe("remote smoke workflow guardrail", () => {
-  it("keeps self-hosted runner selection configurable via JSON labels", () => {
+  it("keeps self-hosted runner selection configurable via repository variable", () => {
     const workflowPath = path.join(
       process.cwd(),
       "..",
@@ -13,9 +13,9 @@ describe("remote smoke workflow guardrail", () => {
     );
     const source = readFileSync(workflowPath, "utf8");
 
-    expect(source).toContain("runner_labels_json:");
-    expect(source).toContain("runs-on: ${{ fromJSON(inputs.runner_labels_json || vars.E2E_RUNNER_LABELS_JSON || '[\"self-hosted\"]') }}");
-    expect(source).toContain("E2E_RUNNER_LABELS_JSON: ${{ inputs.runner_labels_json || vars.E2E_RUNNER_LABELS_JSON || '[\"self-hosted\"]' }}");
+    expect(source).toContain("runs-on: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}");
+    expect(source).toContain("E2E_RUNNER_LABEL: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}");
+    expect(source).toContain("- Runner label: ${E2E_RUNNER_LABEL}");
   });
 
   it("blocks mutation runs against production target across all trigger types", () => {
