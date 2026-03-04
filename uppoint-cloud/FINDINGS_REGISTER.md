@@ -35,6 +35,18 @@ It does not replace `CHANGELOG.md`; it complements it.
 - `closed`: fixed and verified with evidence
 - `accepted_risk`: intentionally deferred with owner approval
 
+## Revalidation policy
+
+1. Closed findings must be revalidated whenever related modules, scripts, or ops configs change.
+2. If no related changes occur, perform a periodic verification pass at least every 30 days.
+3. If verification evidence is older than 30 days for a security-critical finding, mark it as `in_progress` until refreshed.
+4. Revalidation evidence must include the same baseline command set:
+   - `npm run lint`
+   - `npm run typecheck`
+   - `npm test`
+   - `npm run build`
+   - targeted smoke/ops checks for the changed surface
+
 ## Findings Table
 
 | ID | Title | Category | Severity | UI Break Risk | Status | First Seen (UTC) | Last Updated (UTC) | Owner | Evidence (file/command) | Closure Criteria |
@@ -93,6 +105,12 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F52 | Stale Server Action runtime failures surfaced as generic user-facing errors after deploy transitions | operational/ux-resilience | Low | Medium | closed | 2026-03-04 | 2026-03-04 | codex | `lib/errors/stale-server-action.ts`, `app/[locale]/error.tsx`, `app/global-error.tsx`, `tests/security/stale-server-action-error.test.ts` | Detect stale Server Action failure signature and show localized refresh CTA instead of generic retry-only fallback |
 | F53 | Remote auth smoke lacked English auth-page marker assertions | quality/i18n-regression | Low | Medium | closed | 2026-03-04 | 2026-03-04 | codex | `tests/e2e/auth-http-smoke.test.ts` | Extend remote smoke to assert baseline UI text markers for both TR and EN login/register pages |
 | F54 | Tenant guardrail regex-only detection could miss dynamic Prisma model access patterns | tenant-isolation/architecture | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `tests/tenant/tenant-guardrail.test.ts` | Strengthen guardrail with TypeScript AST checks for `prisma/tx` property and element access on tenant-scoped models |
+| F55 | Security plan wording conflicted with closed-system baseline by presenting external anchoring as default | docs/governance | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `ops/SECURITY_MAXIMIZATION_PLAN.md` | Rename S3 to local-anchor baseline and move off-host flow under explicit owner-approved exception path |
+| F56 | Ops env example mixed closed-system baseline with external WORM variables in a single default block | docs/ops | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `ops/README.md` | Split env docs into closed-system baseline vs owner-approved external exception block |
+| F57 | README env docs lacked a minimal production boot key set | docs/operability | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `README.md` | Add explicit minimum required production env list and keep optional keys clearly marked |
+| F58 | Findings register lacked explicit periodic revalidation window for closed findings | governance/audit-process | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `FINDINGS_REGISTER.md` | Add revalidation policy with 30-day freshness and required baseline evidence commands |
+| F59 | Runtime cron catalog lacked explicit alert-path mapping per job | docs/observability | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `ops/RUNTIME_SERVICES_AND_CRON.md` | Add `Alert path` column with local sink/optional channel mapping per cron |
+| F60 | AGENTS lacked explicit documentation sync trigger matrix across app/ops/findings docs | governance/process | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `AGENTS.md` | Add deterministic docs sync matrix to prevent policy/procedure drift |
 
 ## Change Log (Register-only)
 
@@ -155,6 +173,12 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F52 | Closed: stale Server Action failures now render localized refresh guidance in error boundaries | `lib/errors/stale-server-action.ts`, `app/[locale]/error.tsx`, `app/global-error.tsx`, `tests/security/stale-server-action-error.test.ts` |
 | 2026-03-04 | F53 | Closed: remote auth smoke now asserts EN auth page baseline markers in addition to TR | `tests/e2e/auth-http-smoke.test.ts` |
 | 2026-03-04 | F54 | Closed: tenant guardrail now includes TypeScript AST checks to catch dynamic prisma/tx tenant-scoped model access | `tests/tenant/tenant-guardrail.test.ts` |
+| 2026-03-04 | F55 | Closed: security maximization S3 wording aligned to closed-system local-anchor baseline with explicit owner-approved off-host exception path | `ops/SECURITY_MAXIMIZATION_PLAN.md` |
+| 2026-03-04 | F56 | Closed: ops env docs split into closed-system baseline and external exception blocks | `ops/README.md` |
+| 2026-03-04 | F57 | Closed: README now defines minimum production boot env keys and optional key policy | `README.md` |
+| 2026-03-04 | F58 | Closed: findings register now enforces periodic revalidation and evidence freshness policy | `FINDINGS_REGISTER.md` |
+| 2026-03-04 | F59 | Closed: runtime cron catalog now includes alert-path mapping per scheduled job | `ops/RUNTIME_SERVICES_AND_CRON.md` |
+| 2026-03-04 | F60 | Closed: AGENTS now includes documentation sync matrix for policy/procedure alignment | `AGENTS.md` |
 
 ## Audit Output Contract
 

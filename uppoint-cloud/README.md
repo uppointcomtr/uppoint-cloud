@@ -74,6 +74,22 @@ Use this as the canonical follow-up plan for high-impact hardening tasks (mTLS r
 
 Create and maintain `.env` with real values (do not commit it):
 
+Minimum required keys for production boot:
+
+- `NODE_ENV`
+- `NEXT_PUBLIC_APP_URL`
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `AUTH_OTP_PEPPER`
+- `INTERNAL_AUDIT_TOKEN`
+- `INTERNAL_DISPATCH_TOKEN`
+- `INTERNAL_AUDIT_SIGNING_SECRET`
+- `INTERNAL_DISPATCH_SIGNING_SECRET`
+- `NOTIFICATION_PAYLOAD_SECRET`
+- `HEALTHCHECK_TOKEN`
+
+Optional keys below are feature-gated or ops-tuning related; keep closed-system defaults unless owner-approved exceptions are documented.
+
 - `NODE_ENV`
 - `NEXT_PUBLIC_APP_URL`
 - `DATABASE_URL`
@@ -121,7 +137,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
 - `AUDIT_FALLBACK_CHAIN_STATE_PATH` (optional, default `/var/lib/uppoint-cloud/audit-fallback-chain.state`; stores last fallback chain hash)
 - `AUDIT_LOG_SIGNING_SECRET` (optional, min 32 chars; defaults to `AUTH_SECRET` when unset)
-- `AUDIT_ANCHOR_SIGNING_SECRET` (recommended, min 32 chars; signer for external audit-chain anchor export)
+- `AUDIT_ANCHOR_SIGNING_SECRET` (recommended, min 32 chars; signer for audit-chain anchor export)
 - `AUDIT_ANCHOR_SIGNING_KEY_ID` (optional key identifier included in exported anchor records)
 - `AUDIT_ANCHOR_OUTPUT_PATH` (optional, default `/opt/backups/audit/audit-anchor.jsonl`)
 - `UPPOINT_CLOSED_SYSTEM_MODE` (recommended `true`; default closed-system/no off-host egress mode)
@@ -154,6 +170,7 @@ Create and maintain `.env` with real values (do not commit it):
 Closed-system deployment policy:
 - Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.
 - Do not enable off-host replication/third-party alert sinks unless explicitly approved.
+- Treat WORM/object-storage replication variables as exception-only; do not configure them in baseline closed-system deployments.
 - `npm run audit:anchor:replicate` skips unless both conditions are true:
   - `UPPOINT_CLOSED_SYSTEM_MODE=false`
   - `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`

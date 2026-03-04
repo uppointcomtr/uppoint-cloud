@@ -93,6 +93,14 @@ Do not jump straight into changes without first confirming the local context and
 * Any addition or modification of cron jobs or systemd units must include an update to `ops/RUNTIME_SERVICES_AND_CRON.md` (and `ops/README.md` when operational procedures change)
 * Any change that introduces, enables, or expands off-host egress (S3/object storage replication, webhooks, Slack/email/SMS providers, external APIs) requires explicit owner approval, documentation, and a rollback path
 
+## Documentation sync matrix
+
+* Keep documentation updates fail-closed and deterministic; do not leave implied behavior undocumented.
+* When auth, internal API, tenant isolation, audit logging, idempotency, or error contract behavior changes: update `README.md` and `FINDINGS_REGISTER.md` when a finding is added/reopened/closed.
+* When cron schedules, service units, log paths, rotation, backup/restore, or runbooks change: update both `ops/RUNTIME_SERVICES_AND_CRON.md` and `ops/README.md`.
+* When closed-system/egress policy changes: update `AGENTS.md`, `README.md`, and `ops/README.md` together in the same change set.
+* When verification/deploy expectations change (lint/type/test/build/security gate/deploy sequence): keep `AGENTS.md` and `README.md` aligned in the same commit.
+
 ## Debugging and CI rules
 
 * If lint, type-check, test, or build fails, stop and read the actual error output fully before changing code

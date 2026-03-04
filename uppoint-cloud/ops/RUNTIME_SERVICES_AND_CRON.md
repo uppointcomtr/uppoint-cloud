@@ -23,23 +23,23 @@ Closed-system policy note:
 - In this mode, off-host replication jobs must remain disabled.
 - Even when closed mode is disabled, off-host replication remains blocked unless `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`.
 
-| File | Schedule | Purpose | Log file |
-| --- | --- | --- | --- |
-| `uppoint-postgres-backup` | `0 2 * * *` | PostgreSQL backup | `/var/log/uppoint-postgres-backup.log` |
-| `uppoint-postgres-restore-drill` | `30 4 * * 0` | PostgreSQL restore drill to temporary DB + email report enqueue (requires `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true`) | `/var/log/uppoint-postgres-restore-drill.log` |
-| `uppoint-redis-backup` | `40 2 * * *` | Redis backup | `/var/log/uppoint-redis-backup.log` |
-| `uppoint-db-cleanup` | `0 3 * * *` | DB retention cleanup | `/var/log/uppoint-db-cleanup.log` |
-| `uppoint-notification-dispatch` | `* * * * *` | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` |
-| `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` |
-| `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` |
-| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (optional template; not deployed in closed-system baseline) |
-| `uppoint-auth-abuse-check` | `*/5 * * * *` | Auth abuse threshold monitoring + alerts | `/var/log/uppoint-auth-abuse-check.log` |
-| `uppoint-security-slo-report` | `*/15 * * * *` | Security SLO breach detection from audit + outbox signals | `/var/log/uppoint-security-slo-report.log` |
-| `uppoint-security-gate-weekly` | `30 5 * * 0` | Full local security gate (`verify:security-gate`) for periodic production-readiness validation | `/var/log/uppoint-security-gate-weekly.log` |
-| `uppoint-auth-rate-limit-tune` | `*/30 * * * *` | Report-only auth limiter tuning | `/var/log/uppoint-auth-rate-limit-tune.log` |
-| `uppoint-health-probe` | `* * * * *` | Health probe | `/var/log/uppoint-health-probe.log` |
-| `uppoint-nginx-drift-check` | `*/30 * * * *` | Nginx drift verification | `/var/log/uppoint-nginx-drift-check.log` |
-| `uppoint-edge-audit-emit-check` | `*/5 * * * *` | Edge audit emit failure detection | `/var/log/uppoint-cloud/edge-audit-emit-check.log` |
+| File | Schedule | Purpose | Log file | Alert path |
+| --- | --- | --- | --- | --- |
+| `uppoint-postgres-backup` | `0 2 * * *` | PostgreSQL backup | `/var/log/uppoint-postgres-backup.log` | None (log-only) |
+| `uppoint-postgres-restore-drill` | `30 4 * * 0` | PostgreSQL restore drill to temporary DB + email report enqueue (requires `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true`) | `/var/log/uppoint-postgres-restore-drill.log` | Notification outbox (`ops-restore-drill-report`) when email reporting enabled |
+| `uppoint-redis-backup` | `40 2 * * *` | Redis backup | `/var/log/uppoint-redis-backup.log` | None (log-only) |
+| `uppoint-db-cleanup` | `0 3 * * *` | DB retention cleanup | `/var/log/uppoint-db-cleanup.log` | None (log-only) |
+| `uppoint-notification-dispatch` | `* * * * *` | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` | Message-level audit (`notification_delivery_terminal_failed`) on terminal failures |
+| `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` | None (log-only; investigated via security gate/SLO pipeline) |
+| `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` | None in closed-system baseline |
+| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (optional template; not deployed in closed-system baseline) | Disabled in closed-system baseline; owner-approved exception only |
+| `uppoint-auth-abuse-check` | `*/5 * * * *` | Auth abuse threshold monitoring + alerts | `/var/log/uppoint-auth-abuse-check.log` | Local on-host alert sink (`/var/log/uppoint-cloud/security-alerts.log` + syslog), optional Slack/email |
+| `uppoint-security-slo-report` | `*/15 * * * *` | Security SLO breach detection from audit + outbox signals | `/var/log/uppoint-security-slo-report.log` | Local on-host alert sink (`/var/log/uppoint-cloud/security-alerts.log` + syslog), optional Slack/email |
+| `uppoint-security-gate-weekly` | `30 5 * * 0` | Full local security gate (`verify:security-gate`) for periodic production-readiness validation | `/var/log/uppoint-security-gate-weekly.log` | None (log-only; manual/on-call review) |
+| `uppoint-auth-rate-limit-tune` | `*/30 * * * *` | Report-only auth limiter tuning | `/var/log/uppoint-auth-rate-limit-tune.log` | None (report-only) |
+| `uppoint-health-probe` | `* * * * *` | Health probe | `/var/log/uppoint-health-probe.log` | None (log-only) |
+| `uppoint-nginx-drift-check` | `*/30 * * * *` | Nginx drift verification | `/var/log/uppoint-nginx-drift-check.log` | Local on-host alert sink (`/var/log/uppoint-cloud/security-alerts.log` + syslog), optional Slack/email |
+| `uppoint-edge-audit-emit-check` | `*/5 * * * *` | Edge audit emit failure detection | `/var/log/uppoint-cloud/edge-audit-emit-check.log` | Local on-host alert sink (`/var/log/uppoint-cloud/security-alerts.log` + syslog), optional Slack/email |
 
 Validation commands:
 

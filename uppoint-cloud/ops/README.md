@@ -47,7 +47,9 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now uppoint-tune.service
 ```
 
-Environment values should be provided in `/opt/uppoint-cloud/.env` (not in git), for example:
+Environment values should be provided in `/opt/uppoint-cloud/.env` (not in git).
+
+Closed-system baseline example (default policy):
 
 ```bash
 NODE_ENV=production
@@ -76,6 +78,13 @@ UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=false
 UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true
 UPPOINT_RESTORE_DRILL_EMAIL_ENABLED=true
 UPPOINT_RESTORE_DRILL_EMAIL_TO=semih.akbag@uppoint.com.tr
+```
+
+Owner-approved external exception example (off-host replication explicitly enabled):
+
+```bash
+UPPOINT_CLOSED_SYSTEM_MODE=false
+UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true
 WORM_S3_BUCKET=uppoint-audit-immutable
 WORM_S3_REGION=eu-central-1
 WORM_S3_PREFIX=cloud.uppoint.com.tr/audit-anchor

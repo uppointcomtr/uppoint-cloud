@@ -14,7 +14,7 @@ This file tracks the highest-impact next hardening steps for `cloud.uppoint.com.
 | --- | --- | --- | --- | --- |
 | S1 | Enforce security gate (`verify:security-gate`) | Prevents shipping partially verified auth/security changes | Implemented in repo scripts and AGENTS policy | None |
 | S2 | Internal API mTLS rollout for privileged internal routes | Prevents token-only trust becoming single point of compromise | Implemented baseline transport contract (`x-internal-transport`) with loopback mode default and mTLS mode gate | None |
-| S3 | Immutable external audit anchoring (daily hash-chain export) | Preserves forensic integrity even after DB compromise | Implemented: `export-audit-anchor` script + cron export pipeline | None |
+| S3 | Immutable local audit anchoring + offline transfer procedure | Preserves forensic integrity in closed-system mode while keeping off-host egress disabled by default | Implemented: `export-audit-anchor` script + cron export pipeline | None |
 | S4 | Formal secret rotation runbook with overlap windows | Reduces blast radius of key/token leaks and config drift | Implemented runbook under `ops/runbooks/secret-rotation.md` | None |
 | S5 | Abuse-response automation (rate-limit anomaly to alert/playbook) | Speeds incident response for credential stuffing and OTP abuse | Implemented: threshold checker + cron + alert integration | None |
 
@@ -53,7 +53,7 @@ Next hardening:
 1. Add mTLS termination and client-cert allowlist at Nginx layer for privileged internal locations.
 2. Enforce dual-control period (mTLS + signed token) before token-only fallback is removed.
 
-### S3 — Immutable external audit anchoring
+### S3 — Immutable local audit anchoring (closed-system baseline)
 
 Implemented:
 
@@ -61,10 +61,15 @@ Implemented:
 2. Added daily cron template: `ops/cron/uppoint-audit-anchor-export`.
 3. Export record includes deterministic anchor metadata and HMAC signature.
 
-Next hardening:
+Closed-system baseline:
 
-1. Sync exported anchor to external WORM storage (object lock).
-2. Add periodic verification job that reconciles DB chain head with off-host anchor.
+1. Keep anchor export local (`/opt/backups/audit`) and append-only.
+2. Use offline/manual transfer procedures only when explicitly owner-approved.
+
+Owner-approved exception path (off-host):
+
+1. Enable `UPPOINT_CLOSED_SYSTEM_MODE=false` and `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`.
+2. Configure WORM destination and add rollback/disable steps in ops runbooks before activation.
 
 ### S4 — Secret rotation runbook
 

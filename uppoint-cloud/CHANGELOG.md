@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-03-04 (docs/governance closure: F55-F60)
+
+### Fixed
+- Closed closed-system policy wording drift in security roadmap (`F55`):
+  - `ops/SECURITY_MAXIMIZATION_PLAN.md` now defines S3 as local immutable anchor baseline and moves off-host replication to explicit owner-approved exception path.
+- Closed ops env example ambiguity (`F56`):
+  - `ops/README.md` now separates `.env` examples into:
+    - closed-system baseline
+    - owner-approved external replication exception
+- Closed production bootstrap env clarity gap (`F57`):
+  - `README.md` now contains an explicit minimum required production env key set.
+- Closed findings evidence freshness/process gap (`F58`):
+  - `FINDINGS_REGISTER.md` now includes a revalidation policy with 30-day freshness expectations.
+- Closed cron alert-path observability gap (`F59`):
+  - `ops/RUNTIME_SERVICES_AND_CRON.md` now includes an `Alert path` column for each job.
+- Closed documentation sync governance gap (`F60`):
+  - `AGENTS.md` now includes a documentation sync matrix mapping change types to required docs updates.
+
+### Changed
+- Updated canonical findings register with `F55`–`F60` entries as `closed`.
+
 ## 2026-03-04 (security/ops closure: F50-F54)
 
 ### Fixed
