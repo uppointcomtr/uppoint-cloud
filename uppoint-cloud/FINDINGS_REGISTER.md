@@ -76,6 +76,9 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F35 | Weekly restore drill lacked built-in status email reporting for operators | operational/observability | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/run-restore-drill-with-report.sh`, `ops/cron/uppoint-postgres-restore-drill`, `tests/security/restore-drill-report-script-guardrail.test.ts`, `ops/README.md` | Run weekly drill via report wrapper and enqueue encrypted status email via `NotificationOutbox` (`ops-restore-drill-report`) |
 | F36 | Runtime deploy drift: running service version did not match repository HEAD | operational/release-integrity | High | None | closed | 2026-03-04 | 2026-03-04 | codex | `systemctl show -p ActiveEnterTimestamp uppoint-cloud.service`, `git show -s --format='%ci %s' HEAD`, `npm run build:deploy`, live `curl /api/auth/register` response contract check | Rebuild and restart service so active runtime aligns with current HEAD and API contract matches source (`error` + `code`) |
 | F37 | Backup and cleanup schedules drifted from `/etc/cron.d` inventory into root crontab | operational/governance | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `sudo crontab -l`, `/etc/cron.d/uppoint-postgres-backup`, `/etc/cron.d/uppoint-db-cleanup`, `ops/RUNTIME_SERVICES_AND_CRON.md` | Move backup/cleanup schedules into canonical `/etc/cron.d` entries and remove duplicate unmanaged root crontab entries |
+| F38 | Notification outbox terminal delivery failures were not audited at message level | observability/security-monitoring | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `modules/notifications/server/outbox.ts`, `lib/audit-log.ts`, `tests/auth/notification-outbox.test.ts` | Emit `notification_delivery_terminal_failed` audit events when a message reaches terminal `FAILED` status |
+| F39 | Tenant ID lookup in user lifecycle did not filter soft-deleted tenants | tenant-isolation/data-consistency | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `db/repositories/tenant-repository.ts`, `tests/tenant/tenant-repository.test.ts` | Ensure `findUserTenantIds` applies `tenant.deletedAt: null` filter |
+| F40 | Security SLO notification alerting had low-volume blind spot | observability/ops | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-security-slo.mjs`, `tests/security/security-slo-script-guardrail.test.ts`, `ops/README.md` | Add absolute FAILED-count alert threshold (`SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE`) alongside ratio-based alerting |
 
 ## Change Log (Register-only)
 
@@ -121,6 +124,9 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F35 | Closed: weekly restore drill now enqueues encrypted status email report via notification outbox | restore-drill report wrapper + cron + guardrail test |
 | 2026-03-04 | F36 | Closed: runtime drift fixed by rebuilding and restarting active service to align with HEAD | `npm run build:deploy`, `systemctl show ... ActiveEnterTimestamp`, live API contract check (`/api/auth/register`) |
 | 2026-03-04 | F37 | Closed: backup/cleanup cron ownership normalized to `/etc/cron.d` and unmanaged root crontab entries removed | `/etc/cron.d/uppoint-postgres-backup`, `/etc/cron.d/uppoint-db-cleanup`, empty `sudo crontab -l` |
+| 2026-03-04 | F38 | Closed: outbox dispatch now emits message-level terminal failure audits | `modules/notifications/server/outbox.ts`, `tests/auth/notification-outbox.test.ts` |
+| 2026-03-04 | F39 | Closed: tenant ID lookup now excludes soft-deleted tenant rows in user lifecycle path | `db/repositories/tenant-repository.ts`, `tests/tenant/tenant-repository.test.ts` |
+| 2026-03-04 | F40 | Closed: security SLO now includes absolute FAILED-count alert threshold | `scripts/check-security-slo.mjs`, `tests/security/security-slo-script-guardrail.test.ts`, `ops/README.md` |
 
 ## Audit Output Contract
 

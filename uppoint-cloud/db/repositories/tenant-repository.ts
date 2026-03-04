@@ -63,7 +63,12 @@ export async function findUserTenantIds(
   client: TenantRepositoryClient = prisma,
 ): Promise<string[]> {
   const memberships = await client.tenantMembership.findMany({
-    where: { userId: input.userId },
+    where: {
+      userId: input.userId,
+      tenant: {
+        deletedAt: null,
+      },
+    },
     select: { tenantId: true },
   });
 

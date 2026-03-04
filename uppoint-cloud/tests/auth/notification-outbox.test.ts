@@ -62,6 +62,7 @@ describe("notification outbox", () => {
   it("marks notification as failed after max attempts", async () => {
     const now = new Date("2026-03-02T08:00:00.000Z");
     const markFailedAttempt = vi.fn(async () => {});
+    const auditTerminalFailure = vi.fn(async () => {});
 
     const result = await dispatchNotificationOutboxBatch(
       { batchSize: 10, lockOwner: "worker-b" },
@@ -72,6 +73,8 @@ describe("notification outbox", () => {
           {
             id: "evt_2",
             channel: "SMS" as const,
+            tenantId: "tenant_1",
+            userId: "user_1",
             recipient: "+905551112233",
             subject: null,
             body: "123456",
@@ -82,6 +85,7 @@ describe("notification outbox", () => {
         acquireLock: async () => true,
         markSent: vi.fn(async () => {}),
         markFailedAttempt,
+        auditTerminalFailure,
         sendEmail: vi.fn(async () => {}),
         sendSms: vi.fn(async () => {
           throw new Error("provider down");
@@ -95,6 +99,16 @@ describe("notification outbox", () => {
       id: "evt_2",
       nextStatus: "FAILED",
       nextAttemptCount: 5,
+      errorMessage: "provider down",
+    }));
+    expect(auditTerminalFailure).toHaveBeenCalledTimes(1);
+    expect(auditTerminalFailure).toHaveBeenCalledWith(expect.objectContaining({
+      id: "evt_2",
+      channel: "SMS",
+      tenantId: "tenant_1",
+      userId: "user_1",
+      attemptCount: 5,
+      maxAttempts: 5,
       errorMessage: "provider down",
     }));
   });

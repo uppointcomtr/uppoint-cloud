@@ -13,6 +13,10 @@ const ACTION_THRESHOLDS = {
 const MAX_NOTIFICATION_FAILURE_RATIO = Number.parseFloat(
   process.env.SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO || "0.25",
 );
+const MAX_NOTIFICATION_FAILED_ABSOLUTE = Number.parseInt(
+  process.env.SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE || "3",
+  10,
+);
 const MIN_NOTIFICATION_TERMINAL_SAMPLE = Number.parseInt(
   process.env.SECURITY_SLO_MIN_NOTIFICATION_TERMINAL || "20",
   10,
@@ -96,7 +100,15 @@ async function main() {
   }
 
   const maxFailureRatio = safeRatio(MAX_NOTIFICATION_FAILURE_RATIO, 0.25);
+  const maxNotificationFailedAbsolute = safeInt(MAX_NOTIFICATION_FAILED_ABSOLUTE, 3);
   const minNotificationTerminalSample = safeInt(MIN_NOTIFICATION_TERMINAL_SAMPLE, 20);
+  if (notificationFailedCount > maxNotificationFailedAbsolute) {
+    violations.push({
+      type: "notification_delivery_failed_absolute",
+      failed: notificationFailedCount,
+      threshold: maxNotificationFailedAbsolute,
+    });
+  }
   if (terminalDeliveryCount >= minNotificationTerminalSample && notificationFailureRatio > maxFailureRatio) {
     violations.push({
       type: "notification_delivery_failure_ratio",
@@ -121,6 +133,7 @@ async function main() {
       failed: notificationFailedCount,
       terminal: terminalDeliveryCount,
       failureRatio: Number(notificationFailureRatio.toFixed(4)),
+      maxFailedAbsolute: maxNotificationFailedAbsolute,
       maxFailureRatio,
       minTerminalSample: minNotificationTerminalSample,
     },

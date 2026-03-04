@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-03-04 (security hardening: outbox terminal audit + tenant filter + SLO absolute alert)
+
+### Fixed
+- Closed notification observability security gap (`F38`):
+  - `modules/notifications/server/outbox.ts` now emits `notification_delivery_terminal_failed` audit events when a notification reaches terminal `FAILED` status.
+  - Added new audit action in `lib/audit-log.ts`.
+- Closed tenant isolation consistency gap (`F39`):
+  - `db/repositories/tenant-repository.ts` `findUserTenantIds` now excludes soft-deleted tenants (`tenant.deletedAt: null`).
+- Closed low-volume alert blind spot in security SLO (`F40`):
+  - `scripts/check-security-slo.mjs` now supports `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE` (default `3`) and emits `notification_delivery_failed_absolute` violations.
+
+### Added
+- Added regression tests:
+  - `tests/tenant/tenant-repository.test.ts`
+  - `tests/security/security-slo-script-guardrail.test.ts`
+- Extended notification outbox test coverage:
+  - `tests/auth/notification-outbox.test.ts` now verifies terminal failure audit callback dispatch.
+
+### Changed
+- Updated ops security-SLO documentation:
+  - `ops/README.md` now documents `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE`.
+- Updated findings registry:
+  - `FINDINGS_REGISTER.md` now tracks and closes `F38`–`F40`.
+
 ## 2026-03-04 (ops hardening: weekly security-gate cron activation)
 
 ### Added

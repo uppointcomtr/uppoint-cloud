@@ -35,6 +35,7 @@ export type AuditAction =
   | "internal_dispatch_failed"
   | "internal_dispatch_replay_blocked"
   | "internal_dispatch_unauthorized"
+  | "notification_delivery_terminal_failed"
   | "internal_audit_security_event_unauthorized"
   | "internal_audit_security_event_replay_blocked"
   | "internal_audit_security_event_invalid_body"
@@ -58,6 +59,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "internal_dispatch_failed",
   "internal_dispatch_replay_blocked",
   "internal_dispatch_unauthorized",
+  "notification_delivery_terminal_failed",
   "internal_audit_security_event_unauthorized",
   "internal_audit_security_event_replay_blocked",
   "internal_audit_security_event_invalid_body",

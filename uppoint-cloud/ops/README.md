@@ -362,6 +362,7 @@ Security SLO report:
   - `SECURITY_SLO_MAX_LOGIN_OTP_FAILED` (default `120`)
   - `SECURITY_SLO_MAX_PASSWORD_RESET_FAILED` (default `60`)
   - `SECURITY_SLO_MAX_RATE_LIMIT_EXCEEDED` (default `300`)
+  - `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE` (default `3`; terminal sample thresholdu beklemeden mutlak FAILED sayısı alarmı)
   - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (default `0.25`)
   - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (default `20`; minimum terminal delivery sample before ratio alerting)
 - Exit code `1` indicates threshold breach and should be treated as an alert signal.

@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/db/client";
+import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { sendAuthEmail } from "@/modules/auth/server/email-service";
 import { sendAuthSms } from "@/modules/auth/server/sms-service";
@@ -21,6 +22,8 @@ const MAX_BACKOFF_SECONDS = 15 * 60;
 interface NotificationOutboxRecord {
   id: string;
   channel: NotificationChannel;
+  tenantId?: string | null;
+  userId?: string | null;
   recipient: string;
   subject: string | null;
   body: string;
@@ -52,6 +55,15 @@ interface OutboxDependencies {
     nextStatus: NotificationOutboxStatus;
     nextAttemptAt: Date;
     nextAttemptCount: number;
+    errorMessage: string;
+  }) => Promise<void>;
+  auditTerminalFailure?: (input: {
+    id: string;
+    channel: NotificationChannel;
+    tenantId?: string | null;
+    userId?: string | null;
+    attemptCount: number;
+    maxAttempts: number;
     errorMessage: string;
   }) => Promise<void>;
   sendEmail: (input: { to: string; subject: string; text: string }) => Promise<void>;
@@ -90,6 +102,8 @@ const defaultOutboxDependencies: OutboxDependencies = {
         SELECT
           "id",
           "channel",
+          "tenantId",
+          "userId",
           "recipient",
           "subject",
           "body",
@@ -109,6 +123,8 @@ const defaultOutboxDependencies: OutboxDependencies = {
       SELECT
         "id",
         "channel",
+        "tenantId",
+        "userId",
         "recipient",
         "subject",
         "body",
@@ -167,6 +183,23 @@ const defaultOutboxDependencies: OutboxDependencies = {
       WHERE "id" = ${id}
         AND "lockedBy" = ${lockOwner}
     `;
+  },
+  auditTerminalFailure: async (input) => {
+    await logAudit(
+      "notification_delivery_terminal_failed",
+      "system",
+      input.userId ?? undefined,
+      {
+        targetId: input.id,
+        reason: "NOTIFICATION_DELIVERY_FAILED",
+        result: "FAILURE",
+        channel: input.channel,
+        attemptCount: input.attemptCount,
+        maxAttempts: input.maxAttempts,
+        error: input.errorMessage.slice(0, 200),
+      },
+      input.tenantId ?? undefined,
+    );
   },
   sendEmail: async (input) => sendAuthEmail(input),
   sendSms: async (input) => sendAuthSms(input),
@@ -312,6 +345,7 @@ export async function dispatchNotificationOutboxBatch(
       await dependencies.markSent({ id: record.id, now, lockOwner });
       sent += 1;
     } catch (error) {
+      const errorMessage = trimErrorMessage(error);
       const nextAttemptCount = record.attemptCount + 1;
       const reachedMaxAttempts = nextAttemptCount >= record.maxAttempts;
       const retryDelaySeconds = computeRetryDelaySeconds(nextAttemptCount);
@@ -325,8 +359,20 @@ export async function dispatchNotificationOutboxBatch(
         nextStatus: reachedMaxAttempts ? "FAILED" : "PENDING",
         nextAttemptAt,
         nextAttemptCount,
-        errorMessage: trimErrorMessage(error),
+        errorMessage,
       });
+
+      if (reachedMaxAttempts) {
+        await dependencies.auditTerminalFailure?.({
+          id: record.id,
+          channel: record.channel,
+          tenantId: record.tenantId,
+          userId: record.userId,
+          attemptCount: nextAttemptCount,
+          maxAttempts: record.maxAttempts,
+          errorMessage,
+        });
+      }
       failed += 1;
     }
   }
