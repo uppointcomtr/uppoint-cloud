@@ -343,7 +343,6 @@ Optional CI audit-integrity check:
   - `E2E_HEALTHCHECK_TOKEN` (production `/api/health` is token-gated; workflow fails closed if missing)
 - Optional repository variable:
   - `E2E_BASE_URL` (default is `https://cloud.uppoint.com.tr`)
-  - `E2E_RUNNER_LABEL` (default `self-hosted`; set `ubuntu-latest` to force GitHub-hosted runner)
   - `E2E_ENFORCE_HEALTH_200` (default `1`; keep enabled for production smoke)
 
 Repository/app-root contract checks:

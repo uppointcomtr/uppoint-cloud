@@ -27,11 +27,11 @@ concurrency:
 jobs:
   smoke:
     name: Remote auth smoke (nightly)
-    runs-on: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}
+    runs-on: self-hosted
     timeout-minutes: 20
     env:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
-      E2E_RUNNER_LABEL: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}
+      E2E_RUNNER_LABEL: self-hosted
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
       E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || vars.E2E_ALLOW_MUTATIONS || '0' }}
       E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '1' }}

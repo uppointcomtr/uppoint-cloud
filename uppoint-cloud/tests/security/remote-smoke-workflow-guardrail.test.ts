@@ -3,7 +3,7 @@ import path from "path";
 import { describe, expect, it } from "vitest";
 
 describe("remote smoke workflow guardrail", () => {
-  it("keeps self-hosted runner selection configurable via repository variable", () => {
+  it("pins remote smoke execution to self-hosted runner", () => {
     const workflowPath = path.join(
       process.cwd(),
       "..",
@@ -13,8 +13,8 @@ describe("remote smoke workflow guardrail", () => {
     );
     const source = readFileSync(workflowPath, "utf8");
 
-    expect(source).toContain("runs-on: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}");
-    expect(source).toContain("E2E_RUNNER_LABEL: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}");
+    expect(source).toContain("runs-on: self-hosted");
+    expect(source).toContain("E2E_RUNNER_LABEL: self-hosted");
     expect(source).toContain("- Runner label: ${E2E_RUNNER_LABEL}");
   });
 

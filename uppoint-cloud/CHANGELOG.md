@@ -4,13 +4,13 @@
 
 ### Changed
 - Updated remote smoke workflow runner model to support self-hosted execution by default:
-  - `/opt/.github/workflows/remote-auth-smoke.yml` now uses repository variable-based runner selection:
-    - `runs-on: ${{ vars.E2E_RUNNER_LABEL || 'self-hosted' }}`
-  - Added CI summary line for resolved runner label.
+  - `/opt/.github/workflows/remote-auth-smoke.yml` now pins execution to:
+    - `runs-on: self-hosted`
+  - Added CI summary line for resolved runner label (`self-hosted`).
 - Updated workflow guardrails:
-  - `tests/security/remote-smoke-workflow-guardrail.test.ts` now enforces the `E2E_RUNNER_LABEL` contract.
+  - `tests/security/remote-smoke-workflow-guardrail.test.ts` now enforces the self-hosted runner pin contract.
 - Updated operator docs:
-  - `README.md` now documents `E2E_RUNNER_LABEL` and runner-network requirement for audit-integrity checks.
+  - `README.md` now documents runner-network requirement for audit-integrity checks.
 
 ## 2026-03-04 (security/ops closure: F46-F49)
 
