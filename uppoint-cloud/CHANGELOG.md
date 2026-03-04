@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-05 (auth-ui fix: remove acceptance info banner on phone OTP step)
+
+### Fixed
+- Removed the acceptance info banner from phone login OTP step on `/[locale]/login`:
+  - `modules/auth/components/login-form.tsx` no longer sets `submitInfo` when transitioning to phone OTP.
+  - OTP screen now stays clean while preserving neutral error handling and flow behavior.
+
 ## 2026-03-05 (auth-ui fix: login phone tab click unblock)
 
 ### Fixed

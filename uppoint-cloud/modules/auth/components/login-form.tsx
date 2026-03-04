@@ -349,7 +349,6 @@ export function LoginForm({
     setNowTimestamp(Date.now());
     setOtpCode("");
     setPhoneStep("otp");
-    setSubmitInfo(dictionary.acceptanceInfo);
     setIsSubmitting(false);
   }
 
