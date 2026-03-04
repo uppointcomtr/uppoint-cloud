@@ -13,6 +13,21 @@ EXECUTE=0
 CONFIRMED=0
 KEEP_DB=0
 DRILL_DB_NAME=""
+DRILL_DB_CREATED=0
+
+normalize_bool() {
+  local raw="${1:-}"
+  local normalized
+  normalized="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | xargs)"
+  case "$normalized" in
+    1|true|yes|on)
+      printf 'true'
+      ;;
+    *)
+      printf 'false'
+      ;;
+  esac
+}
 
 usage() {
   cat <<'EOF'
@@ -23,6 +38,7 @@ Usage:
 Notes:
   --check-only validates backup artifacts without creating a drill database.
   --execute requires --confirm and performs full restore drill to a temporary DB.
+  --execute also requires UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true (from env or /opt/uppoint-cloud/.env).
 EOF
 }
 
@@ -108,6 +124,17 @@ if [ "$CHECK_ONLY" -eq 1 ]; then
   exit 0
 fi
 
+ENABLE_RESTORE_DRILL_EXECUTE="${UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE:-}"
+if [ -z "$ENABLE_RESTORE_DRILL_EXECUTE" ]; then
+  ENABLE_RESTORE_DRILL_EXECUTE="$(read_env_value "$ENV_FILE" "UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE")"
+fi
+ENABLE_RESTORE_DRILL_EXECUTE="$(normalize_bool "${ENABLE_RESTORE_DRILL_EXECUTE:-false}")"
+
+if [ "$ENABLE_RESTORE_DRILL_EXECUTE" != "true" ]; then
+  echo "[restore-drill] execute mode is disabled. Set UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true to run drill restore." >&2
+  exit 1
+fi
+
 if ! command -v createdb >/dev/null 2>&1 || ! command -v dropdb >/dev/null 2>&1 || ! command -v psql >/dev/null 2>&1; then
   echo "[restore-drill] required postgres client binaries (createdb/dropdb/psql) not found." >&2
   exit 1
@@ -116,9 +143,52 @@ fi
 if [ -z "$DRILL_DB_NAME" ]; then
   DRILL_DB_NAME="restore_drill_$(date +%Y%m%d_%H%M%S)"
 fi
+PRIMARY_DB_NAME="${PGDATABASE:-}"
+PSQL_BOOTSTRAP_DB="${PRIMARY_DB_NAME:-postgres}"
+
+if ! [[ "$DRILL_DB_NAME" =~ ^[a-zA-Z0-9_]+$ ]]; then
+  echo "[restore-drill] invalid --db-name; use only letters, numbers, and underscore." >&2
+  exit 1
+fi
+
+if [[ "$DRILL_DB_NAME" != restore_drill_* ]]; then
+  echo "[restore-drill] drill DB name must start with restore_drill_ prefix." >&2
+  exit 1
+fi
+
+if [ -n "$PRIMARY_DB_NAME" ] && [ "$DRILL_DB_NAME" = "$PRIMARY_DB_NAME" ]; then
+  echo "[restore-drill] refusing to use primary database name as drill target: $DRILL_DB_NAME" >&2
+  exit 1
+fi
+
+case "$DRILL_DB_NAME" in
+  postgres|template0|template1)
+    echo "[restore-drill] refusing reserved database name: $DRILL_DB_NAME" >&2
+    exit 1
+    ;;
+esac
+
+DB_EXISTS="$(
+  psql --no-psqlrc --set ON_ERROR_STOP=1 --dbname "$PSQL_BOOTSTRAP_DB" -At \
+    --set drill_db_name="$DRILL_DB_NAME" \
+    -c "SELECT 1 FROM pg_database WHERE datname = :'drill_db_name' LIMIT 1;" 2>/dev/null || true
+)"
+if [ "$DB_EXISTS" = "1" ]; then
+  echo "[restore-drill] drill target database already exists; refusing to continue: $DRILL_DB_NAME" >&2
+  exit 1
+fi
 
 cleanup() {
+  if [ "$DRILL_DB_CREATED" -ne 1 ]; then
+    return
+  fi
+
   if [ "$KEEP_DB" -eq 1 ]; then
+    return
+  fi
+
+  if [ -n "$PRIMARY_DB_NAME" ] && [ "$DRILL_DB_NAME" = "$PRIMARY_DB_NAME" ]; then
+    echo "[restore-drill] safety stop: refusing cleanup drop on primary database name." >&2
     return
   fi
 
@@ -129,6 +199,7 @@ trap cleanup EXIT
 
 echo "[restore-drill] creating drill database: $DRILL_DB_NAME"
 createdb "$DRILL_DB_NAME"
+DRILL_DB_CREATED=1
 
 echo "[restore-drill] restoring backup into drill database..."
 gunzip -c "$LATEST_BACKUP" | psql --set ON_ERROR_STOP=1 --dbname "$DRILL_DB_NAME" >/dev/null

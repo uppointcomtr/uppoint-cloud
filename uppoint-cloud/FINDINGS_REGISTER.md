@@ -72,6 +72,8 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F31 | Off-host audit anchor replication lacked explicit enable control | security/ops-egress | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/replicate-audit-anchor.sh`, `README.md`, `ops/README.md`, `ops/RUNTIME_SERVICES_AND_CRON.md` | Require explicit `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true` in addition to closed-system opt-out before replication runs |
 | F32 | Platform access control baseline and route guardrail missing for future admin/support surfaces | authorization/architecture | Medium | Low | closed | 2026-03-04 | 2026-03-04 | codex | `modules/auth/server/platform-rbac.ts`, `tests/security/platform-rbac.test.ts`, `tests/security/platform-route-guardrail.test.ts` | Introduce deny-by-default platform permissions and test-enforced guardrail for `/admin` and `/support` surfaces |
 | F33 | Security gate lacked objective SLO breach verification for auth abuse and notification delivery health | observability/ops | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-security-slo.mjs`, `scripts/run-security-slo-report.sh`, `ops/cron/uppoint-security-slo-report`, `scripts/verify-security-gate.sh`, `package.json`, `ops/logrotate/uppoint-cloud` | Add security-SLO check script, cron template, log rotation, and gate integration so threshold breaches fail verification |
+| F34 | Restore drill execute path lacked explicit kill-switch and safe target DB guards | operational/safety | High | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/restore-drill-db.sh`, `ops/cron/uppoint-postgres-restore-drill`, `ops/README.md`, `tests/security/restore-drill-script-guardrail.test.ts` | Require `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true` for execute mode and enforce drill-target safety checks (prefix, primary-name mismatch, reserved-name block, pre-existing DB block, created-by-script cleanup guard) |
+| F35 | Weekly restore drill lacked built-in status email reporting for operators | operational/observability | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/run-restore-drill-with-report.sh`, `ops/cron/uppoint-postgres-restore-drill`, `tests/security/restore-drill-report-script-guardrail.test.ts`, `ops/README.md` | Run weekly drill via report wrapper and enqueue encrypted status email via `NotificationOutbox` (`ops-restore-drill-report`) |
 
 ## Change Log (Register-only)
 
@@ -113,6 +115,8 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F31 | Closed: off-host audit anchor replication now requires explicit enable flag in addition to closed-system opt-out | replication script + README/ops docs |
 | 2026-03-04 | F32 | Closed: platform RBAC primitives and admin/support guardrail added | platform-rbac module + tests |
 | 2026-03-04 | F33 | Closed: security SLO report added to gate + cron/logrotate path | security-slo scripts + ops docs + gate integration |
+| 2026-03-04 | F34 | Closed: restore drill execute now fail-closed behind explicit kill-switch and safe drill-target guards | restore-drill script + cron/docs + guardrail test |
+| 2026-03-04 | F35 | Closed: weekly restore drill now enqueues encrypted status email report via notification outbox | restore-drill report wrapper + cron + guardrail test |
 
 ## Audit Output Contract
 

@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-03-04 (ops observability: weekly restore drill email reporting)
+
+### Added
+- Added restore drill report wrapper:
+  - `scripts/run-restore-drill-with-report.sh`
+  - Runs restore drill, captures output, and enqueues encrypted status email via `NotificationOutbox` (`scope=ops-restore-drill-report`).
+  - Uses `UPPOINT_RESTORE_DRILL_EMAIL_TO` with fallback to `UPPOINT_ALERT_EMAIL_TO`.
+  - Controlled by `UPPOINT_RESTORE_DRILL_EMAIL_ENABLED` (default `true`).
+
+### Changed
+- Weekly restore-drill cron now calls report wrapper:
+  - `ops/cron/uppoint-postgres-restore-drill`
+- Ops docs/runtime catalog updated:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+
+### Tests
+- Added guardrail test:
+  - `tests/security/restore-drill-report-script-guardrail.test.ts`
+
+## 2026-03-04 (ops safety hardening: restore drill kill-switch + target DB guardrails)
+
+### Fixed
+- Hardened PostgreSQL restore drill safety (`F34`):
+  - `scripts/restore-drill-db.sh --execute --confirm` is now fail-closed unless `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true`.
+  - Added drill-target guardrails:
+    - target DB must use `restore_drill_` prefix,
+    - target DB must not match primary DB name,
+    - reserved names (`postgres`, `template0`, `template1`) are blocked,
+    - pre-existing drill target DB names are rejected.
+  - Cleanup now drops DB only when the script actually created it, preventing accidental drop on create failures.
+
+### Added
+- Guardrail regression test:
+  - `tests/security/restore-drill-script-guardrail.test.ts`
+
+### Changed
+- Operational docs/templates updated:
+  - `README.md` env var list includes `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE`.
+  - `ops/README.md` restore-drill safety behavior documented.
+  - `ops/RUNTIME_SERVICES_AND_CRON.md` restore-drill cron purpose now reflects execute gate.
+  - `ops/cron/uppoint-postgres-restore-drill` comment now documents execute gate requirement.
+
 ## 2026-03-04 (security/ops closure: F28-F33)
 
 ### Fixed

@@ -26,7 +26,7 @@ Closed-system policy note:
 | File | Schedule | Purpose | Log file |
 | --- | --- | --- | --- |
 | `uppoint-postgres-backup` | `0 2 * * *` | PostgreSQL backup | `/var/log/uppoint-postgres-backup.log` |
-| `uppoint-postgres-restore-drill` | `30 4 * * 0` | PostgreSQL restore drill to temporary DB | `/var/log/uppoint-postgres-restore-drill.log` |
+| `uppoint-postgres-restore-drill` | `30 4 * * 0` | PostgreSQL restore drill to temporary DB + email report enqueue (requires `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true`) | `/var/log/uppoint-postgres-restore-drill.log` |
 | `uppoint-redis-backup` | `40 2 * * *` | Redis backup | `/var/log/uppoint-redis-backup.log` |
 | `uppoint-db-cleanup` | as configured | DB retention cleanup | `/var/log/uppoint-db-cleanup.log` |
 | `uppoint-notification-dispatch` | every minute | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` |

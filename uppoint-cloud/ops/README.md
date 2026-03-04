@@ -73,6 +73,9 @@ AUDIT_ANCHOR_SIGNING_KEY_ID=prod-kms-key-2026-01
 AUDIT_ANCHOR_OUTPUT_PATH=/opt/backups/audit/audit-anchor.jsonl
 UPPOINT_CLOSED_SYSTEM_MODE=true
 UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=false
+UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true
+UPPOINT_RESTORE_DRILL_EMAIL_ENABLED=true
+UPPOINT_RESTORE_DRILL_EMAIL_TO=semih.akbag@uppoint.com.tr
 WORM_S3_BUCKET=uppoint-audit-immutable
 WORM_S3_REGION=eu-central-1
 WORM_S3_PREFIX=cloud.uppoint.com.tr/audit-anchor
@@ -319,6 +322,16 @@ Production guard:
 PostgreSQL restore drill:
 - `restore-drill-db.sh --check-only` validates latest backup artifact and checksum without creating a database.
 - `restore-drill-db.sh --execute --confirm` runs a full restore drill into a temporary database and drops it afterwards.
+- Weekly cron uses `run-restore-drill-with-report.sh` to execute drill and enqueue a status email via `NotificationOutbox`.
+- execute mode is fail-closed unless `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true` is set in `/opt/uppoint-cloud/.env`.
+- drill target names are safety-checked:
+  - must use `restore_drill_` prefix,
+  - must not match primary database name,
+  - must not use reserved names (`postgres`, `template0`, `template1`),
+  - script refuses pre-existing target DB names.
+- restore-drill report email configuration:
+  - `UPPOINT_RESTORE_DRILL_EMAIL_ENABLED=true` (default)
+  - `UPPOINT_RESTORE_DRILL_EMAIL_TO=...` (optional; defaults to `UPPOINT_ALERT_EMAIL_TO`)
 
 `verify-audit-integrity.sh` performs read-only integrity validation for `AuditLog.metadata.integrity` chain:
 - allows legacy rows before first integrity-enabled record
