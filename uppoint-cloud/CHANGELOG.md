@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-03-04 (security/ops closure: F46-F49)
+
+### Fixed
+- Closed remote smoke health fail-open gap (`F46`):
+  - `/opt/.github/workflows/remote-auth-smoke.yml` now defaults `E2E_ENFORCE_HEALTH_200=1`.
+  - Added explicit production guard that fails workflow when `E2E_HEALTHCHECK_TOKEN` is missing for `https://cloud.uppoint.com.tr`.
+  - Extended workflow guardrail tests in `tests/security/remote-smoke-workflow-guardrail.test.ts`.
+- Closed cron catalog drift (`F47`):
+  - `ops/RUNTIME_SERVICES_AND_CRON.md` schedules were aligned with canonical cron templates (`ops/cron/*`).
+- Closed closed-system local alert sink gap (`F48`):
+  - `scripts/alert-auth-abuse.sh` now always emits on-host local alerts to `/var/log/uppoint-cloud/security-alerts.log` and syslog (`uppoint-security-alert`), including closed-system mode.
+  - Added rotation for `/var/log/uppoint-cloud/security-alerts.log` in `ops/logrotate/uppoint-cloud`.
+  - Added guardrail test `tests/security/auth-abuse-alert-script-guardrail.test.ts`.
+- Closed tenant deny audit context propagation gap (`F49`):
+  - `modules/tenant/server/scope.ts` now accepts optional `auditContext` (`ip`, `requestId`, `userAgent`, `forwardedFor`) and includes it in deny/insufficient-role audit metadata.
+  - Added regression coverage in `tests/tenant/tenant-scope.test.ts`.
+
+### Changed
+- Updated remote smoke documentation:
+  - `README.md` now documents production health token requirement and default strict health enforcement.
+- Updated ops runbooks/catalog:
+  - `ops/README.md` and `ops/RUNTIME_SERVICES_AND_CRON.md` now include local security-alert log path usage.
+- Updated findings registry:
+  - `FINDINGS_REGISTER.md` now tracks and closes `F46`–`F49`.
+
 ## 2026-03-04 (security/ops closure: F41-F45 + SLO calibration)
 
 ### Fixed

@@ -297,6 +297,11 @@ sudo /opt/uppoint-cloud/scripts/run-security-slo-report.sh
 ls -lah /opt/backups/postgres
 ```
 
+Auth abuse alert channels:
+- In `UPPOINT_CLOSED_SYSTEM_MODE=true`, external Slack/email alert delivery is intentionally skipped.
+- Local on-host alert evidence is always written to `/var/log/uppoint-cloud/security-alerts.log` and syslog (`logger -t uppoint-security-alert`).
+- Optional path override: `UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH`.
+
 `cleanup-db.sh` audit retention behavior:
 
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE=true` (default) exports old audit rows to JSONL archive before deletion.
@@ -454,6 +459,7 @@ Covered logs:
 - `/var/log/uppoint-audit-integrity-check.log`
 - `/var/log/uppoint-security-slo-report.log`
 - `/var/log/uppoint-security-gate-weekly.log`
+- `/var/log/uppoint-cloud/security-alerts.log`
 - `/var/log/uppoint-cloud/audit-fallback.log`
 - `/var/log/postgresql/*.log`
 

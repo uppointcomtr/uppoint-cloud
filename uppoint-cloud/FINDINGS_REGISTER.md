@@ -84,6 +84,10 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F43 | Proxy security error envelope lacked stable `code` field | api/security-contract | Low | Low | closed | 2026-03-04 | 2026-03-04 | codex | `proxy.ts` | Edge proxy security denials must include machine-readable `code` alongside `error` |
 | F44 | Restore-drill runtime evidence gap (weekly job present but no current execution artifact) | operational/readiness | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `/etc/cron.d/uppoint-postgres-restore-drill`, `/var/log/uppoint-postgres-restore-drill.log` | Generate fresh check-only restore-drill execution evidence in canonical log path |
 | F45 | Notification dispatch cron logs were too coarse for incident forensics | observability/ops | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/dispatch-notifications.sh`, `/var/log/uppoint-cloud/dispatch-notifications.log` | Include requestId and dispatch counters (`inspected/sent/failed`) in cron dispatch success logs |
+| F46 | Remote smoke health enforcement could run fail-open against production health endpoint | operational/security-testing | Medium | Low | closed | 2026-03-04 | 2026-03-04 | codex | `/opt/.github/workflows/remote-auth-smoke.yml`, `tests/security/remote-smoke-workflow-guardrail.test.ts` | Default health enforcement to strict (`E2E_ENFORCE_HEALTH_200=1`) and require production health token secret |
+| F47 | Runtime cron catalog schedule drift reduced ops confidence during incident triage | operational/governance | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `ops/RUNTIME_SERVICES_AND_CRON.md`, `ops/cron/*` | Keep cron inventory schedule fields synchronized with canonical `/etc/cron.d` templates |
+| F48 | Closed-system auth abuse alerting lacked explicit local on-host sink | observability/ops | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/alert-auth-abuse.sh`, `ops/logrotate/uppoint-cloud`, `tests/security/auth-abuse-alert-script-guardrail.test.ts` | Persist local security alerts on host (`/var/log/uppoint-cloud/security-alerts.log`) and emit syslog even when external channels are disabled |
+| F49 | Tenant access denial audit path lacked explicit request-context propagation from callers | observability/tenant-isolation | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `modules/tenant/server/scope.ts`, `tests/tenant/tenant-scope.test.ts` | Accept optional caller audit context (`ip`, `requestId`, `userAgent`, `forwardedFor`) and include it in denied access audit metadata |
 
 ## Change Log (Register-only)
 
@@ -137,6 +141,10 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F43 | Closed: proxy host/origin rejection responses now include stable `code` field | `proxy.ts` |
 | 2026-03-04 | F44 | Closed: restore-drill check-only run wrote fresh evidence into canonical cron log path | `/var/log/uppoint-postgres-restore-drill.log`, `scripts/run-restore-drill-with-report.sh --check-only` |
 | 2026-03-04 | F45 | Closed: dispatch cron success logs now include requestId and batch counters for better incident triage | `scripts/dispatch-notifications.sh` |
+| 2026-03-04 | F46 | Closed: remote smoke now enforces production health checks fail-closed by default and requires health token secret on production target | `/opt/.github/workflows/remote-auth-smoke.yml`, `tests/security/remote-smoke-workflow-guardrail.test.ts` |
+| 2026-03-04 | F47 | Closed: runtime cron catalog schedules synchronized with cron templates to prevent ops drift | `ops/RUNTIME_SERVICES_AND_CRON.md`, `ops/cron/*` |
+| 2026-03-04 | F48 | Closed: auth abuse alert script now emits local on-host security alerts in closed-system mode and added logrotate coverage | `scripts/alert-auth-abuse.sh`, `ops/logrotate/uppoint-cloud`, `tests/security/auth-abuse-alert-script-guardrail.test.ts` |
+| 2026-03-04 | F49 | Closed: tenant access-denied audit path now supports explicit request-context propagation metadata | `modules/tenant/server/scope.ts`, `tests/tenant/tenant-scope.test.ts` |
 
 ## Audit Output Contract
 

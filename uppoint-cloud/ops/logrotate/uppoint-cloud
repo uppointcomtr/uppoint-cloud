@@ -136,6 +136,16 @@ su root adm
     create 640 root adm
 }
 
+/var/log/uppoint-cloud/security-alerts.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
 /var/log/uppoint-security-slo-report.log {
     daily
     rotate 30

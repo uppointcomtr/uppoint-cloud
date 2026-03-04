@@ -28,18 +28,18 @@ Closed-system policy note:
 | `uppoint-postgres-backup` | `0 2 * * *` | PostgreSQL backup | `/var/log/uppoint-postgres-backup.log` |
 | `uppoint-postgres-restore-drill` | `30 4 * * 0` | PostgreSQL restore drill to temporary DB + email report enqueue (requires `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE=true`) | `/var/log/uppoint-postgres-restore-drill.log` |
 | `uppoint-redis-backup` | `40 2 * * *` | Redis backup | `/var/log/uppoint-redis-backup.log` |
-| `uppoint-db-cleanup` | as configured | DB retention cleanup | `/var/log/uppoint-db-cleanup.log` |
-| `uppoint-notification-dispatch` | every minute | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` |
+| `uppoint-db-cleanup` | `0 3 * * *` | DB retention cleanup | `/var/log/uppoint-db-cleanup.log` |
+| `uppoint-notification-dispatch` | `* * * * *` | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` |
 | `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` |
 | `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` |
 | `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (disabled unless explicitly enabled) |
 | `uppoint-auth-abuse-check` | `*/5 * * * *` | Auth abuse threshold monitoring + alerts | `/var/log/uppoint-auth-abuse-check.log` |
 | `uppoint-security-slo-report` | `*/15 * * * *` | Security SLO breach detection from audit + outbox signals | `/var/log/uppoint-security-slo-report.log` |
 | `uppoint-security-gate-weekly` | `30 5 * * 0` | Full local security gate (`verify:security-gate`) for periodic production-readiness validation | `/var/log/uppoint-security-gate-weekly.log` |
-| `uppoint-auth-rate-limit-tune` | daily | Report-only auth limiter tuning | `/var/log/uppoint-auth-rate-limit-tune.log` |
-| `uppoint-health-probe` | periodic | Health probe | `/var/log/uppoint-health-probe.log` |
-| `uppoint-nginx-drift-check` | periodic | Nginx drift verification | `/var/log/uppoint-nginx-drift-check.log` |
-| `uppoint-edge-audit-emit-check` | periodic | Edge audit emit failure detection | `/var/log/uppoint-cloud/edge-audit-emit-check.log` |
+| `uppoint-auth-rate-limit-tune` | `*/30 * * * *` | Report-only auth limiter tuning | `/var/log/uppoint-auth-rate-limit-tune.log` |
+| `uppoint-health-probe` | `* * * * *` | Health probe | `/var/log/uppoint-health-probe.log` |
+| `uppoint-nginx-drift-check` | `*/30 * * * *` | Nginx drift verification | `/var/log/uppoint-nginx-drift-check.log` |
+| `uppoint-edge-audit-emit-check` | `*/5 * * * *` | Edge audit emit failure detection | `/var/log/uppoint-cloud/edge-audit-emit-check.log` |
 
 Validation commands:
 
@@ -47,6 +47,7 @@ Validation commands:
 ls -la /etc/cron.d/uppoint-*
 tail -n 100 /var/log/uppoint-audit-anchor-replication.log
 tail -n 100 /var/log/uppoint-auth-abuse-check.log
+tail -n 100 /var/log/uppoint-cloud/security-alerts.log
 tail -n 100 /var/log/uppoint-security-slo-report.log
 tail -n 100 /var/log/uppoint-security-gate-weekly.log
 tail -n 100 /var/log/uppoint-postgres-restore-drill.log

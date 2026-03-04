@@ -1,5 +1,5 @@
 import { TenantRole } from "@prisma/client";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const logAuditMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
@@ -11,6 +11,10 @@ import { assertTenantAccess } from "@/modules/tenant/server/scope";
 import { hasRequiredTenantRole, hasTenantPermission } from "@/modules/tenant/server/permissions";
 
 describe("tenant scope helpers", () => {
+  beforeEach(() => {
+    logAuditMock.mockClear();
+  });
+
   it("checks role hierarchy correctly", () => {
     expect(hasRequiredTenantRole(TenantRole.OWNER, TenantRole.ADMIN)).toBe(true);
     expect(hasRequiredTenantRole(TenantRole.ADMIN, TenantRole.MEMBER)).toBe(true);
@@ -53,5 +57,38 @@ describe("tenant scope helpers", () => {
         },
       ),
     ).rejects.toThrow("TENANT_ROLE_INSUFFICIENT");
+  });
+
+  it("propagates explicit audit context on denied tenant access", async () => {
+    await expect(
+      assertTenantAccess(
+        {
+          tenantId: "t-denied",
+          userId: "u-denied",
+          minimumRole: TenantRole.MEMBER,
+          auditContext: {
+            ip: "203.0.113.10",
+            requestId: "req-tenant-denied-1",
+            userAgent: "vitest-agent",
+            forwardedFor: "203.0.113.10",
+          },
+        },
+        {
+          findMembership: async () => null,
+        },
+      ),
+    ).rejects.toThrow("TENANT_ACCESS_DENIED");
+
+    expect(logAuditMock).toHaveBeenCalledWith(
+      "tenant_access_denied",
+      "203.0.113.10",
+      "u-denied",
+      expect.objectContaining({
+        requestId: "req-tenant-denied-1",
+        userAgent: "vitest-agent",
+        forwardedFor: "203.0.113.10",
+      }),
+      "t-denied",
+    );
   });
 });

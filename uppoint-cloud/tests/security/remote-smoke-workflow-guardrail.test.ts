@@ -17,4 +17,19 @@ describe("remote smoke workflow guardrail", () => {
     expect(source).toContain("if [ \"${E2E_MUTATIONS_ENABLED}\" = \"1\" ] && [ \"${target}\" = \"https://cloud.uppoint.com.tr\" ]");
     expect(source).not.toContain("if: github.event_name == 'schedule'");
   });
+
+  it("enforces production health checks with explicit token requirement", () => {
+    const workflowPath = path.join(
+      process.cwd(),
+      "..",
+      ".github",
+      "workflows",
+      "remote-auth-smoke.yml",
+    );
+    const source = readFileSync(workflowPath, "utf8");
+
+    expect(source).toContain("E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '1' }}");
+    expect(source).toContain("Require healthcheck token for production target");
+    expect(source).toContain("if [ \"${target}\" = \"https://cloud.uppoint.com.tr\" ] && [ -z \"${E2E_TOKEN:-}\" ]; then");
+  });
 });

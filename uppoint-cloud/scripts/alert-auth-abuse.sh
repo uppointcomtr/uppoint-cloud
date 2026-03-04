@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/env-reader.sh"
 
 ENV_FILE="/opt/uppoint-cloud/.env"
+DEFAULT_LOCAL_ALERT_LOG_PATH="/var/log/uppoint-cloud/security-alerts.log"
 
 if [ "$#" -lt 1 ]; then
   echo "Usage: $(basename "$0") <report_path>" >&2
@@ -23,6 +24,7 @@ UPPOINT_ALERT_EMAIL_TO="${UPPOINT_ALERT_EMAIL_TO:-}"
 DATABASE_URL="${DATABASE_URL:-}"
 NOTIFICATION_PAYLOAD_SECRET="${NOTIFICATION_PAYLOAD_SECRET:-}"
 UPPOINT_CLOSED_SYSTEM_MODE="${UPPOINT_CLOSED_SYSTEM_MODE:-}"
+UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH="${UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH:-}"
 
 normalize_bool() {
   local raw="${1:-}"
@@ -51,9 +53,45 @@ fi
 if [ -z "$UPPOINT_CLOSED_SYSTEM_MODE" ]; then
   UPPOINT_CLOSED_SYSTEM_MODE="$(read_env_value "$ENV_FILE" "UPPOINT_CLOSED_SYSTEM_MODE")"
 fi
+if [ -z "$UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH" ]; then
+  UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH="$(read_env_value "$ENV_FILE" "UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH")"
+fi
+
+UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH="${UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH:-$DEFAULT_LOCAL_ALERT_LOG_PATH}"
+
+emit_local_alert() {
+  local summary="$1"
+  local report_content="$2"
+  local local_ts_utc
+  local host_label
+  local log_dir
+  local entry
+
+  local_ts_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  host_label="$(hostname -f 2>/dev/null || hostname)"
+  log_dir="$(dirname "$UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH")"
+
+  mkdir -p "$log_dir"
+  chmod 750 "$log_dir" || true
+
+  entry="[${local_ts_utc}] [auth-abuse-alert][local] host=${host_label} summary=${summary}"
+  {
+    printf '%s\n' "$entry"
+    printf '%s\n' "$report_content"
+    printf '%s\n' "---"
+  } >> "$UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH"
+
+  chmod 640 "$UPPOINT_LOCAL_SECURITY_ALERT_LOG_PATH" || true
+
+  if command -v logger >/dev/null 2>&1; then
+    logger -t uppoint-security-alert -- "$entry"
+  fi
+}
 
 UPPOINT_CLOSED_SYSTEM_MODE="$(normalize_bool "${UPPOINT_CLOSED_SYSTEM_MODE:-true}")"
+REPORT_CONTENT="$(cat "$REPORT_PATH")"
 if [ "${UPPOINT_CLOSED_SYSTEM_MODE:-true}" = "true" ] || [ -z "${UPPOINT_CLOSED_SYSTEM_MODE}" ]; then
+  emit_local_alert "closed-system-auth-abuse-threshold-exceeded" "$REPORT_CONTENT"
   echo "[auth-abuse-alert] closed-system mode active; external alert delivery skipped."
   exit 0
 fi
@@ -90,7 +128,6 @@ process.stdout.write(sealNotificationPayloadWithSecret(plainText, secret));
 HOST_LABEL="$(hostname -f 2>/dev/null || hostname)"
 TS_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 SUBJECT="[UPPOINT][HIGH] Auth abuse threshold exceeded on ${HOST_LABEL}"
-REPORT_CONTENT="$(cat "$REPORT_PATH")"
 BODY=$(
   cat <<EOF
 Timestamp (UTC): ${TS_UTC}
@@ -148,6 +185,9 @@ SQL
 fi
 
 if [ "$CHANNEL_DELIVERED" -eq 0 ]; then
+  emit_local_alert "external-alert-channels-unavailable" "$REPORT_CONTENT"
   echo "[auth-abuse-alert] no alert channel delivered (configure UPPOINT_ALERT_SLACK_WEBHOOK and/or UPPOINT_ALERT_EMAIL_TO)" >&2
   exit 1
 fi
+
+emit_local_alert "external-alert-channel-delivered" "$REPORT_CONTENT"

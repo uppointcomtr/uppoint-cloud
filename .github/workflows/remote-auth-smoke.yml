@@ -33,7 +33,7 @@ jobs:
       E2E_BASE_URL: ${{ inputs.base_url || vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
       E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
       E2E_ALLOW_MUTATIONS: ${{ inputs.allow_mutations || vars.E2E_ALLOW_MUTATIONS || '0' }}
-      E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '0' }}
+      E2E_ENFORCE_HEALTH_200: ${{ inputs.enforce_health_200 || vars.E2E_ENFORCE_HEALTH_200 || '1' }}
       AUDIT_INTEGRITY_DATABASE_URL: ${{ secrets.AUDIT_INTEGRITY_DATABASE_URL }}
     defaults:
       run:
@@ -73,6 +73,18 @@ jobs:
             echo "Refusing to run mutation smoke against production base URL."
             echo "Set E2E_ALLOW_MUTATIONS=0 for nightly production smoke."
             echo "Use workflow_dispatch allow_mutations=1 only with an isolated non-production target."
+            exit 1
+          fi
+
+      - name: Require healthcheck token for production target
+        env:
+          E2E_TARGET_BASE_URL: ${{ env.E2E_BASE_URL }}
+          E2E_TOKEN: ${{ env.E2E_HEALTHCHECK_TOKEN }}
+        run: |
+          set -euo pipefail
+          target="$(printf '%s' "${E2E_TARGET_BASE_URL}" | tr '[:upper:]' '[:lower:]')"
+          if [ "${target}" = "https://cloud.uppoint.com.tr" ] && [ -z "${E2E_TOKEN:-}" ]; then
+            echo "E2E_HEALTHCHECK_TOKEN is required for production remote smoke runs."
             exit 1
           fi
 
