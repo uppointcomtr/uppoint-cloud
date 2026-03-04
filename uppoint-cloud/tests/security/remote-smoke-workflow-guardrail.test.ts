@@ -14,8 +14,7 @@ describe("remote smoke workflow guardrail", () => {
     const source = readFileSync(workflowPath, "utf8");
 
     expect(source).toContain("runs-on: self-hosted");
-    expect(source).toContain("E2E_RUNNER_LABEL: self-hosted");
-    expect(source).toContain("- Runner label: ${E2E_RUNNER_LABEL}");
+    expect(source).not.toContain("runs-on: ubuntu-latest");
   });
 
   it("blocks mutation runs against production target across all trigger types", () => {

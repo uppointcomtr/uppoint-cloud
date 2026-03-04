@@ -6,7 +6,6 @@
 - Updated remote smoke workflow runner model to support self-hosted execution by default:
   - `/opt/.github/workflows/remote-auth-smoke.yml` now pins execution to:
     - `runs-on: self-hosted`
-  - Added CI summary line for resolved runner label (`self-hosted`).
 - Updated workflow guardrails:
   - `tests/security/remote-smoke-workflow-guardrail.test.ts` now enforces the self-hosted runner pin contract.
 - Updated operator docs:
