@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-03-04 (security/ops closure: F50-F54)
+
+### Fixed
+- Closed adaptive rate-limit env-boundary gap (`F50`):
+  - `lib/env/server.ts` now validates adaptive rate-limit keys centrally:
+    - `AUTH_ADAPTIVE_RATE_LIMIT_ENABLED`
+    - `AUTH_DEVICE_FINGERPRINT_HEADER`
+    - `AUTH_CLIENT_ASN_HEADER`
+    - `AUTH_ADAPTIVE_WINDOW_SECONDS`
+    - `AUTH_ADAPTIVE_DEVICE_MAX`
+    - `AUTH_ADAPTIVE_ASN_MAX`
+    - `AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX`
+  - `lib/rate-limit.ts` now uses validated `env` values and no longer reads these settings via `process.env`.
+  - Added guardrail test: `tests/security/rate-limit-adaptive-config-boundary.test.ts`.
+- Closed closed-system cron catalog drift (`F51`):
+  - `ops/RUNTIME_SERVICES_AND_CRON.md` now marks `uppoint-audit-anchor-replication` as template-only/optional in closed-system baseline.
+- Closed stale Server Action UX fallback gap (`F52`):
+  - Added stale-action detector: `lib/errors/stale-server-action.ts`.
+  - Updated error boundaries:
+    - `app/[locale]/error.tsx`
+    - `app/global-error.tsx`
+  - Stale-action failures now show localized refresh guidance instead of generic retry-only fallback.
+  - Added unit test: `tests/security/stale-server-action-error.test.ts`.
+- Closed remote smoke localization marker coverage gap (`F53`):
+  - `tests/e2e/auth-http-smoke.test.ts` now validates baseline auth page markers for both TR and EN.
+- Closed regex-only tenant guardrail weakness (`F54`):
+  - `tests/tenant/tenant-guardrail.test.ts` now includes TypeScript AST checks for tenant-scoped Prisma model access.
+
+### Changed
+- Updated environment and operations documentation:
+  - `README.md` includes adaptive rate-limit env vars and stale-action UI note.
+  - `ops/RUNTIME_SERVICES_AND_CRON.md` clarifies replication cron deployment conditions.
+- Updated findings register:
+  - `FINDINGS_REGISTER.md` now tracks and closes `F50`–`F54`.
+
 ## 2026-03-04 (ops/ci: self-hosted remote smoke runner selection)
 
 ### Changed

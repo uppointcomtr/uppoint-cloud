@@ -180,48 +180,6 @@ interface AdaptiveRateLimitInput {
   includeIdentifierDeviceSignal?: boolean;
 }
 
-function parseBooleanEnv(value: unknown, fallback: boolean): boolean {
-  if (typeof value === "boolean") {
-    return value;
-  }
-
-  if (typeof value !== "string") {
-    return fallback;
-  }
-
-  switch (value.trim().toLowerCase()) {
-    case "1":
-    case "true":
-    case "yes":
-      return true;
-    case "0":
-    case "false":
-    case "no":
-      return false;
-    default:
-      return fallback;
-  }
-}
-
-function parseIntegerEnv(value: unknown, fallback: number, min: number, max: number): number {
-  const parsed = typeof value === "number"
-    ? value
-    : typeof value === "string"
-      ? Number.parseInt(value, 10)
-      : Number.NaN;
-
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-
-  return Math.max(min, Math.min(max, Math.trunc(parsed)));
-}
-
-function normalizeHeaderName(value: string | undefined, fallback: string): string {
-  const trimmed = value?.trim().toLowerCase();
-  return trimmed && trimmed.length > 0 ? trimmed : fallback;
-}
-
 function sanitizeFingerprintInput(value: string | null): string | null {
   if (!value) {
     return null;
@@ -388,14 +346,8 @@ export function normalizeRateLimitIdentifier(value: string): string {
 async function resolveAdaptiveRateLimitContext(ip: string | null): Promise<AdaptiveRateLimitContext> {
   const headersList = await headers();
 
-  const fingerprintHeader = normalizeHeaderName(
-    process.env.AUTH_DEVICE_FINGERPRINT_HEADER,
-    "x-device-fingerprint",
-  );
-  const asnHeader = normalizeHeaderName(
-    process.env.AUTH_CLIENT_ASN_HEADER,
-    "x-client-asn",
-  );
+  const fingerprintHeader = env.AUTH_DEVICE_FINGERPRINT_HEADER.toLowerCase();
+  const asnHeader = env.AUTH_CLIENT_ASN_HEADER.toLowerCase();
 
   const explicitFingerprint = sanitizeFingerprintInput(headersList.get(fingerprintHeader));
   const fallbackFingerprint = [
@@ -426,8 +378,7 @@ async function resolveAdaptiveRateLimitContext(ip: string | null): Promise<Adapt
 }
 
 async function withAdaptiveRateLimit(input: AdaptiveRateLimitInput): Promise<Response | null> {
-  const adaptiveEnabled = parseBooleanEnv(process.env.AUTH_ADAPTIVE_RATE_LIMIT_ENABLED, true);
-  if (!adaptiveEnabled) {
+  if (!env.AUTH_ADAPTIVE_RATE_LIMIT_ENABLED) {
     return null;
   }
 
@@ -444,20 +395,10 @@ async function withAdaptiveRateLimit(input: AdaptiveRateLimitInput): Promise<Res
   }
 
   const context = await resolveAdaptiveRateLimitContext(resolvedIp ?? "unknown");
-  const adaptiveWindowSeconds = parseIntegerEnv(
-    process.env.AUTH_ADAPTIVE_WINDOW_SECONDS,
-    Math.max(60, input.windowSeconds),
-    30,
-    3600,
-  );
-  const adaptiveDeviceMax = parseIntegerEnv(process.env.AUTH_ADAPTIVE_DEVICE_MAX, 30, 5, 5000);
-  const adaptiveAsnMax = parseIntegerEnv(process.env.AUTH_ADAPTIVE_ASN_MAX, 180, 5, 10000);
-  const adaptiveIdentifierDeviceMax = parseIntegerEnv(
-    process.env.AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX,
-    12,
-    3,
-    1000,
-  );
+  const adaptiveWindowSeconds = Math.max(60, input.windowSeconds, env.AUTH_ADAPTIVE_WINDOW_SECONDS);
+  const adaptiveDeviceMax = env.AUTH_ADAPTIVE_DEVICE_MAX;
+  const adaptiveAsnMax = env.AUTH_ADAPTIVE_ASN_MAX;
+  const adaptiveIdentifierDeviceMax = env.AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX;
 
   if (input.includeDeviceAndAsnSignals !== false && context.fingerprintHash) {
     const fingerprintResult = await checkRateLimit(

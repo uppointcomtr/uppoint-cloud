@@ -18,5 +18,7 @@ describe("getErrorMessages", () => {
   it("returns translated error strings for Turkish and English", () => {
     expect(getErrorMessages("tr").backToLogin).toBe("Giriş sayfasına dön");
     expect(getErrorMessages("en").backToLogin).toBe("Back to login");
+    expect(getErrorMessages("tr").refreshPage).toBe("Sayfayı yenile");
+    expect(getErrorMessages("en").refreshPage).toBe("Refresh page");
   });
 });

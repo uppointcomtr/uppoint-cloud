@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { isStaleServerActionError } from "@/lib/errors/stale-server-action";
 import { getErrorMessages, resolveLocaleFromPathname } from "@/modules/i18n/error-messages";
 import { withLocale } from "@/modules/i18n/paths";
 
@@ -23,6 +24,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
   const pathname = usePathname();
   const locale = resolveLocaleFromPathname(pathname);
   const dictionary = getErrorMessages(locale);
+  const staleServerActionError = isStaleServerActionError(error);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4 text-center">
@@ -30,21 +32,34 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
           {dictionary.errorLabel}
         </p>
-        <h1 className="text-3xl font-bold tracking-tight">{dictionary.somethingWentWrongTitle}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {staleServerActionError ? dictionary.staleActionTitle : dictionary.somethingWentWrongTitle}
+        </h1>
         <p className="text-muted-foreground">
-          {error.digest
+          {staleServerActionError
+            ? dictionary.staleActionDescription
+            : error.digest
             ? `${dictionary.codePrefix}: ${error.digest}`
             : dictionary.fallbackDescription}
         </p>
       </div>
 
       <div className="flex gap-3">
-        <button
-          onClick={reset}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          {dictionary.retry}
-        </button>
+        {staleServerActionError ? (
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {dictionary.refreshPage}
+          </button>
+        ) : (
+          <button
+            onClick={reset}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {dictionary.retry}
+          </button>
+        )}
         <Link
           href={withLocale("/login", locale)}
           className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"

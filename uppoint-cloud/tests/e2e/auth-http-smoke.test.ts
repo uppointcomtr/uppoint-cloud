@@ -72,15 +72,16 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     // No direct DB cleanup in E2E suite: tests operate via live HTTP only.
   });
 
-  it("serves localized login and register pages", async () => {
-    const loginResponse = await fetchWithTimeout("/tr/login");
-    expect(loginResponse.status).toBe(200);
+  it("serves localized login and register pages with baseline UI markers", async () => {
+    const trLoginResponse = await fetchWithTimeout("/tr/login");
+    expect(trLoginResponse.status).toBe(200);
 
-    const loginHtml = await loginResponse.text();
-    expect(loginHtml).toContain("Oturum aç");
+    const trLoginHtml = await trLoginResponse.text();
+    expect(trLoginHtml).toContain("Oturum aç");
+    expect(trLoginHtml).toContain("E-Posta");
 
     if (baseUrl.startsWith("https://")) {
-      const cspHeader = loginResponse.headers.get("content-security-policy");
+      const cspHeader = trLoginResponse.headers.get("content-security-policy");
       expect(cspHeader).toContain("script-src 'self' 'nonce-");
       expect(cspHeader).toContain("'strict-dynamic'");
       expect(cspHeader).not.toContain("script-src 'self' 'unsafe-inline'");
@@ -88,14 +89,25 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
       const nonceMatch = cspHeader?.match(/script-src[^;]*'nonce-([^']+)'/);
       expect(nonceMatch).toBeTruthy();
       if (nonceMatch) {
-        expect(loginHtml).toContain(`nonce="${nonceMatch[1]}"`);
+        expect(trLoginHtml).toContain(`nonce="${nonceMatch[1]}"`);
       }
     }
 
-    const registerResponse = await fetchWithTimeout("/tr/register");
-    expect(registerResponse.status).toBe(200);
-    const registerHtml = await registerResponse.text();
-    expect(registerHtml).toContain("Hesap oluştur");
+    const trRegisterResponse = await fetchWithTimeout("/tr/register");
+    expect(trRegisterResponse.status).toBe(200);
+    const trRegisterHtml = await trRegisterResponse.text();
+    expect(trRegisterHtml).toContain("Hesap oluştur");
+
+    const enLoginResponse = await fetchWithTimeout("/en/login");
+    expect(enLoginResponse.status).toBe(200);
+    const enLoginHtml = await enLoginResponse.text();
+    expect(enLoginHtml).toContain("Sign in");
+    expect(enLoginHtml).toContain("Email");
+
+    const enRegisterResponse = await fetchWithTimeout("/en/register");
+    expect(enRegisterResponse.status).toBe(200);
+    const enRegisterHtml = await enRegisterResponse.text();
+    expect(enRegisterHtml).toContain("Create account");
   });
 
   it.runIf(allowMutations)("returns neutral response for unverified email login challenge", async () => {

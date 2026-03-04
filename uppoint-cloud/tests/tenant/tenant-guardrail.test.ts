@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 const APPROVED_DIRECT_TENANT_QUERY_FILES = new Set([
@@ -17,6 +18,67 @@ const APPROVED_TENANT_SCOPED_MODEL_FILES = new Set([
 ]);
 
 const APPROVED_SCRIPT_TENANT_QUERY_FILES = new Set<string>([]);
+const TENANT_SCOPED_PRISMA_PROPERTIES = new Set([
+  "tenant",
+  "tenantMembership",
+  "auditLog",
+  "notificationOutbox",
+]);
+const TENANT_ONLY_PRISMA_PROPERTIES = new Set([
+  "tenant",
+  "tenantMembership",
+]);
+const AUDIT_NOTIFICATION_PRISMA_PROPERTIES = new Set([
+  "auditLog",
+  "notificationOutbox",
+]);
+
+function isPrismaRoot(node: ts.Node): boolean {
+  return ts.isIdentifier(node) && (node.text === "prisma" || node.text === "tx");
+}
+
+function normalizePrismaPropertyName(value: string): string {
+  return value.trim().replace(/[^A-Za-z0-9]/g, "");
+}
+
+function hasDirectTenantPrismaAccess(
+  source: string,
+  allowedProperties: ReadonlySet<string> = TENANT_SCOPED_PRISMA_PROPERTIES,
+): boolean {
+  const sourceFile = ts.createSourceFile("guardrail.ts", source, ts.ScriptTarget.Latest, true);
+  let found = false;
+
+  const visit = (node: ts.Node): void => {
+    if (found) {
+      return;
+    }
+
+    if (ts.isPropertyAccessExpression(node)) {
+      if (isPrismaRoot(node.expression)) {
+        const property = normalizePrismaPropertyName(node.name.text);
+        if (allowedProperties.has(property)) {
+          found = true;
+          return;
+        }
+      }
+    }
+
+    if (ts.isElementAccessExpression(node)) {
+      if (isPrismaRoot(node.expression) && node.argumentExpression && ts.isStringLiteralLike(node.argumentExpression)) {
+        const property = normalizePrismaPropertyName(node.argumentExpression.text);
+        if (allowedProperties.has(property)) {
+          found = true;
+          return;
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  return found;
+}
 
 function collectFilesRecursively(rootDir: string): string[] {
   const entries = readdirSync(rootDir);
@@ -115,8 +177,7 @@ describe("tenant authorization guardrail", () => {
     for (const filePath of entryFiles) {
       const source = readFileSync(filePath, "utf8");
       const hasDirectTenantQuery =
-        /prisma\.tenantMembership\./.test(source)
-        || /prisma\.tenant\./.test(source);
+        hasDirectTenantPrismaAccess(source, TENANT_ONLY_PRISMA_PROPERTIES);
 
       if (!hasDirectTenantQuery) {
         continue;
@@ -149,8 +210,7 @@ describe("tenant authorization guardrail", () => {
       const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
       const source = readFileSync(filePath, "utf8");
       const hasDirectTenantQuery =
-        /\b(?:prisma|tx)\s*\.\s*tenantMembership\s*\./.test(source)
-        || /\b(?:prisma|tx)\s*\.\s*tenant\s*\./.test(source)
+        hasDirectTenantPrismaAccess(source, TENANT_ONLY_PRISMA_PROPERTIES)
         || /"(?:TenantMembership|Tenant)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source);
 
       if (!hasDirectTenantQuery) {
@@ -188,10 +248,8 @@ describe("tenant authorization guardrail", () => {
       const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
       const source = readFileSync(filePath, "utf8");
       const hasDirectScopedQuery =
-        /\b(?:prisma|tx)\s*\.\s*auditLog\s*\./.test(source)
-        || /"(?:AuditLog)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source)
-        || /"(?:NotificationOutbox)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source)
-        || /\b(?:prisma|tx)\s*\.\s*notificationOutbox\s*\./.test(source);
+        hasDirectTenantPrismaAccess(source, AUDIT_NOTIFICATION_PRISMA_PROPERTIES)
+        || /"(?:AuditLog|NotificationOutbox)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source);
 
       if (!hasDirectScopedQuery) {
         continue;

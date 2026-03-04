@@ -18,6 +18,13 @@ vi.mock("@/lib/env", () => ({
     UPSTASH_REDIS_REST_URL: undefined,
     UPSTASH_REDIS_REST_TOKEN: undefined,
     RATE_LIMIT_REDIS_URL: undefined,
+    AUTH_ADAPTIVE_RATE_LIMIT_ENABLED: true,
+    AUTH_DEVICE_FINGERPRINT_HEADER: "x-device-fingerprint",
+    AUTH_CLIENT_ASN_HEADER: "x-client-asn",
+    AUTH_ADAPTIVE_WINDOW_SECONDS: 900,
+    AUTH_ADAPTIVE_DEVICE_MAX: 30,
+    AUTH_ADAPTIVE_ASN_MAX: 180,
+    AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX: 12,
   },
 }));
 

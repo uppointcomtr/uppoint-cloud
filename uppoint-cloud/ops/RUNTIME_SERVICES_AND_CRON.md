@@ -32,7 +32,7 @@ Closed-system policy note:
 | `uppoint-notification-dispatch` | `* * * * *` | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` |
 | `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` |
 | `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` |
-| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (disabled unless explicitly enabled) |
+| `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (optional template; not deployed in closed-system baseline) |
 | `uppoint-auth-abuse-check` | `*/5 * * * *` | Auth abuse threshold monitoring + alerts | `/var/log/uppoint-auth-abuse-check.log` |
 | `uppoint-security-slo-report` | `*/15 * * * *` | Security SLO breach detection from audit + outbox signals | `/var/log/uppoint-security-slo-report.log` |
 | `uppoint-security-gate-weekly` | `30 5 * * 0` | Full local security gate (`verify:security-gate`) for periodic production-readiness validation | `/var/log/uppoint-security-gate-weekly.log` |
@@ -52,6 +52,11 @@ tail -n 100 /var/log/uppoint-security-slo-report.log
 tail -n 100 /var/log/uppoint-security-gate-weekly.log
 tail -n 100 /var/log/uppoint-postgres-restore-drill.log
 ```
+
+Deployment note:
+- `uppoint-audit-anchor-replication` is intentionally template-only in closed-system baseline.
+- Template path: `ops/cron/uppoint-audit-anchor-replication`.
+- Deploy it to `/etc/cron.d` only with explicit owner approval for off-host egress.
 
 ## Change control
 

@@ -11,6 +11,7 @@ const booleanFromString = z.preprocess((value) => {
 }, z.boolean());
 
 const emailBackendSchema = z.enum(["smtp", "disabled"]);
+const headerNameSchema = z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9-]+$/);
 
 function parseCsv(value: string | undefined): string[] {
   if (!value) {
@@ -49,6 +50,13 @@ const serverEnvSchema = z.object({
   RATE_LIMIT_REDIS_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
+  AUTH_ADAPTIVE_RATE_LIMIT_ENABLED: booleanFromString.default(true),
+  AUTH_DEVICE_FINGERPRINT_HEADER: headerNameSchema.default("x-device-fingerprint"),
+  AUTH_CLIENT_ASN_HEADER: headerNameSchema.default("x-client-asn"),
+  AUTH_ADAPTIVE_WINDOW_SECONDS: z.coerce.number().int().min(30).max(3600).default(900),
+  AUTH_ADAPTIVE_DEVICE_MAX: z.coerce.number().int().min(5).max(5000).default(30),
+  AUTH_ADAPTIVE_ASN_MAX: z.coerce.number().int().min(5).max(10000).default(180),
+  AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX: z.coerce.number().int().min(3).max(1000).default(12),
   UPPOINT_DEFAULT_FROM_EMAIL: z.string().min(3).optional(),
   UPPOINT_EMAIL_BACKEND: emailBackendSchema.default("disabled"),
   UPPOINT_EMAIL_HOST: z.string().min(1).optional(),
@@ -308,6 +316,13 @@ const parsedEnv = serverEnvSchema.safeParse({
   RATE_LIMIT_REDIS_URL: process.env.RATE_LIMIT_REDIS_URL,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  AUTH_ADAPTIVE_RATE_LIMIT_ENABLED: process.env.AUTH_ADAPTIVE_RATE_LIMIT_ENABLED,
+  AUTH_DEVICE_FINGERPRINT_HEADER: process.env.AUTH_DEVICE_FINGERPRINT_HEADER,
+  AUTH_CLIENT_ASN_HEADER: process.env.AUTH_CLIENT_ASN_HEADER,
+  AUTH_ADAPTIVE_WINDOW_SECONDS: process.env.AUTH_ADAPTIVE_WINDOW_SECONDS,
+  AUTH_ADAPTIVE_DEVICE_MAX: process.env.AUTH_ADAPTIVE_DEVICE_MAX,
+  AUTH_ADAPTIVE_ASN_MAX: process.env.AUTH_ADAPTIVE_ASN_MAX,
+  AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX: process.env.AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX,
   UPPOINT_DEFAULT_FROM_EMAIL: process.env.UPPOINT_DEFAULT_FROM_EMAIL,
   UPPOINT_EMAIL_BACKEND: process.env.UPPOINT_EMAIL_BACKEND,
   UPPOINT_EMAIL_HOST: process.env.UPPOINT_EMAIL_HOST,

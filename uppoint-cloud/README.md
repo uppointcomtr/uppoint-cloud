@@ -96,6 +96,13 @@ Create and maintain `.env` with real values (do not commit it):
 - `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
 - `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
 - `UPSTASH_REDIS_REST_TOKEN` (optional, required with `UPSTASH_REDIS_REST_URL`)
+- `AUTH_ADAPTIVE_RATE_LIMIT_ENABLED` (optional, default `true`)
+- `AUTH_DEVICE_FINGERPRINT_HEADER` (optional, default `x-device-fingerprint`)
+- `AUTH_CLIENT_ASN_HEADER` (optional, default `x-client-asn`)
+- `AUTH_ADAPTIVE_WINDOW_SECONDS` (optional, default `900`, min `30`, max `3600`)
+- `AUTH_ADAPTIVE_DEVICE_MAX` (optional, default `30`, min `5`)
+- `AUTH_ADAPTIVE_ASN_MAX` (optional, default `180`, min `5`)
+- `AUTH_ADAPTIVE_IDENTIFIER_DEVICE_MAX` (optional, default `12`, min `3`)
 - `UPPOINT_DEFAULT_FROM_EMAIL`
 - `UPPOINT_EMAIL_BACKEND`
 - `UPPOINT_EMAIL_HOST`
@@ -150,6 +157,9 @@ Closed-system deployment policy:
 - `npm run audit:anchor:replicate` skips unless both conditions are true:
   - `UPPOINT_CLOSED_SYSTEM_MODE=false`
   - `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`
+
+UI reliability note:
+- Error boundaries detect stale Server Action requests after deploy and show a localized refresh CTA instead of a generic failure state.
 
 ## Upstash rate limit activation
 
