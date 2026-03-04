@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-04 (ops/ci hardening: default remote smoke enforcement in weekly security gate)
+
+### Changed
+- Updated weekly security-gate cron template:
+  - `ops/cron/uppoint-security-gate-weekly` now sets:
+    - `SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1`
+    - `E2E_ALLOW_MUTATIONS=0`
+    - `E2E_BASE_URL=https://cloud.uppoint.com.tr`
+- Updated docs to reflect new default:
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `README.md`
+
 ## 2026-03-04 (ops/docs: remote auth smoke verification checklist)
 
 ### Changed

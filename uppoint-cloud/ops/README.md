@@ -386,6 +386,7 @@ Security SLO report:
 Weekly security gate cron:
 - `uppoint-security-gate-weekly` runs `scripts/verify-security-gate.sh` every Sunday at `05:30`.
 - Purpose: periodic full-stack verification even when no deployment happened that week.
+- CI/ops default: cron template enforces remote read-only smoke (`SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1`, `E2E_ALLOW_MUTATIONS=0`, `E2E_BASE_URL=https://cloud.uppoint.com.tr`).
 - Output log: `/var/log/uppoint-security-gate-weekly.log`.
 
 Remote auth smoke operational checklist (GitHub Actions):

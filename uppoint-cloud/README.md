@@ -315,6 +315,10 @@ Strict security gate with remote read-only smoke:
 SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1 npm run verify:security-gate
 ```
 
+Weekly ops/CI baseline:
+- `ops/cron/uppoint-security-gate-weekly` sets `SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1` by default.
+- Read-only mode is enforced via `E2E_ALLOW_MUTATIONS=0` against `E2E_BASE_URL=https://cloud.uppoint.com.tr`.
+
 Deployment gate (includes service restart):
 
 ```bash
