@@ -1,7 +1,7 @@
 import "server-only";
 
-import { createHmac, randomUUID } from "crypto";
-import { appendFile, mkdir } from "fs/promises";
+import { createHash, createHmac, randomUUID } from "crypto";
+import { appendFile, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname } from "path";
 import type { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
@@ -66,6 +66,8 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "tenant_role_insufficient",
 ]);
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
+const AUDIT_FALLBACK_CHAIN_STATE_PATH =
+  env.AUDIT_FALLBACK_CHAIN_STATE_PATH || "/var/lib/uppoint-cloud/audit-fallback-chain.state";
 const AUDIT_INTEGRITY_VERSION = "v2";
 const AUDIT_INTEGRITY_SECRET = env.AUDIT_LOG_SIGNING_SECRET ?? env.AUTH_SECRET;
 const AUDIT_CHAIN_LOCK_KEY_ONE = 2_147_483_647;
@@ -73,6 +75,8 @@ const AUDIT_CHAIN_LOCK_KEY_TWO = 4_242;
 
 let auditFallbackPathChecked = false;
 let auditFallbackPathReady = false;
+let auditFallbackChainStatePathChecked = false;
+let auditFallbackChainStatePathReady = false;
 
 interface AuditRequestContext {
   requestId: string;
@@ -101,6 +105,14 @@ type AuditStoredMetadata = Record<string, unknown> & {
   integrity: AuditIntegrityMetadata;
 };
 
+interface AuditFallbackIntegrityMetadata {
+  version: "fallback/v1";
+  timestamp: string;
+  previousHash: string | null;
+  hash: string;
+  signature: string;
+}
+
 async function ensureAuditFallbackPath(): Promise<boolean> {
   if (auditFallbackPathChecked) {
     return auditFallbackPathReady;
@@ -118,17 +130,96 @@ async function ensureAuditFallbackPath(): Promise<boolean> {
   return auditFallbackPathReady;
 }
 
+async function ensureAuditFallbackChainStatePath(): Promise<boolean> {
+  if (auditFallbackChainStatePathChecked) {
+    return auditFallbackChainStatePathReady;
+  }
+
+  auditFallbackChainStatePathChecked = true;
+
+  try {
+    await mkdir(dirname(AUDIT_FALLBACK_CHAIN_STATE_PATH), { recursive: true });
+    auditFallbackChainStatePathReady = true;
+  } catch {
+    auditFallbackChainStatePathReady = false;
+  }
+
+  return auditFallbackChainStatePathReady;
+}
+
+async function readAuditFallbackPreviousHash(): Promise<string | null> {
+  if (!(await ensureAuditFallbackChainStatePath())) {
+    return null;
+  }
+
+  try {
+    const raw = await readFile(AUDIT_FALLBACK_CHAIN_STATE_PATH, { encoding: "utf8" });
+    const value = raw.trim().toLowerCase();
+    return /^[a-f0-9]{64}$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeAuditFallbackPreviousHash(hash: string): Promise<void> {
+  if (!(await ensureAuditFallbackChainStatePath())) {
+    return;
+  }
+
+  try {
+    await writeFile(
+      AUDIT_FALLBACK_CHAIN_STATE_PATH,
+      `${hash}\n`,
+      { encoding: "utf8", mode: 0o600 },
+    );
+  } catch {
+    // Do not throw from audit fallback state sink.
+  }
+}
+
+function buildAuditFallbackIntegrityMetadata(
+  payload: Record<string, unknown>,
+  previousHash: string | null,
+): AuditFallbackIntegrityMetadata {
+  const timestamp = new Date().toISOString();
+  const canonicalPayload = stableStringify({
+    payload,
+    previousHash,
+    timestamp,
+  });
+  const hash = createHash("sha256").update(canonicalPayload).digest("hex");
+  const signature = createHmac("sha256", AUDIT_INTEGRITY_SECRET)
+    .update(`${timestamp}\n${hash}`)
+    .digest("hex");
+
+  return {
+    version: "fallback/v1",
+    timestamp,
+    previousHash,
+    hash,
+    signature,
+  };
+}
+
 async function writeAuditFallbackLine(payload: Record<string, unknown>): Promise<void> {
   if (!(await ensureAuditFallbackPath())) {
     return;
   }
 
   try {
+    const previousHash = await readAuditFallbackPreviousHash();
+    const fallbackIntegrity = buildAuditFallbackIntegrityMetadata(payload, previousHash);
+    const fallbackLinePayload: Record<string, unknown> = {
+      ...payload,
+      fallbackIntegrity,
+    };
+
     await appendFile(
       AUDIT_FALLBACK_LOG_PATH,
-      `${JSON.stringify(payload)}\n`,
+      `${JSON.stringify(fallbackLinePayload)}\n`,
       { encoding: "utf8" },
     );
+    await writeAuditFallbackPreviousHash(fallbackIntegrity.hash);
   } catch {
     // Do not throw from audit fallback sink.
   }

@@ -67,6 +67,7 @@ HEALTHCHECK_TOKEN=replace-with-strong-random-token
 UPPOINT_ALLOWED_HOSTS=cloud.uppoint.com.tr
 UPPOINT_ALLOWED_ORIGINS=https://cloud.uppoint.com.tr
 AUDIT_FALLBACK_LOG_PATH=/var/log/uppoint-cloud/audit-fallback.log
+AUDIT_FALLBACK_CHAIN_STATE_PATH=/var/lib/uppoint-cloud/audit-fallback-chain.state
 AUDIT_ANCHOR_SIGNING_SECRET=replace-with-strong-random-secret
 AUDIT_ANCHOR_SIGNING_KEY_ID=prod-kms-key-2026-01
 AUDIT_ANCHOR_OUTPUT_PATH=/opt/backups/audit/audit-anchor.jsonl
@@ -263,12 +264,13 @@ Install cron entries:
 
 ```bash
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-backup
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-restore-drill /etc/cron.d/uppoint-postgres-restore-drill
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -279,6 +281,7 @@ Run manual tests:
 
 ```bash
 sudo /opt/uppoint-cloud/scripts/backup-db.sh
+sudo /opt/uppoint-cloud/scripts/restore-drill-db.sh --check-only
 sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
 sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
@@ -309,6 +312,10 @@ Production guard:
 - `dispatch-notifications.sh` blocks production loopback-mode remote target overrides unless both of these are explicitly set for an owner-approved exception:
   - `UPPOINT_ALLOW_INTERNAL_DISPATCH_REMOTE_OVERRIDE=true`
   - `UPPOINT_CLOSED_SYSTEM_MODE=false`
+
+PostgreSQL restore drill:
+- `restore-drill-db.sh --check-only` validates latest backup artifact and checksum without creating a database.
+- `restore-drill-db.sh --execute --confirm` runs a full restore drill into a temporary database and drops it afterwards.
 
 `verify-audit-integrity.sh` performs read-only integrity validation for `AuditLog.metadata.integrity` chain:
 - allows legacy rows before first integrity-enabled record

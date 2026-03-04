@@ -52,4 +52,11 @@ else
   echo "[security-gate] skip verify:edge-audit-emit (uppoint-cloud.service not available)"
 fi
 
+if ls /opt/backups/postgres/*.sql.gz >/dev/null 2>&1; then
+  echo "[security-gate] restore drill artifact verification"
+  npm run verify:restore-drill
+else
+  echo "[security-gate] skip verify:restore-drill (no postgres backup artifact found)"
+fi
+
 echo "[security-gate] completed successfully"

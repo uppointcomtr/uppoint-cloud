@@ -63,7 +63,6 @@ jobs:
         run: npm run verify:repo-layout
 
       - name: Guard against mutation smoke on production target
-        if: github.event_name == 'schedule'
         env:
           E2E_TARGET_BASE_URL: ${{ env.E2E_BASE_URL }}
           E2E_MUTATIONS_ENABLED: ${{ env.E2E_ALLOW_MUTATIONS }}

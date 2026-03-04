@@ -1,0 +1,6 @@
+# Uppoint Cloud PostgreSQL restore drill (weekly, Sunday 04:30)
+SHELL=/bin/bash
+PATH=/usr/bin:/bin
+
+# Runs as root because backup/checksum artifacts are root-owned.
+30 4 * * 0 root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-postgres-restore-drill.lock /opt/uppoint-cloud/scripts/restore-drill-db.sh --execute --confirm >> /var/log/uppoint-postgres-restore-drill.log 2>&1

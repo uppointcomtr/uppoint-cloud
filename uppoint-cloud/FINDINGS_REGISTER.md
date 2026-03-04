@@ -61,6 +61,11 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F20 | Audit metadata redaction did not sanitize sensitive strings inside arrays | security/logging | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `lib/audit-log.ts`, `tests/auth/audit-log.test.ts` | Redaction must recurse into arrays and nested objects, masking sensitive values/keys consistently |
 | F21 | Notification dispatch script allowed unsafe production target override in loopback mode | security/ops | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/dispatch-notifications.sh`, `ops/README.md` | Production loopback mode blocks remote domain/IP overrides unless explicit approved exception flags are set |
 | F22 | Nightly remote smoke policy could permit mutation smoke against production base URL | operational/security-testing | Medium | Low | closed | 2026-03-04 | 2026-03-04 | codex | `/opt/.github/workflows/remote-auth-smoke.yml`, `README.md` | Scheduled workflow must fail when mutations are enabled against production URL; mutation smoke stays manual/non-production |
+| F23 | Manual remote smoke could still run mutation tests against production base URL | operational/security-testing | Medium | Low | closed | 2026-03-04 | 2026-03-04 | codex | `/opt/.github/workflows/remote-auth-smoke.yml`, `tests/security/remote-smoke-workflow-guardrail.test.ts` | Workflow must block production mutation mode for all trigger types (schedule + workflow_dispatch) |
+| F24 | Tenant boundary relied on dispersed direct model access in registration provisioning path | architecture/tenant-isolation | High | None | closed | 2026-03-04 | 2026-03-04 | codex | `db/repositories/tenant-repository.ts`, `modules/auth/server/register-verification-challenge.ts`, `tests/tenant/tenant-guardrail.test.ts` | Tenant creation/membership provisioning must route through tenant repository boundary and guardrail must block unapproved direct tenant/audit/outbox model access |
+| F25 | Tenant authorization depended only on rank ordering instead of explicit capability map | authorization/rbac | Medium | Low | closed | 2026-03-04 | 2026-03-04 | codex | `modules/tenant/server/permissions.ts`, `modules/tenant/server/scope.ts`, `tests/tenant/tenant-scope.test.ts` | Introduce centralized tenant capability mapping and evaluate minimum-role checks through permissions |
+| F26 | Audit DB fallback sink lacked tamper-evident integrity chaining | security/audit-integrity | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `lib/audit-log.ts`, `tests/auth/audit-fallback-integrity.test.ts`, `lib/env/server.ts` | Fallback audit lines must carry signed integrity metadata with chained previous hash persisted in local state |
+| F27 | Restore-readiness lacked automated restore-drill verification path | operational/resilience | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/restore-drill-db.sh`, `ops/cron/uppoint-postgres-restore-drill`, `scripts/verify-security-gate.sh`, `ops/RUNTIME_SERVICES_AND_CRON.md` | Add restore drill automation entry point, cron template, and security-gate artifact verification hook |
 
 ## Change Log (Register-only)
 
@@ -91,6 +96,11 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F20 | Closed: audit metadata redaction now traverses arrays and nested values | `lib/audit-log.ts`, `tests/auth/audit-log.test.ts` |
 | 2026-03-04 | F21 | Closed: production dispatch script now blocks unsafe remote override in loopback mode unless explicit approved exception flags are set | `scripts/dispatch-notifications.sh`, `ops/README.md` |
 | 2026-03-04 | F22 | Closed: nightly remote smoke now blocks production mutation mode and docs updated accordingly | `/opt/.github/workflows/remote-auth-smoke.yml`, `README.md` |
+| 2026-03-04 | F23 | Closed: remote smoke mutation guard now applies to all trigger types, not only nightly schedule | `/opt/.github/workflows/remote-auth-smoke.yml`, workflow guardrail test |
+| 2026-03-04 | F24 | Closed: tenant provisioning now routed through repository boundary and tenant guardrail expanded for tenant-scoped model access | tenant repository + guardrail updates |
+| 2026-03-04 | F25 | Closed: tenant authorization now uses centralized capability model instead of pure role-rank ordering | `modules/tenant/server/permissions.ts`, tenant scope tests |
+| 2026-03-04 | F26 | Closed: audit fallback sink now writes signed chain metadata with persisted previous-hash state | `lib/audit-log.ts`, fallback integrity tests |
+| 2026-03-04 | F27 | Closed: restore drill script + cron template + security-gate verification hook added | restore-drill script/cron/docs |
 
 ## Audit Output Contract
 

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-03-04 (security/architecture closure: F23-F27)
+
+### Fixed
+- Closed remote smoke mutation exposure on manual triggers (`F23`):
+  - `.github/workflows/remote-auth-smoke.yml` now applies production mutation guard regardless of trigger type.
+- Closed tenant-boundary drift in registration provisioning path (`F24`):
+  - `modules/auth/server/register-verification-challenge.ts` now provisions tenant + membership through `db/repositories/tenant-repository.ts`.
+  - `tests/tenant/tenant-guardrail.test.ts` tightened approved direct-access list and tenant-scoped model guardrails.
+- Closed authorization model ambiguity (`F25`):
+  - introduced centralized tenant capability map in `modules/tenant/server/permissions.ts`.
+  - `modules/tenant/server/scope.ts` now evaluates minimum role through capability model.
+- Closed audit fallback tamper-evidence gap (`F26`):
+  - `lib/audit-log.ts` fallback sink now adds signed chain metadata and persists previous hash state.
+  - `lib/env/server.ts` now supports `AUDIT_FALLBACK_CHAIN_STATE_PATH`.
+- Closed restore-readiness automation gap (`F27`):
+  - added `scripts/restore-drill-db.sh` (check-only + execute modes).
+  - added cron template `ops/cron/uppoint-postgres-restore-drill`.
+  - wired artifact check into `scripts/verify-security-gate.sh`.
+
+### Added
+- New tests:
+  - `tests/auth/audit-fallback-integrity.test.ts`
+  - `tests/security/remote-smoke-workflow-guardrail.test.ts`
+
+### Changed
+- Ops/runtime docs updated:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `ops/logrotate/uppoint-cloud`
+- `package.json` adds `npm run verify:restore-drill` for backup artifact readiness checks.
+- `FINDINGS_REGISTER.md` extended with `F23`–`F27` closure records.
+
 ## 2026-03-04 (security/ops closure: internal transport, audit redaction, dispatch hardening, nightly smoke safety)
 
 ### Fixed

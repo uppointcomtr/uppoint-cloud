@@ -16,6 +16,16 @@ su root adm
     create 640 root adm
 }
 
+/var/log/uppoint-postgres-restore-drill.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
 /var/log/uppoint-db-cleanup.log {
     daily
     rotate 30

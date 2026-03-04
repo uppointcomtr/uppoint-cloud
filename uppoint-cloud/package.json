@@ -20,6 +20,7 @@
     "verify:nginx-drift": "bash ./scripts/check-nginx-config-drift.sh",
     "verify:edge-audit-emit": "bash ./scripts/run-edge-audit-emit-check.sh",
     "verify:audit-integrity": "bash ./scripts/verify-audit-integrity.sh",
+    "verify:restore-drill": "bash ./scripts/restore-drill-db.sh --check-only",
     "verify:auth-abuse": "bash ./scripts/run-auth-abuse-check.sh",
     "audit:anchor:export": "bash ./scripts/export-audit-anchor.sh",
     "audit:anchor:replicate": "bash ./scripts/replicate-audit-anchor.sh",

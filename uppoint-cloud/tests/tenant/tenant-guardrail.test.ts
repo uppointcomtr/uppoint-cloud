@@ -4,11 +4,15 @@ import { describe, expect, it } from "vitest";
 
 const APPROVED_DIRECT_TENANT_QUERY_FILES = new Set([
   "db/repositories/tenant-repository.ts",
-  "modules/auth/server/register-verification-challenge.ts",
 ]);
 
 const TENANT_INPUT_GUARD_EXEMPT_FILES = new Set([
   // Carries tenant/user context for forensic metadata only; no tenant-scoped reads/mutations.
+  "modules/notifications/server/outbox.ts",
+]);
+
+const APPROVED_TENANT_SCOPED_MODEL_FILES = new Set([
+  "lib/audit-log.ts",
   "modules/notifications/server/outbox.ts",
 ]);
 
@@ -160,6 +164,38 @@ describe("tenant authorization guardrail", () => {
         || /resolveUserTenantContext\(/.test(source);
 
       if (!hasGuardCall) {
+        violations.push(relativePath);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it("blocks unreviewed direct access to tenant-scoped tables in app/modules/db/lib layers", () => {
+    const candidateRoots = [
+      path.join(process.cwd(), "app"),
+      path.join(process.cwd(), "modules"),
+      path.join(process.cwd(), "db"),
+      path.join(process.cwd(), "lib"),
+    ];
+    const files = candidateRoots.flatMap((root) => collectFilesRecursively(root));
+    const candidateFiles = files.filter((filePath) => /\.(ts|tsx)$/.test(filePath));
+    const violations: string[] = [];
+
+    for (const filePath of candidateFiles) {
+      const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      const source = readFileSync(filePath, "utf8");
+      const hasDirectScopedQuery =
+        /\b(?:prisma|tx)\s*\.\s*auditLog\s*\./.test(source)
+        || /"(?:AuditLog)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source)
+        || /"(?:NotificationOutbox)"\s+(?:WHERE|SET|VALUES|JOIN|FROM|INSERT|UPDATE|DELETE)/i.test(source)
+        || /\b(?:prisma|tx)\s*\.\s*notificationOutbox\s*\./.test(source);
+
+      if (!hasDirectScopedQuery) {
+        continue;
+      }
+
+      if (!APPROVED_TENANT_SCOPED_MODEL_FILES.has(relativePath)) {
         violations.push(relativePath);
       }
     }

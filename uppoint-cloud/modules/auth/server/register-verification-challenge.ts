@@ -1,10 +1,11 @@
 import "server-only";
 
 import crypto from "crypto";
-import { Prisma, TenantRole } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "@/db/client";
+import { provisionDefaultTenantForUser } from "@/db/repositories/tenant-repository";
 import { env } from "@/lib/env";
 import { timingSafeEqualHex } from "@/lib/security/constant-time";
 import { getRegisterSchema } from "@/modules/auth/schemas/auth-schemas";
@@ -712,23 +713,11 @@ const defaultVerifyRegisterSmsCodeDependencies: VerifyRegisterSmsCodeDependencie
       }
 
       // Security-sensitive: every verified account is provisioned into an isolated tenant boundary by default.
-      const tenant = await tx.tenant.create({
-        data: {
-          slug: `usr-${userId}`,
-          name: `Workspace ${userId.slice(-6)}`,
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      await tx.tenantMembership.create({
-        data: {
-          tenantId: tenant.id,
-          userId,
-          role: TenantRole.OWNER,
-        },
-      });
+      await provisionDefaultTenantForUser({
+        userId,
+        slug: `usr-${userId}`,
+        name: `Workspace ${userId.slice(-6)}`,
+      }, tx);
 
       await tx.registrationVerificationChallenge.deleteMany({
         where: {

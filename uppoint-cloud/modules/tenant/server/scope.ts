@@ -4,12 +4,7 @@ import { TenantRole } from "@prisma/client";
 
 import { findTenantMembershipForAccess } from "@/db/repositories/tenant-repository";
 import { logAudit } from "@/lib/audit-log";
-
-const roleRank: Record<TenantRole, number> = {
-  MEMBER: 1,
-  ADMIN: 2,
-  OWNER: 3,
-};
+import { hasRequiredTenantRole } from "@/modules/tenant/server/permissions";
 
 interface TenantScopeDependencies {
   findMembership: (input: { tenantId: string; userId: string }) => Promise<{
@@ -25,10 +20,6 @@ interface TenantScopeDependencies {
 const defaultDependencies: TenantScopeDependencies = {
   findMembership: async ({ tenantId, userId }) => findTenantMembershipForAccess({ tenantId, userId }),
 };
-
-export function hasRequiredTenantRole(role: TenantRole, minimumRole: TenantRole): boolean {
-  return roleRank[role] >= roleRank[minimumRole];
-}
 
 export async function assertTenantAccess(
   input: { tenantId: string; userId: string; minimumRole?: TenantRole },

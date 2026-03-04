@@ -7,13 +7,16 @@ vi.mock("@/lib/audit-log", () => ({
   logAudit: logAuditMock,
 }));
 
-import { assertTenantAccess, hasRequiredTenantRole } from "@/modules/tenant/server/scope";
+import { assertTenantAccess } from "@/modules/tenant/server/scope";
+import { hasRequiredTenantRole, hasTenantPermission } from "@/modules/tenant/server/permissions";
 
 describe("tenant scope helpers", () => {
   it("checks role hierarchy correctly", () => {
     expect(hasRequiredTenantRole(TenantRole.OWNER, TenantRole.ADMIN)).toBe(true);
     expect(hasRequiredTenantRole(TenantRole.ADMIN, TenantRole.MEMBER)).toBe(true);
     expect(hasRequiredTenantRole(TenantRole.MEMBER, TenantRole.ADMIN)).toBe(false);
+    expect(hasTenantPermission(TenantRole.ADMIN, "tenant:manage_members")).toBe(true);
+    expect(hasTenantPermission(TenantRole.MEMBER, "tenant:manage_billing")).toBe(false);
   });
 
   it("grants access to active tenant membership", async () => {

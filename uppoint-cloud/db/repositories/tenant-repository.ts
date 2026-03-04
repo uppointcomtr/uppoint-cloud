@@ -1,6 +1,7 @@
 import "server-only";
 
-import type { Prisma, TenantRole } from "@prisma/client";
+import { TenantRole } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/db/client";
 
@@ -105,4 +106,29 @@ export async function softDeleteTenantIfActive(
       deletedAt: input.now,
     },
   });
+}
+
+export async function provisionDefaultTenantForUser(
+  input: { userId: string; slug: string; name: string },
+  client: TenantRepositoryClient = prisma,
+): Promise<{ id: string }> {
+  const tenant = await client.tenant.create({
+    data: {
+      slug: input.slug,
+      name: input.name,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  await client.tenantMembership.create({
+    data: {
+      tenantId: tenant.id,
+      userId: input.userId,
+      role: TenantRole.OWNER,
+    },
+  });
+
+  return tenant;
 }

@@ -112,6 +112,7 @@ Create and maintain `.env` with real values (do not commit it):
 - `UPPOINT_SMS_DATACODING`
 - `UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS` (optional, default `false`; legacy provider compatibility)
 - `AUDIT_FALLBACK_LOG_PATH` (optional, JSONL fallback path for audit write failures)
+- `AUDIT_FALLBACK_CHAIN_STATE_PATH` (optional, default `/var/lib/uppoint-cloud/audit-fallback-chain.state`; stores last fallback chain hash)
 - `AUDIT_LOG_SIGNING_SECRET` (optional, min 32 chars; defaults to `AUTH_SECRET` when unset)
 - `AUDIT_ANCHOR_SIGNING_SECRET` (recommended, min 32 chars; signer for external audit-chain anchor export)
 - `AUDIT_ANCHOR_SIGNING_KEY_ID` (optional key identifier included in exported anchor records)
@@ -316,7 +317,7 @@ GitHub Actions nightly/ondemand remote smoke:
 - Optional manual input:
   - `allow_mutations=1` (only for isolated non-production environments)
 - Nightly safety guard:
-  - scheduled runs must not execute mutation smoke against production target (`https://cloud.uppoint.com.tr`).
+  - any run (nightly or manual) is blocked if mutation smoke is enabled against production target (`https://cloud.uppoint.com.tr`).
   - keep `E2E_ALLOW_MUTATIONS=0` for nightly production smoke.
   - run mutation smoke only via `workflow_dispatch` against isolated non-production base URLs.
 
