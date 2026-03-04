@@ -386,6 +386,18 @@ Optional CI audit-integrity check:
   - `E2E_BASE_URL` (default is `https://cloud.uppoint.com.tr`)
   - `E2E_ENFORCE_HEALTH_200` (default `1`; keep enabled for production smoke)
 
+Quick verification checklist for manual runs:
+- Trigger:
+  - `cd /opt && gh workflow run remote-auth-smoke.yml --ref main`
+- Latest run:
+  - `cd /opt && gh run list --workflow "Remote Auth Smoke" --limit 1`
+  - expected: `conclusion=success`
+- Guard step:
+  - `cd /opt && gh run view <run-id> --json jobs`
+  - step `Require healthcheck token for production target` must be `success`
+- Summary check (UI):
+  - open the run URL and confirm `E2E_HEALTHCHECK_TOKEN: configured`
+
 Repository/app-root contract checks:
 
 ```bash

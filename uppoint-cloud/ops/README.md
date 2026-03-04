@@ -388,6 +388,19 @@ Weekly security gate cron:
 - Purpose: periodic full-stack verification even when no deployment happened that week.
 - Output log: `/var/log/uppoint-security-gate-weekly.log`.
 
+Remote auth smoke operational checklist (GitHub Actions):
+- Trigger a manual run when needed:
+  - `cd /opt && gh workflow run remote-auth-smoke.yml --ref main`
+- Verify latest run outcome:
+  - `cd /opt && gh run list --workflow \"Remote Auth Smoke\" --limit 1`
+  - expected: `conclusion=success` on `main`
+- Verify token-gated production health guard passed:
+  - `cd /opt && gh run view <run-id> --json jobs`
+  - step `Require healthcheck token for production target` must be `success`
+- Verify CI summary on the run page:
+  - open run URL and confirm summary contains `E2E_HEALTHCHECK_TOKEN: configured`
+  - if summary shows `missing`, treat as release-blocking and fix Actions secret first.
+
 ## 9. Redis backup automation
 
 Install cron entry:

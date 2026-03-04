@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-04 (ops/docs: remote auth smoke verification checklist)
+
+### Changed
+- Added explicit GitHub Actions remote smoke operational checklist:
+  - `ops/README.md` now includes:
+    - manual trigger command,
+    - latest run verification command,
+    - required guard-step success check (`Require healthcheck token for production target`),
+    - run summary verification requirement (`E2E_HEALTHCHECK_TOKEN: configured`).
+  - `README.md` now includes matching quick verification checklist for maintainers.
+
 ## 2026-03-04 (security/governance closure: F61-F65)
 
 ### Fixed
