@@ -19,7 +19,7 @@ export function LoginModeTabs({ mode, tabs, onChangeMode }: LoginModeTabsProps) 
       <span
         aria-hidden
         className={cn(
-          "absolute bottom-1 left-1 top-1 w-[calc(50%-0.25rem)] rounded-lg bg-background shadow-sm transition-transform duration-300",
+          "pointer-events-none absolute bottom-1 left-1 top-1 z-0 w-[calc(50%-0.25rem)] rounded-lg bg-background shadow-sm transition-transform duration-300",
           mode === "phone" ? "translate-x-full" : "translate-x-0",
         )}
       />

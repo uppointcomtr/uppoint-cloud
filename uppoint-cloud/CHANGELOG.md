@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-05 (auth-ui fix: login phone tab click unblock)
+
+### Fixed
+- Fixed login mode toggle click behavior on `/[locale]/login`:
+  - `modules/auth/components/login/login-mode-tabs.tsx` slider highlight now uses `pointer-events-none` and explicit `z-0`.
+  - Prevents highlight layer from intercepting clicks so the `Telefon` tab can be selected reliably.
+
 ## 2026-03-04 (ops/ci hardening: default remote smoke enforcement in weekly security gate)
 
 ### Changed
