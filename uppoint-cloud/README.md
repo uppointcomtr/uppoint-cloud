@@ -338,11 +338,12 @@ GitHub Actions nightly/ondemand remote smoke:
 
 Optional CI audit-integrity check:
 - set repository secret `AUDIT_INTEGRITY_DATABASE_URL` (read-only DB URL recommended).
-- workflow runs `npm run verify:audit-integrity` when this secret is configured.
+- workflow runs `npm run verify:audit-integrity` when this secret is configured and reachable from the selected runner network.
 - Required secret for production target:
   - `E2E_HEALTHCHECK_TOKEN` (production `/api/health` is token-gated; workflow fails closed if missing)
 - Optional repository variable:
   - `E2E_BASE_URL` (default is `https://cloud.uppoint.com.tr`)
+  - `E2E_RUNNER_LABELS_JSON` (default `["self-hosted"]`; set `["ubuntu-latest"]` to force GitHub-hosted runner)
   - `E2E_ENFORCE_HEALTH_200` (default `1`; keep enabled for production smoke)
 
 Repository/app-root contract checks:

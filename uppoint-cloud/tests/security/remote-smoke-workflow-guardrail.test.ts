@@ -3,6 +3,21 @@ import path from "path";
 import { describe, expect, it } from "vitest";
 
 describe("remote smoke workflow guardrail", () => {
+  it("keeps self-hosted runner selection configurable via JSON labels", () => {
+    const workflowPath = path.join(
+      process.cwd(),
+      "..",
+      ".github",
+      "workflows",
+      "remote-auth-smoke.yml",
+    );
+    const source = readFileSync(workflowPath, "utf8");
+
+    expect(source).toContain("runner_labels_json:");
+    expect(source).toContain("runs-on: ${{ fromJSON(inputs.runner_labels_json || vars.E2E_RUNNER_LABELS_JSON || '[\"self-hosted\"]') }}");
+    expect(source).toContain("E2E_RUNNER_LABELS_JSON: ${{ inputs.runner_labels_json || vars.E2E_RUNNER_LABELS_JSON || '[\"self-hosted\"]' }}");
+  });
+
   it("blocks mutation runs against production target across all trigger types", () => {
     const workflowPath = path.join(
       process.cwd(),

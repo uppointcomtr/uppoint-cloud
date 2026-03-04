@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-04 (ops/ci: self-hosted remote smoke runner selection)
+
+### Changed
+- Updated remote smoke workflow runner model to support self-hosted execution by default:
+  - `/opt/.github/workflows/remote-auth-smoke.yml` now uses configurable JSON runner labels:
+    - `runs-on: ${{ fromJSON(inputs.runner_labels_json || vars.E2E_RUNNER_LABELS_JSON || '["self-hosted"]') }}`
+  - Added manual workflow input `runner_labels_json`.
+  - Added CI summary line for resolved runner labels.
+- Updated workflow guardrails:
+  - `tests/security/remote-smoke-workflow-guardrail.test.ts` now enforces configurable self-hosted runner contract.
+- Updated operator docs:
+  - `README.md` now documents `E2E_RUNNER_LABELS_JSON` and runner-network requirement for audit-integrity checks.
+
 ## 2026-03-04 (security/ops closure: F46-F49)
 
 ### Fixed
