@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-03-04 (ops closure: runtime deploy drift + cron governance drift)
+
+### Fixed
+- Closed runtime deploy drift (`F36`):
+  - rebuilt and restarted production app with `npm run build:deploy` so running service aligns with repository HEAD.
+  - live auth API error envelope now returns machine-readable `code` field as expected.
+- Closed cron governance drift (`F37`):
+  - moved PostgreSQL backup and DB cleanup schedules from unmanaged root crontab into canonical `/etc/cron.d` entries:
+    - `/etc/cron.d/uppoint-postgres-backup`
+    - `/etc/cron.d/uppoint-db-cleanup`
+  - removed duplicate root crontab entries after taking backup.
+
+### Changed
+- Updated findings registry with new closed entries:
+  - `F36`
+  - `F37`
+
+### Verification
+- `npm run build:deploy`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run verify:security-gate`
+- live checks:
+  - `curl https://cloud.uppoint.com.tr/api/auth/register` (`code` field present)
+  - `systemctl show -p ActiveEnterTimestamp uppoint-cloud.service`
+  - `ls /etc/cron.d | rg '^uppoint-'`
+  - `sudo crontab -l`
+
 ## 2026-03-04 (ops observability: weekly restore drill email reporting)
 
 ### Added
