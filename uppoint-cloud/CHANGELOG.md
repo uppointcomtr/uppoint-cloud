@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-05 (topbar control sizing: equal square buttons)
+
+### Changed
+- Normalized topbar control button sizes to equal square dimensions (`8x8`) for:
+  - theme toggle
+  - locale switcher
+- Updated control sizing implementation in:
+  - `components/shared/theme-toggle.tsx`
+  - `components/shared/locale-switcher.tsx`
+
 ## 2026-03-05 (corporate ui refresh: auth + dashboard + profile dropdown)
 
 ### Changed

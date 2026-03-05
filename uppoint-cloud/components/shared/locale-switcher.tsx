@@ -29,9 +29,9 @@ export function LocaleSwitcher({ locale, labels, className }: LocaleSwitcherProp
     <Button
       asChild
       variant="outline"
-      size="sm"
+      size="icon-sm"
       className={cn(
-        "min-w-10 border-border/70 bg-background/80 font-semibold text-foreground hover:bg-accent/80 dark:bg-background/60",
+        "size-8 border-border/70 bg-background/80 text-[13px] font-semibold text-foreground hover:bg-accent/80 dark:bg-background/60",
         className,
       )}
     >

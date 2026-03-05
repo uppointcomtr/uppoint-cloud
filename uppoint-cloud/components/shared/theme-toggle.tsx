@@ -27,11 +27,11 @@ export function ThemeToggle({ labels, iconOnly = false, className }: ThemeToggle
     <Button
       type="button"
       variant="outline"
-      size="sm"
+      size={iconOnly ? "icon-sm" : "sm"}
       onClick={toggleTheme}
       aria-label={buttonLabel}
       title={buttonLabel}
-      className={cn(iconOnly ? "min-w-10 px-0" : "min-w-30", className)}
+      className={cn(iconOnly ? "size-8" : "min-w-30", className)}
     >
       {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
       {!iconOnly && <span suppressHydrationWarning>{buttonLabel}</span>}
