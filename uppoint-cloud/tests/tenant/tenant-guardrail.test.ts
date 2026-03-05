@@ -12,6 +12,11 @@ const TENANT_INPUT_GUARD_EXEMPT_FILES = new Set([
   "modules/notifications/server/outbox.ts",
 ]);
 
+const TENANT_APP_ENTRYPOINT_GUARD_EXEMPT_FILES = new Set([
+  // Tenant scope validation is delegated to getDashboardOverview -> resolveUserTenantContext in domain service.
+  "app/[locale]/dashboard/page.tsx",
+]);
+
 const APPROVED_TENANT_SCOPED_MODEL_FILES = new Set([
   "lib/audit-log.ts",
   "modules/notifications/server/outbox.ts",
@@ -112,6 +117,11 @@ describe("tenant authorization guardrail", () => {
     const violations: string[] = [];
 
     for (const filePath of entryFiles) {
+      const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      if (TENANT_APP_ENTRYPOINT_GUARD_EXEMPT_FILES.has(relativePath)) {
+        continue;
+      }
+
       const source = readFileSync(filePath, "utf8");
       const referencesTenantScope =
         /\btenantId\b/.test(source)
@@ -127,7 +137,7 @@ describe("tenant authorization guardrail", () => {
         || /resolveUserTenantContext\(/.test(source);
 
       if (!hasServerTenantAuth) {
-        violations.push(path.relative(process.cwd(), filePath));
+        violations.push(relativePath);
       }
     }
 

@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-03-05 (dashboard v1: control-plane oriented workspace without KVM operations)
+
+### Added
+- Added dashboard domain repository layer:
+  - `db/repositories/dashboard-repository.ts`
+  - active user snapshot, session count, notification summary counts, and recent audit event queries.
+- Added dashboard server service:
+  - `modules/dashboard/server/get-dashboard-overview.ts`
+  - centralized tenant-context resolution, dashboard aggregation, and runtime signal shaping.
+- Added new dashboard UI module:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - control-plane style two-column layout with:
+    - overview metrics,
+    - security events,
+    - notification health,
+    - tenant context,
+    - module roadmap placeholders,
+    - quick actions.
+- Added dashboard aggregation test coverage:
+  - `tests/dashboard/get-dashboard-overview.test.ts`.
+
+### Changed
+- Reworked `/[locale]/dashboard` page to:
+  - validate `tenantId` search input with Zod,
+  - keep page thin and delegate business logic to dashboard service,
+  - render the new dashboard panel module.
+- Added explicit tenant selection UX on dashboard:
+  - dashboard overview now includes active tenant membership options,
+  - sidebar and tenant section provide scoped `tenantId` links for multi-tenant users.
+- Updated dashboard loading state:
+  - `app/[locale]/dashboard/loading.tsx` now uses skeleton layout blocks.
+- Updated localization dictionaries:
+  - `messages/tr.ts`
+  - `messages/en.ts`
+  - dashboard copy and section labels aligned with new control-plane structure.
+- Updated high-level README milestone wording to reflect Dashboard V1 instead of placeholder.
+
 ## 2026-03-05 (security/ops closure: F66-F68)
 
 ### Fixed

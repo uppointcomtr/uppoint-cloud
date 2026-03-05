@@ -19,7 +19,11 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - SMS verification code (3 min countdown)
     - new password + confirm password step
   - Logout (dashboard action)
-  - Protected dashboard placeholder (`/:locale/dashboard`)
+  - Protected dashboard V1 workspace (`/:locale/dashboard`)
+    - control-plane style layout (navigation + operational sections)
+    - account/session/verification/risk summary cards
+    - tenant context visibility, explicit tenant selection, and quick actions
+    - notification and security signal overview
   - Route protection via proxy + server-side checks
   - JWT session revocation via `User.tokenVersion` checks
   - Atomic one-time token/code consumption for login/register/password-reset challenge flows
