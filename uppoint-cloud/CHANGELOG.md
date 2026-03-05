@@ -32,6 +32,9 @@
 - Added fail-closed session expiry validation on dashboard:
   - invalid `session.expires` values are audited and redirected to localized login,
   - prevents server-side `Invalid time value` crashes in session timeout rendering.
+- Fixed login/register redirect loop for corrupted session expiry:
+  - login/register now redirect to dashboard only when `session.expires` is parseable,
+  - prevents `dashboard -> login -> dashboard` infinite loop when stale/corrupted session data exists.
 - Updated dashboard loading state:
   - `app/[locale]/dashboard/loading.tsx` now uses skeleton layout blocks.
 - Updated localization dictionaries:

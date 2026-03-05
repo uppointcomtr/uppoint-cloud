@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
+import { parseSessionExpiry } from "@/modules/auth/server/session-expiry";
 import { DashboardPanel } from "@/modules/dashboard/components/dashboard-panel";
 import { getDashboardOverview } from "@/modules/dashboard/server/get-dashboard-overview";
 import { getDictionary } from "@/modules/i18n/dictionaries";
@@ -36,8 +37,8 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     redirect(`${withLocale("/login", locale)}?callbackUrl=${encodeURIComponent(withLocale("/dashboard", locale))}`);
   }
 
-  const sessionExpiresAt = new Date(session.expires);
-  if (Number.isNaN(sessionExpiresAt.getTime())) {
+  const sessionExpiresAt = parseSessionExpiry(session.expires);
+  if (!sessionExpiresAt) {
     await logAudit("session_revoked", "unknown", session.user.id, {
       reason: "INVALID_SESSION_EXPIRY",
       result: "FAILURE",
