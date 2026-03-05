@@ -19,8 +19,8 @@ export async function generateMetadata({
   const { metadata } = getDictionary(locale);
 
   return {
-    title: metadata.dashboard.title,
-    description: metadata.dashboard.description,
+    title: metadata.dashboardModules.title,
+    description: metadata.dashboardModules.description,
   };
 }
 

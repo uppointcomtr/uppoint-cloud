@@ -14,6 +14,22 @@ export const enMessages = {
       title: "Dashboard — Uppoint Cloud",
       description: "Manage your Uppoint Cloud account and cloud operations.",
     },
+    dashboardSecurity: {
+      title: "Security Center — Uppoint Cloud",
+      description: "Monitor session security, risk signals, and audit activity.",
+    },
+    dashboardNotifications: {
+      title: "Notification Center — Uppoint Cloud",
+      description: "Manage email/SMS delivery status and notification health signals.",
+    },
+    dashboardTenant: {
+      title: "Tenant Context — Uppoint Cloud",
+      description: "Manage active tenant context and available memberships.",
+    },
+    dashboardModules: {
+      title: "Modules — Uppoint Cloud",
+      description: "Review platform module status and available control-plane surfaces.",
+    },
   },
   header: {
     brand: "Uppoint Cloud",

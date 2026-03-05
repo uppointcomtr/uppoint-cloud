@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-03-05 (dashboard metadata + live route smoke)
+
+### Changed
+- Added section-specific dashboard metadata (TR/EN) for route-based pages:
+  - `metadata.dashboardSecurity`
+  - `metadata.dashboardNotifications`
+  - `metadata.dashboardTenant`
+  - `metadata.dashboardModules`
+- Updated per-section dashboard pages to use dedicated metadata keys instead of shared overview metadata:
+  - `app/[locale]/dashboard/security/page.tsx`
+  - `app/[locale]/dashboard/notifications/page.tsx`
+  - `app/[locale]/dashboard/tenant/page.tsx`
+  - `app/[locale]/dashboard/modules/page.tsx`
+
 ## 2026-03-05 (dashboard route split: section-first URLs)
 
 ### Added

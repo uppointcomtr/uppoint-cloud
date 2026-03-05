@@ -14,6 +14,22 @@ export const trMessages = {
       title: "Panel — Uppoint Cloud",
       description: "Uppoint Cloud hesabınızı ve bulut operasyonlarınızı yönetin.",
     },
+    dashboardSecurity: {
+      title: "Güvenlik Merkezi — Uppoint Cloud",
+      description: "Oturum güvenliği, risk sinyalleri ve denetim kayıtlarını izleyin.",
+    },
+    dashboardNotifications: {
+      title: "Bildirim Merkezi — Uppoint Cloud",
+      description: "E-posta/SMS bildirim durumunu ve teslim sinyallerini yönetin.",
+    },
+    dashboardTenant: {
+      title: "Tenant Bağlamı — Uppoint Cloud",
+      description: "Aktif tenant bağlamınızı ve üyelik seçeneklerinizi yönetin.",
+    },
+    dashboardModules: {
+      title: "Modüller — Uppoint Cloud",
+      description: "Platform modüllerinin durumunu ve hazır bileşenleri görüntüleyin.",
+    },
   },
   header: {
     brand: "Uppoint Cloud",
