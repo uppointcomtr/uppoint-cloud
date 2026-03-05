@@ -257,6 +257,18 @@ export const trMessages = {
       accountLabel: "Hesap",
       updatedAt: "Son güncelleme",
     },
+    profileMenu: {
+      buttonLabel: "Profil menüsünü aç",
+      statusLabel: "Kurumsal profil",
+      menuLabel: "Profil işlemleri",
+      accountOverview: "Hesap özeti",
+      securityCenter: "Güvenlik merkezi",
+      notificationCenter: "Bildirim merkezi",
+      tenantContext: "Tenant bağlamı",
+      resetPassword: "Şifreyi yenile",
+      signOut: "Güvenli çıkış",
+      signOutLoading: "Çıkış yapılıyor...",
+    },
     session: {
       title: "Oturum durumu",
       description: "Aktif oturumların ve süre bilgilerinin özeti.",

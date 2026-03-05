@@ -7,22 +7,31 @@ import { getLocaleFromParams } from "@/modules/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-interface DashboardPageProps {
+interface DashboardModulesPageProps {
   params: Promise<{ locale: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export async function generateMetadata({ params }: DashboardPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: DashboardModulesPageProps): Promise<Metadata> {
   const locale = await getLocaleFromParams(params);
   const { metadata } = getDictionary(locale);
-  return { title: metadata.dashboard.title, description: metadata.dashboard.description };
+
+  return {
+    title: metadata.dashboard.title,
+    description: metadata.dashboard.description,
+  };
 }
 
-export default async function DashboardPage({ params, searchParams }: DashboardPageProps) {
+export default async function DashboardModulesPage({
+  params,
+  searchParams,
+}: DashboardModulesPageProps) {
   const locale = await getLocaleFromParams(params);
   const { dictionary, overview } = await loadDashboardPageData({
     locale,
-    callbackPath: "/dashboard",
+    callbackPath: "/dashboard/modules",
     rawSearchParams: await searchParams,
   });
 
@@ -31,7 +40,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       locale={locale}
       dictionary={dictionary}
       overview={overview}
-      activeSection="overview"
+      activeSection="modules"
     />
   );
 }

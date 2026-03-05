@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-03-05 (dashboard route split: section-first URLs)
+
+### Added
+- Added dedicated dashboard section routes:
+  - `/[locale]/dashboard/security`
+  - `/[locale]/dashboard/notifications`
+  - `/[locale]/dashboard/tenant`
+  - `/[locale]/dashboard/modules`
+- Added shared dashboard page data loader for route pages:
+  - `modules/dashboard/server/page-loader.ts`
+
+### Changed
+- Replaced hash-based in-page section navigation with route-based navigation:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - `modules/dashboard/components/profile-menu.tsx`
+- Updated `/[locale]/dashboard` to use shared route loader and explicit `overview` section render mode:
+  - `app/[locale]/dashboard/page.tsx`
+
+## 2026-03-05 (dashboard topbar: corporate profile dropdown)
+
+### Added
+- Added a profile menu next to theme/locale controls in dashboard topbar:
+  - profile icon + display name rendering with safe fallback from email local-part,
+  - corporate quick links (account overview, security center, notification center, tenant context),
+  - password reset shortcut,
+  - secure sign-out action from the menu.
+- Added new client component:
+  - `modules/dashboard/components/profile-menu.tsx`
+
+### Changed
+- Integrated profile menu into:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+- Added new i18n keys for Turkish and English:
+  - `messages/tr.ts`
+  - `messages/en.ts`
+
 ## 2026-03-05 (ops canary mode: probe-only default, no outbound mail)
 
 ### Changed

@@ -257,6 +257,18 @@ export const enMessages = {
       accountLabel: "Account",
       updatedAt: "Last updated",
     },
+    profileMenu: {
+      buttonLabel: "Open profile menu",
+      statusLabel: "Corporate profile",
+      menuLabel: "Profile actions",
+      accountOverview: "Account overview",
+      securityCenter: "Security center",
+      notificationCenter: "Notification center",
+      tenantContext: "Tenant context",
+      resetPassword: "Reset password",
+      signOut: "Secure sign out",
+      signOutLoading: "Signing out...",
+    },
     session: {
       title: "Session status",
       description: "Summary of active sessions and expiry information.",
