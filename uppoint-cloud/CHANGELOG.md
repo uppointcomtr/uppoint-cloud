@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-05 (dashboard route transition UX: remove white flash fallback)
+
+### Changed
+- Removed dashboard segment loading fallback component:
+  - `app/[locale]/dashboard/loading.tsx`
+- Route transitions between dashboard sub-pages now keep the current screen until the next route payload is ready, instead of rendering the previous skeleton fallback that caused a white flash perception.
+
 ## 2026-03-05 (dashboard metadata + live route smoke)
 
 ### Changed
