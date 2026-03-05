@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-03-05 (dashboard topbar profile trigger: icon-only)
+
+### Changed
+- Updated dashboard profile trigger to icon-only mode:
+  - removed inline display name from trigger button,
+  - removed dropdown chevron from trigger,
+  - normalized trigger footprint to match theme/locale control size (`h-8 w-8`).
+- Kept profile details and actions inside dropdown panel unchanged.
+
 ## 2026-03-05 (dashboard topbar profile button alignment)
 
 ### Changed
