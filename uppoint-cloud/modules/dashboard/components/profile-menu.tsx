@@ -76,18 +76,15 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex min-w-[208px] items-center gap-3 rounded-xl border border-border/60 bg-background/80 px-3 py-2 text-left shadow-sm transition-colors hover:bg-accent/50"
+        className="flex h-8 min-w-[208px] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-3 text-left shadow-sm transition-colors hover:bg-accent/50"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={dictionary.buttonLabel}
       >
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <UserCircle2 className="h-5 w-5" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <UserCircle2 className="h-4 w-4" />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs text-muted-foreground">{dictionary.statusLabel}</span>
-          <span className="block truncate text-sm font-medium">{displayName}</span>
-        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{displayName}</span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 

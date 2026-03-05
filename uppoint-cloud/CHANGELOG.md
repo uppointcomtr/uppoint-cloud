@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-03-05 (dashboard topbar profile button alignment)
+
+### Changed
+- Removed the extra profile status line ("Kurumsal profil") from the dashboard profile trigger.
+- Normalized the profile trigger height to match theme and locale controls in the dashboard topbar.
+- Updated profile trigger sizing and spacing for single-line display name rendering:
+  - `modules/dashboard/components/profile-menu.tsx`
+
 ## 2026-03-05 (dashboard route transition UX: remove white flash fallback)
 
 ### Changed
