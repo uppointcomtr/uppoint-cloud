@@ -280,12 +280,13 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-backup /etc/cron.d/uppoint-
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-restore-drill /etc/cron.d/uppoint-postgres-restore-drill
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-canary /etc/cron.d/uppoint-notification-canary
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-slo-report /etc/cron.d/uppoint-security-slo-report
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-gate-weekly /etc/cron.d/uppoint-security-gate-weekly
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report /etc/cron.d/uppoint-security-gate-weekly
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-canary /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report /etc/cron.d/uppoint-security-gate-weekly
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -299,6 +300,7 @@ sudo /opt/uppoint-cloud/scripts/backup-db.sh
 sudo /opt/uppoint-cloud/scripts/restore-drill-db.sh --check-only
 sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
+sudo /opt/uppoint-cloud/scripts/run-notification-canary.sh
 sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
 sudo /opt/uppoint-cloud/scripts/export-audit-anchor.sh
 sudo /opt/uppoint-cloud/scripts/run-auth-abuse-check.sh
@@ -382,6 +384,13 @@ Security SLO report:
   - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (default `true`; advisory when terminal sample is below ratio activation window)
 - Exit code `1` indicates threshold breach and should be treated as an alert signal.
 - When low-sample advisory is active, the report prints `WARN` but keeps exit code `0` (informational signal, not a hard breach).
+
+Notification delivery canary:
+- `run-notification-canary.sh` enqueues a low-risk email (`scope=ops-notification-canary`) every 30 minutes via cron.
+- This keeps terminal-delivery sampling objective in low-traffic periods and prevents blind spots in ratio-based notification SLO checks.
+- Optional canary env keys:
+  - `UPPOINT_NOTIFICATION_CANARY_ENABLED` (default `true`)
+  - `UPPOINT_NOTIFICATION_CANARY_EMAIL_TO` (optional; falls back to `UPPOINT_ALERT_EMAIL_TO`)
 
 Weekly security gate cron:
 - `uppoint-security-gate-weekly` runs `scripts/verify-security-gate.sh` every Sunday at `05:30`.
@@ -480,6 +489,7 @@ Covered logs:
 - `/var/log/uppoint-auth-rate-limit-tune.log`
 - `/var/log/uppoint-health-probe.log`
 - `/var/log/uppoint-cloud/dispatch-notifications.log`
+- `/var/log/uppoint-notification-canary.log`
 - `/var/log/uppoint-nginx-drift-check.log`
 - `/var/log/uppoint-audit-integrity-check.log`
 - `/var/log/uppoint-security-slo-report.log`

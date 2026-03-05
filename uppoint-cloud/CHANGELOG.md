@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-03-05 (security/ops closure: F66-F68)
+
+### Fixed
+- Closed register verification messaging ambiguity (`F66`):
+  - `modules/auth/components/register-form.tsx` now uses neutral delivery info text for start/restart steps.
+  - Added verify-step recovery CTAs to `/login` and `/forgot-password`.
+  - Added matching i18n keys in `messages/tr.ts` and `messages/en.ts`.
+- Closed synthetic user data-hygiene gap (`F67`):
+  - `scripts/cleanup-db.sh` now removes stale legacy `e2e-unverified-*` users with strict safeguards:
+    - only unverified and non-deleted users,
+    - only if no session/account/tenant membership exists,
+    - controlled by `AUTH_E2E_USER_RETENTION_DAYS` (default `1`).
+- Closed notification low-sample visibility gap (`F68`):
+  - Added `scripts/run-notification-canary.sh` to enqueue low-risk `ops-notification-canary` outbox records.
+  - Added cron template `ops/cron/uppoint-notification-canary`.
+  - Added log rotation entry for `/var/log/uppoint-notification-canary.log`.
+  - Added guardrail test `tests/security/notification-canary-guardrail.test.ts`.
+
+### Changed
+- Ops/runtime documentation updated:
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `ops/README.md`
+- Root docs and findings registry updated:
+  - `README.md` env keys for cleanup/canary
+  - `FINDINGS_REGISTER.md` entries for `F66`-`F68`
+
 ## 2026-03-05 (auth-ui fix: remove acceptance info banner on phone OTP step)
 
 ### Fixed

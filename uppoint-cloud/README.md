@@ -144,6 +144,7 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION` (optional, default `false`; explicit off-host replication kill switch)
 - `NOTIFICATION_PAYLOAD_SECRET` (required in production; encrypts notification outbox payload at rest)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
+- `AUTH_E2E_USER_RETENTION_DAYS` (optional, default `1`; cleanup window for legacy `e2e-unverified-*` synthetic users)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
 - `AUDIT_LOG_ARCHIVE_DIR` (optional, default `/opt/backups/audit`; archive path used by `cleanup-db.sh`)
 - `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE` (optional, default `false`; required `true` for `restore-drill-db.sh --execute --confirm`)
@@ -168,6 +169,8 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (optional, default `0.25`)
 - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (optional, default `20`; minimum terminal delivery sample before failure-ratio alerts are enforced)
 - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (optional, default `true`; emits advisory when terminal sample is below ratio-threshold activation window)
+- `UPPOINT_NOTIFICATION_CANARY_ENABLED` (optional, default `true`; enables low-risk delivery canary enqueue)
+- `UPPOINT_NOTIFICATION_CANARY_EMAIL_TO` (optional, canary recipient; falls back to `UPPOINT_ALERT_EMAIL_TO`)
 
 Closed-system deployment policy:
 - Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.

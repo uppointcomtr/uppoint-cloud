@@ -205,7 +205,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
     setEmailCode("");
     setSmsCode("");
     setMaskedPhone(null);
-    setSubmitInfo(dictionary.verification.emailCodeSent);
+    setSubmitInfo(dictionary.verification.neutralDeliveryNotice);
     setStep("verifyEmailCode");
     setIsSubmitting(false);
   });
@@ -261,7 +261,7 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
     setEmailCode("");
     setSmsCode("");
     setMaskedPhone(null);
-    setSubmitInfo(dictionary.verification.emailCodeResent);
+    setSubmitInfo(dictionary.verification.neutralDeliveryNotice);
     setStep("verifyEmailCode");
     setIsSubmitting(false);
   }
@@ -548,6 +548,16 @@ export function RegisterForm({ locale, dictionary, validation, apiErrors }: Regi
                 placeholder={dictionary.fields.emailCode}
                 autoFocus
               />
+            </div>
+
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <Link href={withLocale("/login", locale)} className="underline-offset-4 hover:underline">
+                {dictionary.verification.helpLoginCta}
+              </Link>
+              <span aria-hidden>•</span>
+              <Link href={withLocale("/forgot-password", locale)} className="underline-offset-4 hover:underline">
+                {dictionary.verification.helpResetCta}
+              </Link>
             </div>
           </>
         ) : null}

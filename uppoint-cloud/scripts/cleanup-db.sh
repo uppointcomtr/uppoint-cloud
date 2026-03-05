@@ -14,6 +14,7 @@ AUDIT_LOG_RETENTION_DAYS="${AUDIT_LOG_RETENTION_DAYS:-}"
 NOTIFICATION_OUTBOX_RETENTION_DAYS="${NOTIFICATION_OUTBOX_RETENTION_DAYS:-}"
 AUDIT_LOG_ARCHIVE_BEFORE_DELETE="${AUDIT_LOG_ARCHIVE_BEFORE_DELETE:-}"
 AUDIT_LOG_ARCHIVE_DIR="${AUDIT_LOG_ARCHIVE_DIR:-}"
+AUTH_E2E_USER_RETENTION_DAYS="${AUTH_E2E_USER_RETENTION_DAYS:-}"
 
 DATABASE_URL="${DATABASE_URL:-$(read_env_value "$ENV_FILE" "DATABASE_URL")}"
 if [ -z "${AUDIT_LOG_RETENTION_DAYS:-}" ]; then
@@ -28,11 +29,15 @@ fi
 if [ -z "${AUDIT_LOG_ARCHIVE_DIR:-}" ]; then
   AUDIT_LOG_ARCHIVE_DIR="$(read_env_value "$ENV_FILE" "AUDIT_LOG_ARCHIVE_DIR")"
 fi
+if [ -z "${AUTH_E2E_USER_RETENTION_DAYS:-}" ]; then
+  AUTH_E2E_USER_RETENTION_DAYS="$(read_env_value "$ENV_FILE" "AUTH_E2E_USER_RETENTION_DAYS")"
+fi
 
 AUDIT_LOG_RETENTION_DAYS="${AUDIT_LOG_RETENTION_DAYS:-180}"
 NOTIFICATION_OUTBOX_RETENTION_DAYS="${NOTIFICATION_OUTBOX_RETENTION_DAYS:-30}"
 AUDIT_LOG_ARCHIVE_BEFORE_DELETE="${AUDIT_LOG_ARCHIVE_BEFORE_DELETE:-true}"
 AUDIT_LOG_ARCHIVE_DIR="${AUDIT_LOG_ARCHIVE_DIR:-/opt/backups/audit}"
+AUTH_E2E_USER_RETENTION_DAYS="${AUTH_E2E_USER_RETENTION_DAYS:-1}"
 
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "[cleanup] HATA: DATABASE_URL tanımlı değil." >&2
@@ -47,6 +52,11 @@ fi
 
 if ! [[ "$NOTIFICATION_OUTBOX_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$NOTIFICATION_OUTBOX_RETENTION_DAYS" -lt 1 ]; then
   echo "[cleanup] HATA: NOTIFICATION_OUTBOX_RETENTION_DAYS geçersiz (>=1 olmalı)." >&2
+  exit 1
+fi
+
+if ! [[ "$AUTH_E2E_USER_RETENTION_DAYS" =~ ^[0-9]+$ ]] || [ "$AUTH_E2E_USER_RETENTION_DAYS" -lt 1 ]; then
+  echo "[cleanup] HATA: AUTH_E2E_USER_RETENTION_DAYS geçersiz (>=1 olmalı)." >&2
   exit 1
 fi
 
@@ -130,5 +140,21 @@ echo "[cleanup] IdempotencyRecord: ${IDR_DELETED} satır silindi"
 # 10. NotificationOutbox — gönderilmiş/kalıcı hataya düşmüş eski kayıtlar
 NO_DELETED=$("${PSQL[@]}" -c "SELECT CASE WHEN to_regclass('\"NotificationOutbox\"') IS NULL THEN 0 ELSE (WITH d AS (DELETE FROM \"NotificationOutbox\" WHERE \"status\" IN ('SENT','FAILED') AND \"updatedAt\" < NOW() - INTERVAL '${NOTIFICATION_OUTBOX_RETENTION_DAYS} days' RETURNING id) SELECT count(*) FROM d) END;")
 echo "[cleanup] NotificationOutbox (>${NOTIFICATION_OUTBOX_RETENTION_DAYS} gün): ${NO_DELETED} satır silindi"
+
+# 11. Legacy E2E kullanıcı kalıntıları — doğrulanmamış ve ilişkisiz test hesapları
+#     Sadece e2e-unverified örüntüsüne sahip, eski, tenant/oturum/hesap ilişkisi olmayan kayıtları temizler.
+E2E_USERS_DELETED=$("${PSQL[@]}" -c "WITH d AS (
+  DELETE FROM \"User\" u
+  WHERE u.\"deletedAt\" IS NULL
+    AND u.\"emailVerified\" IS NULL
+    AND u.\"phoneVerifiedAt\" IS NULL
+    AND lower(u.email) LIKE 'e2e-unverified-%@example.com'
+    AND u.\"createdAt\" < NOW() - INTERVAL '${AUTH_E2E_USER_RETENTION_DAYS} days'
+    AND NOT EXISTS (SELECT 1 FROM \"Session\" s WHERE s.\"userId\" = u.id)
+    AND NOT EXISTS (SELECT 1 FROM \"Account\" a WHERE a.\"userId\" = u.id)
+    AND NOT EXISTS (SELECT 1 FROM \"TenantMembership\" tm WHERE tm.\"userId\" = u.id)
+  RETURNING id
+) SELECT count(*) FROM d;")
+echo "[cleanup] Legacy E2E kullanıcı (>${AUTH_E2E_USER_RETENTION_DAYS} gün): ${E2E_USERS_DELETED} satır silindi"
 
 echo "[cleanup] Tamamlandı: $(date)"

@@ -116,6 +116,9 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F63 | Restore-drill evidence freshness was not enforced in security gate | operational/resilience | Medium | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-restore-drill-freshness.sh`, `scripts/verify-security-gate.sh`, `tests/security/restore-drill-freshness-script-guardrail.test.ts` | Enforce restore-drill log freshness when restore-drill cron is present |
 | F64 | Security SLO low terminal-sample state was not explicitly signaled to operators | observability/ops | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `scripts/check-security-slo.mjs`, `scripts/run-security-slo-report.sh`, `tests/security/security-slo-script-guardrail.test.ts`, `ops/README.md` | Add low-sample advisory signal and configurable warning control (`SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE`) |
 | F65 | Root repository hygiene allowed persistent untracked runner directory drift | operational/governance | Low | None | closed | 2026-03-04 | 2026-03-04 | codex | `/opt/.gitignore` | Ignore `actions-runner/` in repo root to keep status noise out of security/ops verification loops |
+| F66 | Register verification messaging could imply code delivery even when challenge issuance is blocked by conflict masking | auth/ux-neutrality | Low | Low | closed | 2026-03-05 | 2026-03-05 | codex | `modules/auth/components/register-form.tsx`, `messages/tr.ts`, `messages/en.ts` | Use neutral delivery message and add explicit recovery CTAs so UI does not imply successful delivery |
+| F67 | Legacy synthetic e2e users could remain in production data without bounded cleanup | data-hygiene/ops | Medium | None | closed | 2026-03-05 | 2026-03-05 | codex | `scripts/cleanup-db.sh`, `README.md` | Add targeted retention cleanup for legacy `e2e-unverified-*` users with strict safety guards and configurable retention |
+| F68 | Notification SLO low-sample advisory had no deterministic canary producer in runtime schedules | observability/ops | Medium | None | closed | 2026-03-05 | 2026-03-05 | codex | `scripts/run-notification-canary.sh`, `ops/cron/uppoint-notification-canary`, `tests/security/notification-canary-guardrail.test.ts`, `ops/RUNTIME_SERVICES_AND_CRON.md`, `ops/README.md` | Add low-risk notification canary enqueue flow, cron template, guardrail test, and docs/logrotate coverage |
 
 ## Change Log (Register-only)
 
@@ -189,6 +192,9 @@ Record only register updates here (not general product changes).
 | 2026-03-04 | F63 | Closed: restore-drill freshness check added and wired into security gate | `scripts/check-restore-drill-freshness.sh`, `scripts/verify-security-gate.sh`, `tests/security/restore-drill-freshness-script-guardrail.test.ts` |
 | 2026-03-04 | F64 | Closed: security SLO now emits low terminal-sample advisory signal | `scripts/check-security-slo.mjs`, `scripts/run-security-slo-report.sh`, `ops/README.md` |
 | 2026-03-04 | F65 | Closed: root-level runner directory is now ignored in git status | `/opt/.gitignore` |
+| 2026-03-05 | F66 | Closed: register verify-step messaging switched to neutral delivery copy and recovery CTAs | `modules/auth/components/register-form.tsx`, `messages/tr.ts`, `messages/en.ts` |
+| 2026-03-05 | F67 | Closed: cleanup now prunes stale legacy `e2e-unverified-*` synthetic users with retention + relation guards | `scripts/cleanup-db.sh`, `README.md` |
+| 2026-03-05 | F68 | Closed: notification canary enqueue flow operationalized via cron, docs, guardrail test, and logrotate coverage | `scripts/run-notification-canary.sh`, `ops/cron/uppoint-notification-canary`, `tests/security/notification-canary-guardrail.test.ts`, `ops/RUNTIME_SERVICES_AND_CRON.md`, `ops/README.md`, `ops/logrotate/uppoint-cloud` |
 
 ## Audit Output Contract
 

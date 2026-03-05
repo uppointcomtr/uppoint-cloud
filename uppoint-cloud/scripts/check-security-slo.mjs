@@ -86,6 +86,31 @@ async function main() {
       },
     },
   });
+  const notificationCanarySentCount = await prisma.notificationOutbox.count({
+    where: {
+      status: "SENT",
+      updatedAt: {
+        gte: since,
+      },
+      metadata: {
+        path: ["scope"],
+        equals: "ops-notification-canary",
+      },
+    },
+  });
+  const notificationCanaryFailedCount = await prisma.notificationOutbox.count({
+    where: {
+      status: "FAILED",
+      updatedAt: {
+        gte: since,
+      },
+      metadata: {
+        path: ["scope"],
+        equals: "ops-notification-canary",
+      },
+    },
+  });
+  const notificationCanaryTerminalCount = notificationCanarySentCount + notificationCanaryFailedCount;
   const terminalDeliveryCount = notificationSentCount + notificationFailedCount;
   const notificationFailureRatio = terminalDeliveryCount > 0
     ? notificationFailedCount / terminalDeliveryCount
@@ -126,12 +151,17 @@ async function main() {
       failed: notificationFailedCount,
     });
   }
-  if (terminalDeliveryCount < minNotificationTerminalSample && isTruthy(WARN_ON_LOW_NOTIFICATION_SAMPLE)) {
+  if (
+    terminalDeliveryCount < minNotificationTerminalSample
+    && notificationCanaryTerminalCount === 0
+    && isTruthy(WARN_ON_LOW_NOTIFICATION_SAMPLE)
+  ) {
     advisories.push({
       type: "notification_terminal_sample_low",
       terminal: terminalDeliveryCount,
       minTerminalSample: minNotificationTerminalSample,
-      note: "Failure-ratio alerting is not active until minimum terminal sample is reached.",
+      canaryTerminal: notificationCanaryTerminalCount,
+      note: "Failure-ratio alerting is not active until minimum terminal sample is reached and no canary terminal sample was observed.",
     });
   }
 
@@ -148,6 +178,9 @@ async function main() {
       failed: notificationFailedCount,
       terminal: terminalDeliveryCount,
       failureRatio: Number(notificationFailureRatio.toFixed(4)),
+      canarySent: notificationCanarySentCount,
+      canaryFailed: notificationCanaryFailedCount,
+      canaryTerminal: notificationCanaryTerminalCount,
       maxFailedAbsolute: maxNotificationFailedAbsolute,
       maxFailureRatio,
       minTerminalSample: minNotificationTerminalSample,

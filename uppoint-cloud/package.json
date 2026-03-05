@@ -24,6 +24,7 @@
     "verify:restore-drill-freshness": "bash ./scripts/check-restore-drill-freshness.sh",
     "verify:auth-abuse": "bash ./scripts/run-auth-abuse-check.sh",
     "verify:security-slo": "bash ./scripts/run-security-slo-report.sh",
+    "verify:notification-canary": "bash ./scripts/run-notification-canary.sh",
     "verify:findings-freshness": "node ./scripts/check-findings-freshness.mjs",
     "audit:anchor:export": "bash ./scripts/export-audit-anchor.sh",
     "audit:anchor:replicate": "bash ./scripts/replicate-audit-anchor.sh",

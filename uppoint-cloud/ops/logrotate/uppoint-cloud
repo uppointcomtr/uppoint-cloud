@@ -76,6 +76,16 @@ su root adm
     create 640 root adm
 }
 
+/var/log/uppoint-notification-canary.log {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 root adm
+}
+
 /var/log/uppoint-cloud/edge-audit-emit-check.log {
     daily
     rotate 30

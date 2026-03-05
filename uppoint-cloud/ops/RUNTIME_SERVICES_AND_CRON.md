@@ -30,6 +30,7 @@ Closed-system policy note:
 | `uppoint-redis-backup` | `40 2 * * *` | Redis backup | `/var/log/uppoint-redis-backup.log` | None (log-only) |
 | `uppoint-db-cleanup` | `0 3 * * *` | DB retention cleanup | `/var/log/uppoint-db-cleanup.log` | None (log-only) |
 | `uppoint-notification-dispatch` | `* * * * *` | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` | Message-level audit (`notification_delivery_terminal_failed`) on terminal failures |
+| `uppoint-notification-canary` | `*/30 * * * *` | Enqueue low-risk notification canary for delivery-path visibility | `/var/log/uppoint-notification-canary.log` | None (log-only; consumed by Security SLO sample logic) |
 | `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` | None (log-only; investigated via security gate/SLO pipeline) |
 | `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` | None in closed-system baseline |
 | `uppoint-audit-anchor-replication` | `50 3 * * *` | Off-host WORM replication of latest anchor | `/var/log/uppoint-audit-anchor-replication.log` (optional template; not deployed in closed-system baseline) | Disabled in closed-system baseline; owner-approved exception only |
@@ -47,6 +48,7 @@ Validation commands:
 ls -la /etc/cron.d/uppoint-*
 tail -n 100 /var/log/uppoint-audit-anchor-replication.log
 tail -n 100 /var/log/uppoint-auth-abuse-check.log
+tail -n 100 /var/log/uppoint-notification-canary.log
 tail -n 100 /var/log/uppoint-cloud/security-alerts.log
 tail -n 100 /var/log/uppoint-security-slo-report.log
 tail -n 100 /var/log/uppoint-security-gate-weekly.log

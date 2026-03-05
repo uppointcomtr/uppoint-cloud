@@ -205,9 +205,12 @@ export const trMessages = {
     verification: {
       emailCodeSent: "E-posta doğrulama kodu gönderildi.",
       emailCodeResent: "Yeni e-posta doğrulama kodu gönderildi.",
+      neutralDeliveryNotice: "Doğrulama adımı başlatıldı. Kod ulaşmazsa giriş veya şifre sıfırlama adımını kullanın.",
       accountExists: "Bu e-posta için kayıtlı bir hesap bulunuyor. Giriş yapabilir veya mevcut doğrulama adımlarını tamamlayabilirsiniz.",
       smsCodeSent: "Telefonunuza SMS doğrulama kodu gönderildi.",
       smsSentToPrefix: "Kod gönderilen telefon",
+      helpLoginCta: "Giriş yap",
+      helpResetCta: "Şifremi unuttum",
       verifyEmailCodeIdle: "E-posta kodunu doğrula",
       verifyEmailCodeLoading: "Doğrulanıyor...",
       verifySmsCodeIdle: "SMS kodunu doğrula ve tamamla",

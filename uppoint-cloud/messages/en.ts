@@ -205,9 +205,12 @@ export const enMessages = {
     verification: {
       emailCodeSent: "Email verification code has been sent.",
       emailCodeResent: "A new email verification code has been sent.",
+      neutralDeliveryNotice: "Verification has started. If no code arrives, use sign-in or password reset.",
       accountExists: "An account already exists for this email. You can sign in or continue the existing verification flow.",
       smsCodeSent: "SMS verification code has been sent to your phone.",
       smsSentToPrefix: "Code sent to",
+      helpLoginCta: "Sign in",
+      helpResetCta: "Forgot password?",
       verifyEmailCodeIdle: "Verify email code",
       verifyEmailCodeLoading: "Verifying...",
       verifySmsCodeIdle: "Verify SMS code and complete",

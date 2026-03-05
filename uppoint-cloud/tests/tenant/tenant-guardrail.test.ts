@@ -17,7 +17,10 @@ const APPROVED_TENANT_SCOPED_MODEL_FILES = new Set([
   "modules/notifications/server/outbox.ts",
 ]);
 
-const APPROVED_SCRIPT_TENANT_QUERY_FILES = new Set<string>([]);
+const APPROVED_SCRIPT_TENANT_QUERY_FILES = new Set<string>([
+  // Cleanup script checks TenantMembership relation to avoid deleting real tenant-linked users.
+  "scripts/cleanup-db.sh",
+]);
 const TENANT_SCOPED_PRISMA_PROPERTIES = new Set([
   "tenant",
   "tenantMembership",
