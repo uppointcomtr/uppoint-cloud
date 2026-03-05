@@ -18,8 +18,10 @@ describe("notification canary guardrail", () => {
 
     expect(source).toContain("ops-notification-canary");
     expect(source).toContain("UPPOINT_NOTIFICATION_CANARY_ENABLED");
+    expect(source).toContain("UPPOINT_NOTIFICATION_CANARY_MODE");
     expect(source).toContain("UPPOINT_NOTIFICATION_CANARY_EMAIL_TO");
     expect(source).toContain("UPPOINT_ALERT_EMAIL_TO");
-    expect(source).toContain("NOTIFICATION_PAYLOAD_SECRET");
+    expect(source).toContain("probe-only");
+    expect(source).toContain("enqueue-email");
   });
 });

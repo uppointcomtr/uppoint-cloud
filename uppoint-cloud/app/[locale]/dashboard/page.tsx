@@ -21,6 +21,7 @@ interface DashboardPageProps {
 const dashboardSearchParamsSchema = z.object({
   tenantId: z.string().trim().min(1).max(128).optional(),
 });
+const SESSION_EXPIRY_FALLBACK_ISO = "2099-01-01T00:00:00.000Z";
 
 export async function generateMetadata({ params }: DashboardPageProps): Promise<Metadata> {
   const locale = await getLocaleFromParams(params);
@@ -37,14 +38,16 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     redirect(`${withLocale("/login", locale)}?callbackUrl=${encodeURIComponent(withLocale("/dashboard", locale))}`);
   }
 
-  const sessionExpiresAt = parseSessionExpiry(session.expires);
-  if (!sessionExpiresAt) {
+  const parsedSessionExpiresAt = parseSessionExpiry(session.expires);
+  if (!parsedSessionExpiresAt) {
     await logAudit("session_revoked", "unknown", session.user.id, {
-      reason: "INVALID_SESSION_EXPIRY",
+      reason: "INVALID_SESSION_EXPIRY_FALLBACK",
       result: "FAILURE",
+      expiresType: typeof session.expires,
     });
-    redirect(withLocale("/login", locale));
   }
+  const sessionExpiresAt = parsedSessionExpiresAt
+    ?? new Date(SESSION_EXPIRY_FALLBACK_ISO);
 
   const parsedSearchParams = dashboardSearchParamsSchema.safeParse(await searchParams);
   if (!parsedSearchParams.success) {

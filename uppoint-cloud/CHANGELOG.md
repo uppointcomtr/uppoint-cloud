@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-03-05 (ops canary mode: probe-only default, no outbound mail)
+
+### Changed
+- Updated notification canary behavior to keep operational checks without sending email by default:
+  - `scripts/run-notification-canary.sh` now supports `UPPOINT_NOTIFICATION_CANARY_MODE` with:
+    - `probe-only` (default): DB + queue health probe only, no outbound mail.
+    - `enqueue-email`: legacy low-risk canary email enqueue mode.
+- Updated cron and ops docs to reflect the new default mode:
+  - `ops/cron/uppoint-notification-canary`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `ops/README.md`
+  - `README.md`
+- Updated canary guardrail test expectations:
+  - `tests/security/notification-canary-guardrail.test.ts`
+
+## 2026-03-05 (notification latency: outbox immediate-dispatch optimization)
+
+### Changed
+- Kept the outbox + cron architecture intact while reducing OTP delivery delay:
+  - `modules/notifications/server/outbox.ts` now triggers a throttled best-effort inline dispatch after enqueue (`EMAIL`/`SMS`).
+  - Cron dispatcher remains the canonical reliability fallback and still processes pending records every minute.
+- Updated docs for the delivery path:
+  - `README.md` now clarifies immediate dispatch + cron fallback behavior.
+
+## 2026-03-05 (auth fix: otp login session drop on invalid expiry)
+
+### Fixed
+- Prevented OTP login from immediately dropping users to `/login` when `session.expires` cannot be parsed on dashboard:
+  - `app/[locale]/dashboard/page.tsx` now uses a safe fallback expiry timestamp instead of redirecting away.
+  - invalid expiry now emits audit metadata with `reason=INVALID_SESSION_EXPIRY_FALLBACK` for observability.
+- Hardened session expiry parsing to accept additional safe formats:
+  - `modules/auth/server/session-expiry.ts` now supports ISO strings, `Date`, epoch seconds, and epoch milliseconds.
+- Added parser coverage for epoch values:
+  - `tests/auth/session-expiry.test.ts`.
+
 ## 2026-03-05 (dashboard v1: control-plane oriented workspace without KVM operations)
 
 ### Added
@@ -35,6 +70,12 @@
 - Fixed login/register redirect loop for corrupted session expiry:
   - login/register now redirect to dashboard only when `session.expires` is parseable,
   - prevents `dashboard -> login -> dashboard` infinite loop when stale/corrupted session data exists.
+- Fixed edge auth redirect loop on stale/invalid JWT:
+  - `proxy.ts` session token validation now requires valid non-expired `exp` claim,
+  - stale tokens no longer trigger auth-route redirect to dashboard.
+- Hardened proxy auth-route redirect behavior:
+  - edge middleware now defers `/login` and `/register` redirect decisions to page-level session validation,
+  - prevents middleware-level redirect loops when session payload integrity is degraded.
 - Updated dashboard loading state:
   - `app/[locale]/dashboard/loading.tsx` now uses skeleton layout blocks.
 - Updated localization dictionaries:
@@ -42,6 +83,9 @@
   - `messages/en.ts`
   - dashboard copy and section labels aligned with new control-plane structure.
 - Updated high-level README milestone wording to reflect Dashboard V1 instead of placeholder.
+- Disabled client prefetch on dashboard quick-action links that target auth redirect routes:
+  - `modules/dashboard/components/dashboard-panel.tsx` (`/forgot-password`, `/login`)
+  - prevents background `/dashboard <-> /login` redirect ping-pong in authenticated sessions.
 
 ## 2026-03-05 (security/ops closure: F66-F68)
 

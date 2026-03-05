@@ -17,6 +17,15 @@ normalize_bool() {
   esac
 }
 
+normalize_canary_mode() {
+  local raw="${1:-}"
+  case "$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]' | xargs)" in
+    ""|probe-only|probe_only|probe) printf 'probe-only' ;;
+    enqueue-email|enqueue_email|email) printf 'enqueue-email' ;;
+    *) printf 'invalid' ;;
+  esac
+}
+
 seal_notification_payload() {
   local plain_text="$1"
 
@@ -44,6 +53,7 @@ process.stdout.write(sealNotificationPayloadWithSecret(plainText, secret));
 DATABASE_URL="${DATABASE_URL:-}"
 NOTIFICATION_PAYLOAD_SECRET="${NOTIFICATION_PAYLOAD_SECRET:-}"
 CANARY_ENABLED="${UPPOINT_NOTIFICATION_CANARY_ENABLED:-}"
+CANARY_MODE="${UPPOINT_NOTIFICATION_CANARY_MODE:-}"
 CANARY_EMAIL_TO="${UPPOINT_NOTIFICATION_CANARY_EMAIL_TO:-}"
 
 if [ -z "$DATABASE_URL" ]; then
@@ -55,6 +65,9 @@ fi
 if [ -z "$CANARY_ENABLED" ]; then
   CANARY_ENABLED="$(read_env_value "$ENV_FILE" "UPPOINT_NOTIFICATION_CANARY_ENABLED")"
 fi
+if [ -z "$CANARY_MODE" ]; then
+  CANARY_MODE="$(read_env_value "$ENV_FILE" "UPPOINT_NOTIFICATION_CANARY_MODE")"
+fi
 if [ -z "$CANARY_EMAIL_TO" ]; then
   CANARY_EMAIL_TO="$(read_env_value "$ENV_FILE" "UPPOINT_NOTIFICATION_CANARY_EMAIL_TO")"
 fi
@@ -63,22 +76,20 @@ if [ -z "$CANARY_EMAIL_TO" ]; then
 fi
 
 CANARY_ENABLED="$(normalize_bool "${CANARY_ENABLED:-true}")"
+CANARY_MODE="$(normalize_canary_mode "${CANARY_MODE:-probe-only}")"
 
 if [ "$CANARY_ENABLED" != "true" ]; then
   echo "[notification-canary] skipped: UPPOINT_NOTIFICATION_CANARY_ENABLED=false"
   exit 0
 fi
 
+if [ "$CANARY_MODE" = "invalid" ]; then
+  echo "[notification-canary] invalid mode: UPPOINT_NOTIFICATION_CANARY_MODE must be 'probe-only' or 'enqueue-email'." >&2
+  exit 1
+fi
+
 if [ -z "$DATABASE_URL" ]; then
   echo "[notification-canary] DATABASE_URL is required." >&2
-  exit 1
-fi
-if [ -z "$NOTIFICATION_PAYLOAD_SECRET" ]; then
-  echo "[notification-canary] NOTIFICATION_PAYLOAD_SECRET is required." >&2
-  exit 1
-fi
-if [ -z "$CANARY_EMAIL_TO" ]; then
-  echo "[notification-canary] recipient is required (UPPOINT_NOTIFICATION_CANARY_EMAIL_TO or UPPOINT_ALERT_EMAIL_TO)." >&2
   exit 1
 fi
 
@@ -86,6 +97,35 @@ configure_postgres_connection "$DATABASE_URL"
 
 HOST_LABEL="$(hostname -f 2>/dev/null || hostname)"
 TS_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+if [ "$CANARY_MODE" = "probe-only" ]; then
+  STATS_RAW="$(
+    psql -v ON_ERROR_STOP=1 -qAt -c "
+      SELECT
+        COALESCE((SELECT COUNT(*) FROM \"NotificationOutbox\" WHERE \"status\"='PENDING'::\"NotificationOutboxStatus\" AND \"nextAttemptAt\" <= NOW()), 0),
+        COALESCE((SELECT COUNT(*) FROM \"NotificationOutbox\" WHERE \"status\"='SENT'::\"NotificationOutboxStatus\" AND \"updatedAt\" >= NOW() - INTERVAL '30 minutes'), 0),
+        COALESCE((SELECT COUNT(*) FROM \"NotificationOutbox\" WHERE \"status\"='FAILED'::\"NotificationOutboxStatus\" AND \"updatedAt\" >= NOW() - INTERVAL '30 minutes'), 0)
+    "
+  )"
+
+  IFS='|' read -r PENDING_DUE SENT_30M FAILED_30M <<< "$STATS_RAW"
+  PENDING_DUE="${PENDING_DUE:-0}"
+  SENT_30M="${SENT_30M:-0}"
+  FAILED_30M="${FAILED_30M:-0}"
+
+  echo "[notification-canary] scope=ops-notification-canary mode=probe-only ts=${TS_UTC} host=${HOST_LABEL} pending_due=${PENDING_DUE} sent_30m=${SENT_30M} failed_30m=${FAILED_30M}"
+  exit 0
+fi
+
+if [ -z "$NOTIFICATION_PAYLOAD_SECRET" ]; then
+  echo "[notification-canary] NOTIFICATION_PAYLOAD_SECRET is required for enqueue-email mode." >&2
+  exit 1
+fi
+if [ -z "$CANARY_EMAIL_TO" ]; then
+  echo "[notification-canary] recipient is required (UPPOINT_NOTIFICATION_CANARY_EMAIL_TO or UPPOINT_ALERT_EMAIL_TO) in enqueue-email mode." >&2
+  exit 1
+fi
+
 CANARY_ID="ops_notification_canary_$(date +%s%N)"
 SUBJECT="[UPPOINT][CANARY] Notification delivery health check (${HOST_LABEL})"
 BODY=$(

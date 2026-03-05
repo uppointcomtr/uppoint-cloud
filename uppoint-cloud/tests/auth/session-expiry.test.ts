@@ -20,4 +20,14 @@ describe("parseSessionExpiry", () => {
     expect(parsedFromDate).toBeInstanceOf(Date);
     expect(parsedFromDate?.toISOString()).toBe(isoValue);
   });
+
+  it("accepts epoch seconds and epoch milliseconds", () => {
+    const epochSeconds = 1_772_712_000; // 2026-03-05T12:00:00.000Z
+    const epochMilliseconds = 1_772_712_000_000;
+
+    expect(parseSessionExpiry(epochSeconds)?.toISOString()).toBe("2026-03-05T12:00:00.000Z");
+    expect(parseSessionExpiry(String(epochSeconds))?.toISOString()).toBe("2026-03-05T12:00:00.000Z");
+    expect(parseSessionExpiry(epochMilliseconds)?.toISOString()).toBe("2026-03-05T12:00:00.000Z");
+    expect(parseSessionExpiry(String(epochMilliseconds))?.toISOString()).toBe("2026-03-05T12:00:00.000Z");
+  });
 });

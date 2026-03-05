@@ -1,7 +1,7 @@
-# Uppoint Cloud notification delivery canary (every 30 minutes)
+# Uppoint Cloud notification canary (every 30 minutes)
 SHELL=/bin/bash
 PATH=/usr/bin:/bin
 
-# Enqueues a low-risk canary email into NotificationOutbox.
-# Dispatcher handles actual delivery with existing auth and rate limits.
+# Default mode is probe-only (no outbound email send).
+# Optional legacy mode enqueues a low-risk canary email via UPPOINT_NOTIFICATION_CANARY_MODE=enqueue-email.
 */30 * * * * root /usr/bin/env -i PATH=/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-notification-canary.lock /usr/sbin/runuser -u www-data -- /opt/uppoint-cloud/scripts/run-notification-canary.sh >> /var/log/uppoint-notification-canary.log 2>&1

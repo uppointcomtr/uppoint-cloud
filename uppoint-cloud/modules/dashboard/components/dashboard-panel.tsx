@@ -342,10 +342,14 @@ export function DashboardPanel({ locale, dictionary, overview }: DashboardPanelP
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               <Button asChild variant="outline">
-                <Link href={withLocale("/forgot-password", locale)}>{dashboard.quickActions.resetPassword}</Link>
+                <Link prefetch={false} href={withLocale("/forgot-password", locale)}>
+                  {dashboard.quickActions.resetPassword}
+                </Link>
               </Button>
               <Button asChild variant="outline">
-                <Link href={withLocale("/login", locale)}>{dashboard.quickActions.openLogin}</Link>
+                <Link prefetch={false} href={withLocale("/login", locale)}>
+                  {dashboard.quickActions.openLogin}
+                </Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href={overview.runtime.appUrl} target="_blank" rel="noreferrer">{dashboard.quickActions.openPublicApp}</Link>

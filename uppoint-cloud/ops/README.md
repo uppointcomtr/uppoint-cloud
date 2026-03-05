@@ -385,12 +385,14 @@ Security SLO report:
 - Exit code `1` indicates threshold breach and should be treated as an alert signal.
 - When low-sample advisory is active, the report prints `WARN` but keeps exit code `0` (informational signal, not a hard breach).
 
-Notification delivery canary:
-- `run-notification-canary.sh` enqueues a low-risk email (`scope=ops-notification-canary`) every 30 minutes via cron.
-- This keeps terminal-delivery sampling objective in low-traffic periods and prevents blind spots in ratio-based notification SLO checks.
+Notification canary:
+- `run-notification-canary.sh` runs every 30 minutes via cron with `scope=ops-notification-canary`.
+- Default mode is `probe-only` (no outbound email send): it performs DB connectivity and notification queue health checks.
+- Optional legacy mode `enqueue-email` can enqueue a low-risk canary email when explicitly enabled.
 - Optional canary env keys:
   - `UPPOINT_NOTIFICATION_CANARY_ENABLED` (default `true`)
-  - `UPPOINT_NOTIFICATION_CANARY_EMAIL_TO` (optional; falls back to `UPPOINT_ALERT_EMAIL_TO`)
+  - `UPPOINT_NOTIFICATION_CANARY_MODE` (default `probe-only`; allowed: `probe-only`, `enqueue-email`)
+  - `UPPOINT_NOTIFICATION_CANARY_EMAIL_TO` (optional; only used by `enqueue-email`, falls back to `UPPOINT_ALERT_EMAIL_TO`)
 
 Weekly security gate cron:
 - `uppoint-security-gate-weekly` runs `scripts/verify-security-gate.sh` every Sunday at `05:30`.

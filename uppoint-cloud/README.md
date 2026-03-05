@@ -28,7 +28,9 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - JWT session revocation via `User.tokenVersion` checks
   - Atomic one-time token/code consumption for login/register/password-reset challenge flows
   - Database-backed auth persistence (Auth.js + Prisma adapter)
-  - Notification outbox + async dispatcher for SMTP email + Verimor SMS (auth endpoints no longer block on provider latency)
+  - Notification outbox + async dispatcher for SMTP email + Verimor SMS
+    - auth flows enqueue notifications and trigger a best-effort immediate dispatch
+    - minute-based cron dispatcher remains the reliability fallback
   - Token-based password reset completion after dual verification
   - Identifier + IP based auth rate-limiting (email/phone/user + IP)
 - Root entry (`/` and `/:locale`) redirects directly to localized login page
@@ -173,8 +175,9 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (optional, default `0.25`)
 - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (optional, default `20`; minimum terminal delivery sample before failure-ratio alerts are enforced)
 - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (optional, default `true`; emits advisory when terminal sample is below ratio-threshold activation window)
-- `UPPOINT_NOTIFICATION_CANARY_ENABLED` (optional, default `true`; enables low-risk delivery canary enqueue)
-- `UPPOINT_NOTIFICATION_CANARY_EMAIL_TO` (optional, canary recipient; falls back to `UPPOINT_ALERT_EMAIL_TO`)
+- `UPPOINT_NOTIFICATION_CANARY_ENABLED` (optional, default `true`; enables notification canary cron logic)
+- `UPPOINT_NOTIFICATION_CANARY_MODE` (optional, default `probe-only`; allowed: `probe-only`, `enqueue-email`)
+- `UPPOINT_NOTIFICATION_CANARY_EMAIL_TO` (optional, canary recipient only for `enqueue-email`; falls back to `UPPOINT_ALERT_EMAIL_TO`)
 
 Closed-system deployment policy:
 - Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.

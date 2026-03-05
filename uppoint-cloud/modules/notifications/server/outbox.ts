@@ -18,6 +18,11 @@ const MAX_ALLOWED_BATCH_SIZE = 200;
 const MAX_SCOPE_PARTITION_SIZE = 5;
 const LOCK_STALE_SECONDS = 120;
 const MAX_BACKOFF_SECONDS = 15 * 60;
+const IMMEDIATE_DISPATCH_BATCH_SIZE = 10;
+const IMMEDIATE_DISPATCH_THROTTLE_MS = 5_000;
+
+let immediateDispatchInFlight: Promise<void> | null = null;
+let lastImmediateDispatchAtMs = 0;
 
 interface NotificationOutboxRecord {
   id: string;
@@ -231,6 +236,31 @@ function resolveScopePartitionSize(batchSize: number): number {
   return Math.max(1, Math.min(MAX_SCOPE_PARTITION_SIZE, scaled || 1));
 }
 
+function triggerImmediateDispatchBestEffort(): void {
+  if (env.NODE_ENV === "test") {
+    return;
+  }
+
+  const nowMs = Date.now();
+  if (immediateDispatchInFlight || nowMs - lastImmediateDispatchAtMs < IMMEDIATE_DISPATCH_THROTTLE_MS) {
+    return;
+  }
+
+  lastImmediateDispatchAtMs = nowMs;
+  immediateDispatchInFlight = dispatchNotificationOutboxBatch({
+    batchSize: IMMEDIATE_DISPATCH_BATCH_SIZE,
+    lockOwner: `inline-${randomUUID()}`,
+  })
+    .then(() => undefined)
+    .catch((error) => {
+      // Best-effort optimization: cron dispatcher remains the canonical fallback.
+      console.error("Immediate notification dispatch attempt failed", error);
+    })
+    .finally(() => {
+      immediateDispatchInFlight = null;
+    });
+}
+
 export async function enqueueEmailNotification(
   input: {
     tenantId?: string;
@@ -258,6 +288,9 @@ export async function enqueueEmailNotification(
     body: input.text,
     metadata: input.metadata,
   });
+
+  // Keep outbox architecture, but reduce OTP delivery latency without waiting for next cron tick.
+  triggerImmediateDispatchBestEffort();
 }
 
 export async function enqueueSmsNotification(
@@ -285,6 +318,9 @@ export async function enqueueSmsNotification(
     body: input.message,
     metadata: input.metadata,
   });
+
+  // Keep outbox architecture, but reduce OTP delivery latency without waiting for next cron tick.
+  triggerImmediateDispatchBestEffort();
 }
 
 export interface DispatchOutboxResult {

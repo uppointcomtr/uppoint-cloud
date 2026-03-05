@@ -11,7 +11,7 @@ import {
   resolveAllowedHosts,
   resolveAllowedOrigins,
 } from "@/lib/security/request-guards";
-import { resolveAuthRedirect, shouldPreserveCallbackUrl } from "@/modules/auth/server/route-access";
+import { AUTH_ROUTES, resolveAuthRedirect, shouldPreserveCallbackUrl } from "@/modules/auth/server/route-access";
 import { defaultLocale } from "@/modules/i18n/config";
 import {
   extractLocaleFromPath,
@@ -237,6 +237,7 @@ interface SessionTokenLike {
   sessionJti?: unknown;
   tokenVersion?: unknown;
   revoked?: unknown;
+  exp?: unknown;
 }
 
 function isValidEdgeSessionToken(token: SessionTokenLike | null): boolean {
@@ -257,6 +258,11 @@ function isValidEdgeSessionToken(token: SessionTokenLike | null): boolean {
   }
 
   if (typeof token.tokenVersion !== "number" || !Number.isInteger(token.tokenVersion) || token.tokenVersion < 0) {
+    return false;
+  }
+
+  const nowEpochSeconds = Math.floor(Date.now() / 1000);
+  if (typeof token.exp !== "number" || !Number.isFinite(token.exp) || token.exp <= nowEpochSeconds) {
     return false;
   }
 
@@ -362,7 +368,22 @@ export async function proxy(request: NextRequest) {
       : "next-auth.session-token",
   });
 
-  const redirectPath = resolveAuthRedirect(pathname, isValidEdgeSessionToken(token as SessionTokenLike | null));
+  const normalizedPathname = stripLocaleFromPath(pathname);
+  const isAuthenticated = isValidEdgeSessionToken(token as SessionTokenLike | null);
+
+  if (isAuthenticated && AUTH_ROUTES.has(normalizedPathname)) {
+    // Security-sensitive: defer auth-route redirect decisions to page-level session validation.
+    return withSecurityHeaders(
+      NextResponse.next({
+        request: {
+          headers: forwardHeaders,
+        },
+      }),
+      requestId,
+    );
+  }
+
+  const redirectPath = resolveAuthRedirect(pathname, isAuthenticated);
 
   if (!redirectPath) {
     return withSecurityHeaders(
@@ -378,7 +399,7 @@ export async function proxy(request: NextRequest) {
   const destination = request.nextUrl.clone();
   destination.pathname = redirectPath;
 
-  if (!token && shouldPreserveCallbackUrl(stripLocaleFromPath(pathname))) {
+  if (!token && shouldPreserveCallbackUrl(normalizedPathname)) {
     destination.searchParams.set("callbackUrl", pathname);
   }
 
