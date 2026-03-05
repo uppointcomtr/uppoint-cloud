@@ -29,6 +29,9 @@
 - Added explicit tenant selection UX on dashboard:
   - dashboard overview now includes active tenant membership options,
   - sidebar and tenant section provide scoped `tenantId` links for multi-tenant users.
+- Added fail-closed session expiry validation on dashboard:
+  - invalid `session.expires` values are audited and redirected to localized login,
+  - prevents server-side `Invalid time value` crashes in session timeout rendering.
 - Updated dashboard loading state:
   - `app/[locale]/dashboard/loading.tsx` now uses skeleton layout blocks.
 - Updated localization dictionaries:

@@ -36,6 +36,15 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     redirect(`${withLocale("/login", locale)}?callbackUrl=${encodeURIComponent(withLocale("/dashboard", locale))}`);
   }
 
+  const sessionExpiresAt = new Date(session.expires);
+  if (Number.isNaN(sessionExpiresAt.getTime())) {
+    await logAudit("session_revoked", "unknown", session.user.id, {
+      reason: "INVALID_SESSION_EXPIRY",
+      result: "FAILURE",
+    });
+    redirect(withLocale("/login", locale));
+  }
+
   const parsedSearchParams = dashboardSearchParamsSchema.safeParse(await searchParams);
   if (!parsedSearchParams.success) {
     await logAudit("tenant_access_denied", "unknown", session.user.id, {
@@ -46,7 +55,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
   const overview = await getDashboardOverview({
     userId: session.user.id,
-    sessionExpiresAt: session.expires,
+    sessionExpiresAt: sessionExpiresAt.toISOString(),
     tenantId: parsedSearchParams.success ? parsedSearchParams.data.tenantId : undefined,
   });
 
