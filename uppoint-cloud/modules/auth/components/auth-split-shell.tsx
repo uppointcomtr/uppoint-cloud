@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
+import { Headset, Server, ShieldCheck } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -9,51 +10,119 @@ import type { Dictionary } from "@/modules/i18n/dictionaries";
 interface AuthSplitShellProps {
   locale: Locale;
   header: Dictionary["header"];
+  shell: Dictionary["authShell"];
   children: ReactNode;
 }
 
-export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps) {
+export function AuthSplitShell({ locale, header, shell, children }: AuthSplitShellProps) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4 sm:p-8">
-      {/* Glow 1 — top-left, large, primary */}
-      <div aria-hidden className="pointer-events-none absolute -left-32 -top-32 h-[480px] w-[480px] rounded-full bg-primary/15 blur-[120px] dark:bg-primary/20" />
-      {/* Glow 2 — bottom-right, medium, primary tint */}
-      <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-24 h-[360px] w-[360px] rounded-full bg-primary/10 blur-[100px] dark:bg-primary/15" />
-      {/* Glow 3 — center-right, small accent */}
-      <div aria-hidden className="pointer-events-none absolute right-[15%] top-[30%] h-[220px] w-[220px] rounded-full bg-primary/8 blur-[80px] dark:bg-primary/12" />
+    <main className="relative min-h-screen overflow-hidden bg-background px-4 py-6 sm:px-8 sm:py-8">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-60"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, color-mix(in oklab, var(--border) 35%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--border) 35%, transparent) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,color-mix(in_oklab,var(--primary)_12%,transparent),transparent_42%),radial-gradient(circle_at_80%_10%,color-mix(in_oklab,var(--primary)_10%,transparent),transparent_48%)]" />
 
-      {/* Centered card */}
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-border/60 bg-background shadow-2xl dark:border-white/10 dark:shadow-black/60">
-        <div className="flex flex-col px-8 py-8 sm:px-10">
-          <div className="flex items-center justify-between">
-            <Image
-              src="/logo/uppoint-logo-black.webp"
-              alt="Uppoint Cloud"
-              width={416}
-              height={127}
-              className="block w-[180px] h-auto dark:hidden"
-            />
-            <Image
-              src="/logo/Uppoint-logo-wh.webp"
-              alt="Uppoint Cloud"
-              width={416}
-              height={127}
-              className="hidden w-[180px] h-auto dark:block"
-            />
-            <div className="flex items-center gap-2">
-              <ThemeToggle labels={header.theme} iconOnly />
-              <LocaleSwitcher locale={locale} labels={header.locales} />
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[minmax(0,540px)_minmax(0,1fr)]">
+        <section className="overflow-hidden rounded-3xl border border-border/70 bg-card/95 shadow-[0_30px_80px_-48px_rgba(15,23,42,0.65)] backdrop-blur-xl dark:bg-card/90">
+          <div className="flex flex-col px-6 py-6 sm:px-10 sm:py-8">
+            <div className="flex items-center justify-between">
+              <Image
+                src="/logo/uppoint-logo-black.webp"
+                alt="Uppoint Cloud"
+                width={416}
+                height={127}
+                className="block h-auto w-[176px] dark:hidden"
+              />
+              <Image
+                src="/logo/Uppoint-logo-wh.webp"
+                alt="Uppoint Cloud"
+                width={416}
+                height={127}
+                className="hidden h-auto w-[176px] dark:block"
+              />
+              <div className="flex items-center gap-2">
+                <ThemeToggle
+                  labels={header.theme}
+                  iconOnly
+                  className="border-border/70 bg-background/90 dark:bg-background/70"
+                />
+                <LocaleSwitcher
+                  locale={locale}
+                  labels={header.locales}
+                  className="border-border/70 bg-background/90 dark:bg-background/70"
+                />
+              </div>
+            </div>
+
+            <div className="py-6 sm:py-8">
+              {children}
+            </div>
+
+            <p className="text-center text-xs font-medium tracking-wide text-muted-foreground">
+              © {new Date().getFullYear()} Uppoint Cloud
+            </p>
+          </div>
+        </section>
+
+        <aside className="relative hidden overflow-hidden rounded-3xl border border-border/70 bg-card/90 shadow-[0_30px_80px_-48px_rgba(15,23,42,0.65)] lg:block">
+          <Image
+            src="/images/auth/auth-side-hero.jpg"
+            alt="Uppoint Cloud secure infrastructure"
+            fill
+            priority
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(125deg,rgba(4,9,20,0.84),rgba(7,14,30,0.58),rgba(4,9,20,0.84))]" />
+          <div className="absolute inset-0 p-10 xl:p-12">
+            <p className="text-xs font-semibold tracking-[0.18em] text-white/80">{shell.eyebrow}</p>
+            <h1 className="mt-4 max-w-xl text-3xl font-semibold leading-tight text-white xl:text-[2.05rem]">
+              {shell.title}
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-white/80">
+              {shell.description}
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {shell.badges.map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-white/25 bg-black/25 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-10 grid gap-4">
+              {shell.highlights.map((highlight, index) => {
+                const Icon = index === 0 ? Headset : index === 1 ? ShieldCheck : Server;
+
+                return (
+                  <div
+                    key={highlight.title}
+                    className="rounded-2xl border border-white/15 bg-black/30 p-4 backdrop-blur-sm"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/10 text-white">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-white">{highlight.title}</p>
+                        <p className="text-xs leading-5 text-white/75">{highlight.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-
-          <div className="py-8">
-            {children}
-          </div>
-
-          <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Uppoint Cloud
-          </p>
-        </div>
+        </aside>
       </div>
     </main>
   );

@@ -39,6 +39,8 @@ interface NavItem {
   label: string;
 }
 
+const corporateCardClass = "border-border/70 bg-card/90 shadow-sm";
+
 function formatDateTime(value: Date | null, locale: Locale): string {
   if (!value) {
     return "—";
@@ -119,10 +121,10 @@ function createTenantHref(
 
 function navButtonClass(isActive: boolean): string {
   if (isActive) {
-    return "block rounded-md bg-accent px-3 py-2 font-medium text-foreground";
+    return "block rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 font-semibold text-foreground shadow-sm";
   }
 
-  return "block rounded-md px-3 py-2 text-muted-foreground hover:bg-accent hover:text-foreground";
+  return "block rounded-lg border border-transparent px-3 py-2.5 text-muted-foreground transition-colors hover:border-border/60 hover:bg-accent/60 hover:text-foreground";
 }
 
 function renderQuickActions(
@@ -131,7 +133,7 @@ function renderQuickActions(
   appUrl: string,
 ) {
   return (
-    <Card className="border-border/60">
+    <Card className={corporateCardClass}>
       <CardHeader>
         <CardTitle className="text-base">{labels.title}</CardTitle>
         <CardDescription>{labels.description}</CardDescription>
@@ -163,7 +165,7 @@ function renderSecurityCard(
   labels: DashboardPanelProps["dictionary"]["dashboard"]["security"],
 ) {
   return (
-    <Card className="border-border/60">
+    <Card className={corporateCardClass}>
       <CardHeader>
         <CardTitle className="text-base">{labels.title}</CardTitle>
         <CardDescription>{labels.description}</CardDescription>
@@ -202,7 +204,7 @@ function renderNotificationsCard(
   const hasNotificationIssues = overview.notifications.failed24h > 0;
 
   return (
-    <Card className="border-border/60">
+    <Card className={corporateCardClass}>
       <CardHeader>
         <CardTitle className="text-base">{labels.title}</CardTitle>
         <CardDescription>{labels.description}</CardDescription>
@@ -237,7 +239,7 @@ function renderTenantCard(
   labels: DashboardPanelProps["dictionary"]["dashboard"]["tenant"],
 ) {
   return (
-    <Card className="border-border/60">
+    <Card className={corporateCardClass}>
       <CardHeader>
         <CardTitle className="text-base">{labels.title}</CardTitle>
         <CardDescription>{labels.description}</CardDescription>
@@ -335,7 +337,7 @@ function renderOverviewCards(
 
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <Card className="border-border/60">
+      <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">{dictionary.session.title}</CardTitle>
           <CardDescription>{dictionary.session.description}</CardDescription>
@@ -355,7 +357,7 @@ function renderOverviewCards(
         </CardContent>
       </Card>
 
-      <Card className="border-border/60">
+      <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">{dictionary.verification.title}</CardTitle>
           <CardDescription>{dictionary.verification.description}</CardDescription>
@@ -372,7 +374,7 @@ function renderOverviewCards(
         </CardContent>
       </Card>
 
-      <Card className="border-border/60">
+      <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">{dictionary.risk.title}</CardTitle>
           <CardDescription>{dictionary.risk.description}</CardDescription>
@@ -388,7 +390,7 @@ function renderOverviewCards(
         </CardContent>
       </Card>
 
-      <Card className="border-border/60">
+      <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">{dictionary.runtime.title}</CardTitle>
           <CardDescription>{dictionary.runtime.description}</CardDescription>
@@ -426,7 +428,15 @@ export function DashboardPanel({
   ];
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 10% 8%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 42%), radial-gradient(circle at 88% 4%, color-mix(in oklab, var(--primary) 7%, transparent), transparent 44%)",
+        }}
+      />
       <SessionTimeoutWarning
         locale={locale}
         dictionary={dictionary.sessionTimeout}
@@ -434,23 +444,23 @@ export function DashboardPanel({
       />
 
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-border/60 bg-card/70 p-5 backdrop-blur">
+        <aside className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm backdrop-blur xl:sticky xl:top-6 xl:h-[fit-content]">
           <div className="space-y-4">
             <Image
               src="/logo/uppoint-logo-black.webp"
               alt="Uppoint Cloud"
               width={416}
               height={127}
-              className="block h-auto w-[150px] dark:hidden"
+              className="block h-auto w-[156px] dark:hidden"
             />
             <Image
               src="/logo/Uppoint-logo-wh.webp"
               alt="Uppoint Cloud"
               width={416}
               height={127}
-              className="hidden h-auto w-[150px] dark:block"
+              className="hidden h-auto w-[156px] dark:block"
             />
-            <p className="text-sm text-muted-foreground">{dashboard.description}</p>
+            <p className="text-sm leading-6 text-muted-foreground">{dashboard.description}</p>
           </div>
 
           <nav className="mt-6 space-y-2 text-sm">
@@ -465,10 +475,12 @@ export function DashboardPanel({
             ))}
           </nav>
 
-          <div className="mt-6 rounded-xl border border-border/60 bg-background/70 p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">{dashboard.tenant.title}</p>
+          <div className="mt-6 rounded-xl border border-border/60 bg-background/80 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {dashboard.tenant.title}
+            </p>
             {overview.tenant ? (
-              <div className="mt-2 space-y-1 text-sm">
+              <div className="mt-3 space-y-1 text-sm">
                 <p>
                   <span className="text-muted-foreground">{dashboard.tenant.tenantLabel}:</span> {overview.tenant.tenantId}
                 </p>
@@ -482,7 +494,7 @@ export function DashboardPanel({
               </p>
             )}
             {overview.tenantOptions.length > 1 ? (
-              <div className="mt-3 space-y-2">
+              <div className="mt-4 space-y-2">
                 <p className="text-xs text-muted-foreground">{dashboard.tenant.selectorLabel}</p>
                 <div className="flex flex-wrap gap-2">
                   {overview.tenantOptions.map((option) => (
@@ -508,11 +520,11 @@ export function DashboardPanel({
         </aside>
 
         <section className="space-y-6">
-          <header className="rounded-2xl border border-border/60 bg-card/70 p-5 backdrop-blur">
+          <header className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm backdrop-blur">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <h1 className="text-2xl font-semibold">{dashboard.title}</h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm font-medium text-muted-foreground">
                   {dashboard.topbar.accountLabel}: {overview.user.email}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -520,8 +532,16 @@ export function DashboardPanel({
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                <ThemeToggle labels={dictionary.header.theme} iconOnly />
-                <LocaleSwitcher locale={locale} labels={dictionary.header.locales} />
+                <ThemeToggle
+                  labels={dictionary.header.theme}
+                  iconOnly
+                  className="border-border/70 bg-background/85 dark:bg-background/70"
+                />
+                <LocaleSwitcher
+                  locale={locale}
+                  labels={dictionary.header.locales}
+                  className="border-border/70 bg-background/85 dark:bg-background/70"
+                />
                 <ProfileMenu
                   locale={locale}
                   dictionary={dashboard.profileMenu}

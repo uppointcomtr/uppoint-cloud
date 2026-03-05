@@ -88,19 +88,26 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
         <div
           role="menu"
           aria-label={dictionary.menuLabel}
-          className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-border/60 bg-card p-2 shadow-lg"
+          className="absolute right-0 z-50 mt-2 w-[22rem] rounded-2xl border border-border/70 bg-card/95 p-3 shadow-[0_30px_70px_-40px_rgba(15,23,42,0.75)] backdrop-blur"
         >
-          <div className="mb-2 rounded-lg border border-border/50 bg-background/60 p-3">
-            <p className="truncate text-sm font-semibold">{displayName}</p>
-            <p className="truncate text-xs text-muted-foreground">{email}</p>
+          <div className="mb-3 rounded-xl border border-border/60 bg-background/80 p-3">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <UserCircle2 className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 space-y-0.5">
+                <p className="truncate text-sm font-semibold">{displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">{email}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Link
               href={dashboardPath}
               role="menuitem"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
             >
               <UserCircle2 className="h-4 w-4 text-muted-foreground" />
               {dictionary.accountOverview}
@@ -109,7 +116,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
               href={securityPath}
               role="menuitem"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
             >
               <ShieldCheck className="h-4 w-4 text-muted-foreground" />
               {dictionary.securityCenter}
@@ -118,7 +125,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
               href={notificationsPath}
               role="menuitem"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
             >
               <BellRing className="h-4 w-4 text-muted-foreground" />
               {dictionary.notificationCenter}
@@ -127,7 +134,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
               href={tenantPath}
               role="menuitem"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
             >
               <Building2 className="h-4 w-4 text-muted-foreground" />
               {dictionary.tenantContext}
@@ -136,18 +143,18 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
               href={forgotPasswordPath}
               role="menuitem"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-accent"
+              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
             >
               <KeyRound className="h-4 w-4 text-muted-foreground" />
               {dictionary.resetPassword}
             </Link>
           </div>
 
-          <div className="mt-2 border-t border-border/60 pt-2">
+          <div className="mt-3 border-t border-border/60 pt-3">
             <Button
               type="button"
-              variant="ghost"
-              className="w-full justify-start"
+              variant="outline"
+              className="w-full justify-start border-border/70 bg-background/85"
               disabled={isLoggingOut}
               onClick={() => void handleLogout()}
             >

@@ -32,7 +32,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
   const dictionary = getDictionary(locale);
 
   return (
-    <AuthSplitShell locale={locale} header={dictionary.header}>
+    <AuthSplitShell locale={locale} header={dictionary.header} shell={dictionary.authShell}>
       <LoginForm
         locale={locale}
         dictionary={dictionary.login}

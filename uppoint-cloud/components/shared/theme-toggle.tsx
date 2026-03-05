@@ -3,6 +3,7 @@
 import { Moon, Sun } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useTheme } from "@/modules/theme/theme-provider";
 
 interface ThemeToggleLabels {
@@ -13,9 +14,10 @@ interface ThemeToggleLabels {
 interface ThemeToggleProps {
   labels: ThemeToggleLabels;
   iconOnly?: boolean;
+  className?: string;
 }
 
-export function ThemeToggle({ labels, iconOnly = false }: ThemeToggleProps) {
+export function ThemeToggle({ labels, iconOnly = false, className }: ThemeToggleProps) {
   const { theme, toggleTheme } = useTheme();
 
   const isDark = theme === "dark";
@@ -29,7 +31,7 @@ export function ThemeToggle({ labels, iconOnly = false }: ThemeToggleProps) {
       onClick={toggleTheme}
       aria-label={buttonLabel}
       title={buttonLabel}
-      className={iconOnly ? "min-w-10 px-0" : "min-w-30"}
+      className={cn(iconOnly ? "min-w-10 px-0" : "min-w-30", className)}
     >
       {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
       {!iconOnly && <span suppressHydrationWarning>{buttonLabel}</span>}

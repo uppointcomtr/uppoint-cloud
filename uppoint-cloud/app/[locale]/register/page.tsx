@@ -32,7 +32,7 @@ export default async function RegisterPage({ params }: RegisterPageProps) {
   const dictionary = getDictionary(locale);
 
   return (
-    <AuthSplitShell locale={locale} header={dictionary.header}>
+    <AuthSplitShell locale={locale} header={dictionary.header} shell={dictionary.authShell}>
       <RegisterForm
         locale={locale}
         dictionary={dictionary.register}

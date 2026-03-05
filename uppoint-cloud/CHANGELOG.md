@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-03-05 (corporate ui refresh: auth + dashboard + profile dropdown)
+
+### Changed
+- Reworked authentication shell to a business-oriented two-column structure:
+  - left: focused sign-in/register workspace with compact control strip,
+  - right (desktop): branded secure-infrastructure panel with trust highlights.
+- Upgraded dashboard visual language to a more corporate control-plane style:
+  - stronger surface hierarchy,
+  - refined sidebar/nav states,
+  - improved topbar control styling consistency.
+- Redesigned profile dropdown menu with enterprise-style grouped action rows and stronger visual hierarchy.
+- Added `className` support to `ThemeToggle` so topbar/auth control groups can be styled consistently with locale switcher.
+
+### Files
+- `modules/auth/components/auth-split-shell.tsx`
+- `modules/auth/components/auth-card.tsx`
+- `modules/dashboard/components/dashboard-panel.tsx`
+- `modules/dashboard/components/profile-menu.tsx`
+- `components/shared/theme-toggle.tsx`
+- `app/[locale]/login/page.tsx`
+- `app/[locale]/register/page.tsx`
+
 ## 2026-03-05 (dashboard topbar profile trigger: icon-only)
 
 ### Changed

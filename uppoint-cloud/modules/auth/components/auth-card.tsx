@@ -35,13 +35,13 @@ export function AuthCard({
         "w-full max-w-md",
         surface === "plain"
           ? "border-0 bg-transparent shadow-none"
-          : "bg-card/80 shadow-2xl backdrop-blur-md",
+          : "border-border/70 bg-card/92 shadow-[0_30px_70px_-46px_rgba(15,23,42,0.7)] backdrop-blur-xl",
       )}
     >
-      <CardHeader>
+      <CardHeader className="space-y-2">
         {headerContent}
-        <CardTitle className={titleClassName}>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardTitle className={cn("text-2xl leading-8", titleClassName)}>{title}</CardTitle>
+        <CardDescription className="text-sm leading-6">{description}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
       <CardFooter>{footer}</CardFooter>
