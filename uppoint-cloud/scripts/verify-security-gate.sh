@@ -13,7 +13,25 @@ echo "[security-gate] baseline verification: lint + typecheck + tests + build"
 npm run lint
 npm run typecheck
 npm run test
-npm run build
+
+SECURITY_GATE_BUILD_ENV_FILE="${SECURITY_GATE_BUILD_ENV_FILE:-}"
+if [ -n "${SECURITY_GATE_BUILD_ENV_FILE}" ]; then
+  if [ ! -f "${SECURITY_GATE_BUILD_ENV_FILE}" ]; then
+    echo "[security-gate] configured SECURITY_GATE_BUILD_ENV_FILE does not exist: ${SECURITY_GATE_BUILD_ENV_FILE}" >&2
+    exit 1
+  fi
+
+  echo "[security-gate] build verification with isolated env file: ${SECURITY_GATE_BUILD_ENV_FILE}"
+  (
+    set -a
+    # shellcheck disable=SC1090
+    source "${SECURITY_GATE_BUILD_ENV_FILE}"
+    set +a
+    npm run build
+  )
+else
+  npm run build
+fi
 
 echo "[security-gate] findings register freshness verification"
 npm run verify:findings-freshness

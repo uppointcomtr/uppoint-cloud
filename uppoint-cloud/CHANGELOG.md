@@ -4,11 +4,9 @@
 
 ### Changed
 - Stabilized GitHub Actions `Security Release Gate` workflow on self-hosted runner:
-  - added CI-safe env bootstrap for required runtime keys during `verify:security-gate` execution:
-    - `DATABASE_URL`
-    - `NEXT_PUBLIC_APP_URL`
-    - `AUTH_SECRET`
-- Prevents build-time env validation failures in CI when runner workspace does not include production `.env`.
+  - added isolated build-time env preparation (`.security-gate-build.env`) for production env-schema compliance during `next build`,
+  - wired `SECURITY_GATE_BUILD_ENV_FILE` into `verify:security-gate` so env overlay is applied only to the build subprocess.
+- Prevents build-time env validation failures in CI when runner workspace has no production `.env`, without polluting test-step environment variables.
 
 ## 2026-03-07 (pre-kvm hardening: otp delivery + tenant repair + release gate)
 
