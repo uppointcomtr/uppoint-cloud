@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-03-07 (ci fix: security-release-gate env bootstrapping)
+
+### Changed
+- Stabilized GitHub Actions `Security Release Gate` workflow on self-hosted runner:
+  - added CI-safe env bootstrap for required runtime keys during `verify:security-gate` execution:
+    - `DATABASE_URL`
+    - `NEXT_PUBLIC_APP_URL`
+    - `AUTH_SECRET`
+- Prevents build-time env validation failures in CI when runner workspace does not include production `.env`.
+
 ## 2026-03-07 (pre-kvm hardening: otp delivery + tenant repair + release gate)
 
 ### Added

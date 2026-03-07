@@ -27,6 +27,10 @@ jobs:
     name: Verify security gate
     runs-on: self-hosted
     timeout-minutes: 30
+    env:
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/uppoint_cloud_ci"
+      NEXT_PUBLIC_APP_URL: ${{ vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
+      AUTH_SECRET: "ci-auth-secret-0123456789abcdef0123456789"
     defaults:
       run:
         working-directory: uppoint-cloud
