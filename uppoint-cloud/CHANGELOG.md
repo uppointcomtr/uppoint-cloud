@@ -1,21 +1,5 @@
 # Changelog
 
-## 2026-03-07 (dashboard ux: modern VPS app shell redesign)
-
-### Changed
-- Completely redesigned `modules/dashboard/components/dashboard-panel.tsx`:
-  - **Layout**: Replaced floating card layout with a true full-height app shell (`flex h-screen overflow-hidden`) — sidebar on left, slim topbar + scrollable content on right.
-  - **Sidebar** (`xl+`): Fixed 224px left rail with logo, icon+label nav, active tenant badge with status dot, user avatar + logout at bottom. Hidden on mobile — replaced with a horizontal scrollable tab bar below the topbar.
-  - **Topbar**: Slim 56px bar with active section name on left, theme/locale/profile controls on right. Removes previous large hero card header.
-  - **Stat tiles**: New `StatTile` component — icon + ALLCAPS label + large number + sub-text + colored `StatusDot` (green/amber/red/muted).
-  - **Overview**: 4 KPI tiles (sessions, verification, failed logins, runtime backend) + audit event feed (monospace action names + result dots) + 3 notification counters.
-  - **Security**: 2 stat tiles + full audit event feed with reason sub-text.
-  - **Notifications**: 3 large stat tiles + status banner (green/amber).
-  - **Tenant**: Active tenant card with status dot + tenant list with role badges.
-  - **Modules**: Grid of coming-soon tiles with Lucide icons (Server, Globe, Database, CreditCard).
-  - Removed Quick Actions card; added `StatusDot`, `StatTile` primitives and `getInitials` helper.
-  - New Lucide icons: `AlertTriangle`, `Bell`, `CheckCircle2`, `CreditCard`, `Cpu`, `Database`, `Globe`, `LayoutDashboard`, `Monitor`, `Server`.
-
 ## 2026-03-07 (dashboard ux: profile menu redesign)
 
 ### Changed
