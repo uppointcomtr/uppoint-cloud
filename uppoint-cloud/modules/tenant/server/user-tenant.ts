@@ -2,12 +2,17 @@ import "server-only";
 
 import { TenantRole } from "@prisma/client";
 
-import { findUserTenantMembershipsForContext } from "@/db/repositories/tenant-repository";
+import {
+  ensureDefaultTenantMembershipForUser,
+  findUserTenantMembershipsForContext,
+} from "@/db/repositories/tenant-repository";
 import { assertTenantAccess } from "@/modules/tenant/server/scope";
 
 interface ResolveUserTenantDependencies {
   findMemberships: (userId: string) => Promise<Array<{ tenantId: string; role: TenantRole }>>;
   assertAccess: (input: { tenantId: string; userId: string; minimumRole: TenantRole }) => Promise<{ tenantId: string; role: TenantRole }>;
+  ensureDefaultMembership: (input: { userId: string; now: Date }) => Promise<{ tenantId: string; role: TenantRole }>;
+  now: () => Date;
 }
 
 const defaultDependencies: ResolveUserTenantDependencies = {
@@ -17,6 +22,14 @@ const defaultDependencies: ResolveUserTenantDependencies = {
       take: 2,
     }),
   assertAccess: async ({ tenantId, userId, minimumRole }) => assertTenantAccess({ tenantId, userId, minimumRole }),
+  ensureDefaultMembership: async ({ userId, now }) => {
+    const repaired = await ensureDefaultTenantMembershipForUser({ userId, now });
+    return {
+      tenantId: repaired.tenantId,
+      role: repaired.role,
+    };
+  },
+  now: () => new Date(),
 };
 
 export class UserTenantContextError extends Error {
@@ -52,7 +65,26 @@ export async function resolveUserTenantContext(
   const memberships = await dependencies.findMemberships(input.userId);
 
   if (memberships.length === 0) {
-    throw new UserTenantContextError("TENANT_NOT_FOUND");
+    // Security-sensitive: legacy users without membership are repaired into an isolated default tenant boundary.
+    try {
+      const repaired = await dependencies.ensureDefaultMembership({
+        userId: input.userId,
+        now: dependencies.now(),
+      });
+
+      await dependencies.assertAccess({
+        tenantId: repaired.tenantId,
+        userId: input.userId,
+        minimumRole: input.minimumRole ?? TenantRole.MEMBER,
+      });
+
+      return {
+        tenantId: repaired.tenantId,
+        role: repaired.role,
+      };
+    } catch {
+      throw new UserTenantContextError("TENANT_NOT_FOUND");
+    }
   }
 
   if (memberships.length > 1) {

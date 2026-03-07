@@ -79,6 +79,8 @@ const serverEnvSchema = z.object({
   NOTIFICATION_PAYLOAD_SECRET: z.string().min(32).optional(),
   NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS: z.coerce.number().int().min(30).max(3600).default(120),
   NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD: z.coerce.number().int().min(1).max(10000).default(25),
+  NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
+  NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS: z.coerce.number().int().min(250).max(60000).default(5000),
 }).superRefine((input, context) => {
   let appUrl: URL | null = null;
   let databaseUrl: URL | null = null;
@@ -367,6 +369,8 @@ const parsedEnv = serverEnvSchema.safeParse({
   NOTIFICATION_PAYLOAD_SECRET: process.env.NOTIFICATION_PAYLOAD_SECRET,
   NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS: process.env.NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS,
   NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD: process.env.NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD,
+  NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE: process.env.NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE,
+  NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS: process.env.NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS,
 });
 
 if (!parsedEnv.success) {

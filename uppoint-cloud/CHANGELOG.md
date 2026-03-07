@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-03-07 (pre-kvm hardening: otp delivery + tenant repair + release gate)
+
+### Added
+- Added dashboard segment boundaries for safer runtime UX:
+  - `app/[locale]/dashboard/loading.tsx`
+  - `app/[locale]/dashboard/error.tsx`
+- Added security release-gate workflow at git root:
+  - `/opt/.github/workflows/security-release-gate.yml`
+- Added operational runbooks:
+  - `ops/runbooks/restore-drill.md`
+  - `ops/runbooks/cron-failure-response.md`
+  - `ops/runbooks/otp-provider-failure.md`
+- Added guardrail coverage:
+  - `tests/security/security-release-gate-workflow-guardrail.test.ts`
+  - tenant repair tests in `tests/tenant/*`
+
+### Changed
+- Hardened auth notification delivery path:
+  - immediate outbox dispatch now scoped to auth notifications (`auth-*`) instead of all notifications,
+  - immediate dispatch batch/throttle values moved to validated env config:
+    - `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE`
+    - `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS`.
+- Extended security SLO script with auth notification latency controls:
+  - `SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS`
+  - `SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE`
+  - `SECURITY_SLO_WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE`.
+- Added fail-closed tenant boundary auto-repair for legacy users without active tenant membership:
+  - new repository helper `ensureDefaultTenantMembershipForUser(...)`,
+  - advisory-lock protected repair + OWNER membership upsert.
+- Extended repo-root contract verification to require the new release-gate workflow.
+- Synced docs and findings for the 5 hardening items:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `FINDINGS_REGISTER.md`.
+
 ## 2026-03-07 (security hardening: audit integrity + tenant scope + outbox guardrails)
 
 ### Changed

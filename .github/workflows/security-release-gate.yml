@@ -1,0 +1,94 @@
+name: Security Release Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "uppoint-cloud/**"
+      - ".github/workflows/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "uppoint-cloud/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-release-gate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Verify security gate
+    runs-on: self-hosted
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: uppoint-cloud
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: uppoint-cloud/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify workflow layout
+        run: npm run verify:workflow-layout
+
+      - name: Verify repository/app root contract
+        run: npm run verify:repo-layout
+
+      - name: Run canonical security gate
+        run: npm run verify:security-gate
+
+  remote-smoke:
+    name: Remote auth smoke (release gate)
+    if: github.event_name != 'pull_request'
+    needs: gate
+    runs-on: self-hosted
+    timeout-minutes: 20
+    env:
+      E2E_BASE_URL: ${{ vars.E2E_BASE_URL || 'https://cloud.uppoint.com.tr' }}
+      E2E_HEALTHCHECK_TOKEN: ${{ secrets.E2E_HEALTHCHECK_TOKEN }}
+      E2E_ALLOW_MUTATIONS: "0"
+      E2E_ENFORCE_HEALTH_200: "1"
+    defaults:
+      run:
+        working-directory: uppoint-cloud
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: uppoint-cloud/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Require healthcheck token for production target
+        run: |
+          set -euo pipefail
+          target="$(printf '%s' "${E2E_BASE_URL}" | tr '[:upper:]' '[:lower:]')"
+          if [ "${target}" = "https://cloud.uppoint.com.tr" ] && [ -z "${E2E_HEALTHCHECK_TOKEN:-}" ]; then
+            echo "E2E_HEALTHCHECK_TOKEN is required for production remote smoke runs."
+            exit 1
+          fi
+
+      - name: Run remote smoke suite
+        run: npm run test:e2e:remote

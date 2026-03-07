@@ -4,6 +4,9 @@ Security hardening roadmap reference:
 
 - [SECURITY_MAXIMIZATION_PLAN.md](/opt/uppoint-cloud/ops/SECURITY_MAXIMIZATION_PLAN.md)
 - [Secret Rotation Runbook](/opt/uppoint-cloud/ops/runbooks/secret-rotation.md)
+- [Restore Drill Runbook](/opt/uppoint-cloud/ops/runbooks/restore-drill.md)
+- [Cron Failure Response Runbook](/opt/uppoint-cloud/ops/runbooks/cron-failure-response.md)
+- [OTP Provider Failure Runbook](/opt/uppoint-cloud/ops/runbooks/otp-provider-failure.md)
 - [Runtime Services and Cron Catalog](/opt/uppoint-cloud/ops/RUNTIME_SERVICES_AND_CRON.md)
 - Run security gate before security-sensitive release decisions:
   - `cd /opt/uppoint-cloud && npm run verify:security-gate`
@@ -78,6 +81,11 @@ AUDIT_ANCHOR_SIGNING_KEY_ID=prod-kms-key-2026-01
 AUDIT_ANCHOR_OUTPUT_PATH=/opt/backups/audit/audit-anchor.jsonl
 NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS=120
 NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD=25
+NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE=10
+NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS=5000
+SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS=20
+SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE=10
+SECURITY_SLO_WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE=true
 UPPOINT_EMAIL_POOL_MAX_CONNECTIONS=5
 UPPOINT_EMAIL_POOL_MAX_MESSAGES=100
 UPPOINT_CLOSED_SYSTEM_MODE=true
@@ -389,6 +397,11 @@ Security SLO report:
   - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (default `0.25`)
   - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (default `20`; minimum terminal delivery sample before ratio alerting)
   - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (default `true`; advisory when terminal sample is below ratio activation window)
+  - `SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS` (default `20`; auth OTP notification delivery p95 threshold)
+  - `SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE` (default `10`; minimum auth notification sample before p95 is enforced)
+  - `SECURITY_SLO_WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE` (default `true`; advisory when auth sample is low)
+  - `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE` (default `10`; inline auth dispatch batch size)
+  - `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS` (default `5000`; inline auth dispatch cooldown in ms)
 - Exit code `1` indicates threshold breach and should be treated as an alert signal.
 - When low-sample advisory is active, the report prints `WARN` but keeps exit code `0` (informational signal, not a hard breach).
 
@@ -419,6 +432,17 @@ Remote auth smoke operational checklist (GitHub Actions):
 - Verify CI summary on the run page:
   - open run URL and confirm summary contains `E2E_HEALTHCHECK_TOKEN: configured`
   - if summary shows `missing`, treat as release-blocking and fix Actions secret first.
+
+Release gate operational checklist (GitHub Actions):
+- Workflow file:
+  - `.github/workflows/security-release-gate.yml`
+- Trigger:
+  - automatic on `pull_request` and `push` to `main`
+- Required result:
+  - `Verify security gate` must pass
+  - on `push main`, `Remote auth smoke (release gate)` must pass in read-only mode
+- Branch protection recommendation:
+  - require both checks before merge/deploy approval
 
 ## 9. Redis backup automation
 

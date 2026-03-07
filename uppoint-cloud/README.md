@@ -153,6 +153,8 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `NOTIFICATION_PAYLOAD_SECRET` (required in production; encrypts notification outbox payload at rest)
 - `NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS` (optional, default `120`; stale lock recovery window for dispatcher workers)
 - `NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD` (optional, default `25`; security SLO alert threshold for stale pending locks)
+- `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE` (optional, default `10`; inline dispatch batch size for auth-scoped OTP notifications)
+- `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS` (optional, default `5000`; cooldown for inline auth dispatch attempts)
 - `UPPOINT_EMAIL_POOL_MAX_CONNECTIONS` (optional, default `5`; SMTP pool connection cap per process)
 - `UPPOINT_EMAIL_POOL_MAX_MESSAGES` (optional, default `100`; SMTP max messages per pooled connection)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
@@ -181,6 +183,9 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (optional, default `0.25`)
 - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (optional, default `20`; minimum terminal delivery sample before failure-ratio alerts are enforced)
 - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (optional, default `true`; emits advisory when terminal sample is below ratio-threshold activation window)
+- `SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS` (optional, default `20`; auth notification p95 delivery latency threshold in seconds)
+- `SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE` (optional, default `10`; minimum auth notification sample before latency threshold is enforced)
+- `SECURITY_SLO_WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE` (optional, default `true`; emits advisory when auth latency sample is below activation window)
 - `UPPOINT_NOTIFICATION_CANARY_ENABLED` (optional, default `true`; enables notification canary cron logic)
 - `UPPOINT_NOTIFICATION_CANARY_MODE` (optional, default `probe-only`; allowed: `probe-only`, `enqueue-email`)
 - `UPPOINT_NOTIFICATION_CANARY_EMAIL_TO` (optional, canary recipient only for `enqueue-email`; falls back to `UPPOINT_ALERT_EMAIL_TO`)
@@ -405,6 +410,16 @@ Optional CI audit-integrity check:
 - Optional repository variable:
   - `E2E_BASE_URL` (default is `https://cloud.uppoint.com.tr`)
   - `E2E_ENFORCE_HEALTH_200` (default `1`; keep enabled for production smoke)
+
+GitHub Actions release gate:
+
+- Workflow file: [security-release-gate.yml](/opt/.github/workflows/security-release-gate.yml)
+- Trigger: automatic on `pull_request` and `push` for `main` when `uppoint-cloud/**` or workflow files change.
+- Mandatory checks:
+  - `Verify security gate`
+  - `Remote auth smoke (release gate)` on `push main`
+- Recommended branch protection:
+  - require both checks before merge/deploy approval.
 
 Quick verification checklist for manual runs:
 - Trigger:

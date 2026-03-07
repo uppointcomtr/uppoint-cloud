@@ -33,6 +33,15 @@ const MAX_NOTIFICATION_STALE_LOCKS = Number.parseInt(
   || "25",
   10,
 );
+const MAX_AUTH_NOTIFICATION_P95_SECONDS = Number.parseFloat(
+  process.env.SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS || "20",
+);
+const MIN_AUTH_NOTIFICATION_SAMPLE = Number.parseInt(
+  process.env.SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE || "10",
+  10,
+);
+const WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE = (process.env.SECURITY_SLO_WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE || "true")
+  .toLowerCase();
 
 const ACTIONS = Object.keys(ACTION_THRESHOLDS);
 
@@ -46,6 +55,14 @@ function safeInt(input, fallback, minimum = 1) {
 
 function safeRatio(input, fallback) {
   if (!Number.isFinite(input) || input < 0 || input > 1) {
+    return fallback;
+  }
+
+  return input;
+}
+
+function safePositiveNumber(input, fallback, minimum = 0) {
+  if (!Number.isFinite(input) || input < minimum) {
     return fallback;
   }
 
@@ -125,6 +142,21 @@ async function main() {
   const notificationFailureRatio = terminalDeliveryCount > 0
     ? notificationFailedCount / terminalDeliveryCount
     : 0;
+  const [authLatencyRow] = await prisma.$queryRaw`
+    SELECT
+      COUNT(*)::bigint AS sample_size,
+      AVG(EXTRACT(EPOCH FROM ("sentAt" - "createdAt")))::double precision AS avg_seconds,
+      percentile_cont(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM ("sentAt" - "createdAt")))::double precision AS p95_seconds
+    FROM "NotificationOutbox"
+    WHERE "status" = 'SENT'::"NotificationOutboxStatus"
+      AND "sentAt" IS NOT NULL
+      AND "updatedAt" >= ${since}
+      AND COALESCE("metadata"->>'scope', '') LIKE 'auth-%'
+      AND EXTRACT(EPOCH FROM ("sentAt" - "createdAt")) >= 0
+  `;
+  const authNotificationSampleSize = Number(authLatencyRow?.sample_size ?? 0);
+  const authNotificationAvgSeconds = Number(authLatencyRow?.avg_seconds ?? 0);
+  const authNotificationP95Seconds = Number(authLatencyRow?.p95_seconds ?? 0);
   const notificationStaleLockThreshold = safeInt(MAX_NOTIFICATION_STALE_LOCKS, 25, 0);
   const staleLockCutoff = new Date(Date.now() - safeInt(NOTIFICATION_LOCK_STALE_SECONDS, 120) * 1000);
   const notificationStaleLockCount = await prisma.notificationOutbox.count({
@@ -193,6 +225,27 @@ async function main() {
     });
   }
 
+  const maxAuthNotificationP95Seconds = safePositiveNumber(MAX_AUTH_NOTIFICATION_P95_SECONDS, 20, 1);
+  const minAuthNotificationSample = safeInt(MIN_AUTH_NOTIFICATION_SAMPLE, 10);
+  if (authNotificationSampleSize >= minAuthNotificationSample && authNotificationP95Seconds > maxAuthNotificationP95Seconds) {
+    violations.push({
+      type: "auth_notification_latency_p95",
+      p95Seconds: Number(authNotificationP95Seconds.toFixed(2)),
+      thresholdSeconds: maxAuthNotificationP95Seconds,
+      sample: authNotificationSampleSize,
+      averageSeconds: Number(authNotificationAvgSeconds.toFixed(2)),
+    });
+  }
+
+  if (authNotificationSampleSize < minAuthNotificationSample && isTruthy(WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE)) {
+    advisories.push({
+      type: "auth_notification_sample_low",
+      sample: authNotificationSampleSize,
+      minSample: minAuthNotificationSample,
+      note: "Auth notification latency SLO is advisory-only until minimum sample is reached.",
+    });
+  }
+
   const report = {
     checkedAt: new Date().toISOString(),
     lookbackMinutes,
@@ -212,6 +265,14 @@ async function main() {
       staleLocks: notificationStaleLockCount,
       staleLockThreshold: notificationStaleLockThreshold,
       staleLockSeconds: safeInt(NOTIFICATION_LOCK_STALE_SECONDS, 120),
+      authLatency: {
+        averageSeconds: Number(authNotificationAvgSeconds.toFixed(2)),
+        p95Seconds: Number(authNotificationP95Seconds.toFixed(2)),
+        maxP95Seconds: maxAuthNotificationP95Seconds,
+        sample: authNotificationSampleSize,
+        minSample: minAuthNotificationSample,
+        warnOnLowSample: isTruthy(WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE),
+      },
       maxFailedAbsolute: maxNotificationFailedAbsolute,
       maxFailureRatio,
       minTerminalSample: minNotificationTerminalSample,

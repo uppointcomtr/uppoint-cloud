@@ -2,6 +2,12 @@
 
 This document is the operational inventory of systemd units and cron jobs used by `cloud.uppoint.com.tr`.
 
+Runbook references:
+- [Secret Rotation](/opt/uppoint-cloud/ops/runbooks/secret-rotation.md)
+- [Restore Drill](/opt/uppoint-cloud/ops/runbooks/restore-drill.md)
+- [Cron Failure Response](/opt/uppoint-cloud/ops/runbooks/cron-failure-response.md)
+- [OTP Provider Failure](/opt/uppoint-cloud/ops/runbooks/otp-provider-failure.md)
+
 ## Systemd services
 
 | Unit | Purpose | Enabled | Notes |

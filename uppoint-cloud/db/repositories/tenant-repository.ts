@@ -137,3 +137,104 @@ export async function provisionDefaultTenantForUser(
 
   return tenant;
 }
+
+export async function ensureDefaultTenantMembershipForUser(
+  input: { userId: string; now: Date },
+  client: typeof prisma = prisma,
+): Promise<{ tenantId: string; role: TenantRole; repaired: boolean }> {
+  return client.$transaction(async (tx) => {
+    // Security-sensitive: serialize per-user tenant boundary repair to avoid concurrent duplicate tenant creation.
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(CAST(hashtext(${input.userId}) AS bigint))
+    `;
+
+    const activeMembership = await tx.tenantMembership.findFirst({
+      where: {
+        userId: input.userId,
+        tenant: {
+          deletedAt: null,
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+      select: {
+        tenantId: true,
+        role: true,
+      },
+    });
+
+    if (activeMembership) {
+      return {
+        tenantId: activeMembership.tenantId,
+        role: activeMembership.role,
+        repaired: false,
+      };
+    }
+
+    const defaultSlug = `usr-${input.userId}`;
+    const defaultName = `Workspace ${input.userId.slice(-6)}`;
+
+    const existingTenant = await tx.tenant.findUnique({
+      where: {
+        slug: defaultSlug,
+      },
+      select: {
+        id: true,
+        deletedAt: true,
+      },
+    });
+
+    let tenantId: string;
+
+    if (existingTenant) {
+      tenantId = existingTenant.id;
+      if (existingTenant.deletedAt) {
+        await tx.tenant.update({
+          where: {
+            id: existingTenant.id,
+          },
+          data: {
+            deletedAt: null,
+            name: defaultName,
+          },
+        });
+      }
+    } else {
+      const tenant = await tx.tenant.create({
+        data: {
+          slug: defaultSlug,
+          name: defaultName,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      tenantId = tenant.id;
+    }
+
+    await tx.tenantMembership.upsert({
+      where: {
+        tenantId_userId: {
+          tenantId,
+          userId: input.userId,
+        },
+      },
+      update: {
+        role: TenantRole.OWNER,
+      },
+      create: {
+        tenantId,
+        userId: input.userId,
+        role: TenantRole.OWNER,
+      },
+    });
+
+    return {
+      tenantId,
+      role: TenantRole.OWNER,
+      repaired: true,
+    };
+  });
+}

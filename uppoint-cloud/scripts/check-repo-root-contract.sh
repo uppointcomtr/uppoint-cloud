@@ -20,4 +20,9 @@ if [ ! -f "${ACTUAL_GIT_ROOT}/.github/workflows/remote-auth-smoke.yml" ]; then
   exit 1
 fi
 
+if [ ! -f "${ACTUAL_GIT_ROOT}/.github/workflows/security-release-gate.yml" ]; then
+  echo "[repo-layout] FAIL: missing release gate workflow at ${ACTUAL_GIT_ROOT}/.github/workflows/security-release-gate.yml" >&2
+  exit 1
+fi
+
 echo "[repo-layout] OK: app root (${APP_ROOT}) and git root (${ACTUAL_GIT_ROOT}) contract is valid."
