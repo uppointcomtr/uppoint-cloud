@@ -30,20 +30,24 @@ export function AuthSplitShell({ locale, header, children }: AuthSplitShellProps
         <section className="w-full overflow-hidden rounded-3xl border border-border/70 bg-card/95 shadow-[0_30px_80px_-48px_rgba(15,23,42,0.65)] backdrop-blur-xl dark:bg-card/90">
           <div className="flex flex-col px-6 py-6 sm:px-10 sm:py-8">
             <div className="flex items-center justify-between">
-              <Image
-                src="/logo/uppoint-logo-black.webp"
-                alt="Uppoint Cloud"
-                width={416}
-                height={127}
-                className="block h-auto w-[176px] dark:hidden"
-              />
-              <Image
-                src="/logo/Uppoint-logo-wh.webp"
-                alt="Uppoint Cloud"
-                width={416}
-                height={127}
-                className="hidden h-auto w-[176px] dark:block"
-              />
+              <div className="relative h-[54px] w-[176px] shrink-0">
+                <Image
+                  src="/logo/uppoint-logo-black.webp"
+                  alt="Uppoint Cloud"
+                  width={416}
+                  height={127}
+                  priority
+                  className="absolute inset-0 h-full w-full object-contain dark:hidden"
+                />
+                <Image
+                  src="/logo/Uppoint-logo-wh.webp"
+                  alt="Uppoint Cloud"
+                  width={416}
+                  height={127}
+                  priority
+                  className="absolute inset-0 hidden h-full w-full object-contain dark:block"
+                />
+              </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle
                   labels={header.theme}

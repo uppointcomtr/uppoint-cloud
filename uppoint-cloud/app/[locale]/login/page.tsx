@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AuthSplitShell } from "@/modules/auth/components/auth-split-shell";
 import { LoginForm } from "@/modules/auth/components/login-form";
-import { parseSessionExpiry } from "@/modules/auth/server/session-expiry";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 import { getLocaleFromParams } from "@/modules/i18n/server";
@@ -25,7 +24,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
   const locale = await getLocaleFromParams(params);
   const session = await auth();
 
-  if (session?.user && parseSessionExpiry(session.expires)) {
+  if (session?.user) {
     redirect(withLocale("/dashboard", locale));
   }
 

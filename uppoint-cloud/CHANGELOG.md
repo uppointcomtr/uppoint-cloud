@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-03-07 (auth ux: force dashboard redirect for authenticated login route)
+
+### Changed
+- Updated `app/[locale]/login/page.tsx`:
+  - if `auth()` returns `session.user`, login page now always redirects to `/{locale}/dashboard`,
+  - removed dependency on session-expiry parsing for login-route redirect.
+- Prevents authenticated users from remaining on login page due to malformed/legacy `session.expires` payloads.
+
+## 2026-03-07 (dashboard ux fix: remove flash + stabilize sidebar)
+
+### Changed
+- Removed dashboard segment loading fallback (`app/[locale]/dashboard/loading.tsx`) to avoid white skeleton flash during section transitions.
+- Added global layout stabilization in `app/globals.css`:
+  - `html { scrollbar-gutter: stable; overflow-y: scroll; }`
+  - reduces horizontal layout shift that caused perceived left sidebar "jump" on refresh/navigation.
+- Stabilized logo rendering in auth and dashboard shells:
+  - wrapped logos in fixed-size containers,
+  - switched to absolute `object-contain` rendering with `priority` loading,
+  - prevents first-paint logo swap/reflow from feeling like sidebar jump.
+
 ## 2026-03-07 (ci fix: security-release-gate env bootstrapping)
 
 ### Changed

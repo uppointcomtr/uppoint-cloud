@@ -446,20 +446,26 @@ export function DashboardPanel({
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm backdrop-blur xl:sticky xl:top-6 xl:h-[fit-content]">
           <div className="space-y-4">
-            <Image
-              src="/logo/uppoint-logo-black.webp"
-              alt="Uppoint Cloud"
-              width={416}
-              height={127}
-              className="block h-auto w-[156px] dark:hidden"
-            />
-            <Image
-              src="/logo/Uppoint-logo-wh.webp"
-              alt="Uppoint Cloud"
-              width={416}
-              height={127}
-              className="hidden h-auto w-[156px] dark:block"
-            />
+            <Link href={withLocale("/dashboard", locale)} className="inline-block" aria-label="Uppoint Cloud">
+              <div className="relative h-12 w-[156px] shrink-0">
+                <Image
+                  src="/logo/uppoint-logo-black.webp"
+                  alt="Uppoint Cloud"
+                  width={416}
+                  height={127}
+                  priority
+                  className="absolute inset-0 h-full w-full object-contain dark:hidden"
+                />
+                <Image
+                  src="/logo/Uppoint-logo-wh.webp"
+                  alt="Uppoint Cloud"
+                  width={416}
+                  height={127}
+                  priority
+                  className="absolute inset-0 hidden h-full w-full object-contain dark:block"
+                />
+              </div>
+            </Link>
             <p className="text-sm leading-6 text-muted-foreground">{dashboard.description}</p>
           </div>
 
