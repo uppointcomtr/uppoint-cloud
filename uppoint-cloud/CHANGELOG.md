@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-07 (dashboard ux: profile menu redesign)
+
+### Changed
+- Redesigned `modules/dashboard/components/profile-menu.tsx`:
+  - Trigger button now shows user initials (e.g. `AY`) instead of a generic icon, derived from `displayName`.
+  - Menu header displays the same initials avatar alongside name and email for clear identity context.
+  - Navigation links grouped into two visual sections with separators: (1) account / security / notifications, (2) tenant / reset password.
+  - Logout action styled as a destructive (red) item instead of an outline button, clearly signalling intent.
+  - Menu width reduced from `w-[22rem]` to `w-64` for a more compact and focused layout.
+  - Removed unused `Button` import.
+
 ## 2026-03-07 (auth ux: force dashboard redirect for authenticated login route)
 
 ### Changed
