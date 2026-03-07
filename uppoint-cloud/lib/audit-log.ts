@@ -71,7 +71,7 @@ const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint
 const AUDIT_FALLBACK_CHAIN_STATE_PATH =
   env.AUDIT_FALLBACK_CHAIN_STATE_PATH || "/var/lib/uppoint-cloud/audit-fallback-chain.state";
 const AUDIT_INTEGRITY_VERSION = "v2";
-const AUDIT_INTEGRITY_SECRET = env.AUDIT_LOG_SIGNING_SECRET ?? env.AUTH_SECRET;
+const AUDIT_INTEGRITY_SECRET = env.AUDIT_LOG_SIGNING_SECRET ?? "dev-only-audit-signing-secret-change-me";
 const AUDIT_CHAIN_LOCK_KEY_ONE = 2_147_483_647;
 const AUDIT_CHAIN_LOCK_KEY_TWO = 4_242;
 
@@ -496,7 +496,6 @@ export async function logAudit(
   const userAgent = pickString(requestContext.userAgent);
   const forwardedFor = pickString(requestContext.forwardedFor);
   const storedIp = resolveStoredIp(ip, requestContext.ip);
-  const createdAt = new Date();
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -510,7 +509,6 @@ export async function logAudit(
 
       const previous = await tx.auditLog.findFirst({
         orderBy: [
-          { createdAt: "desc" },
           { id: "desc" },
         ],
         select: {
@@ -518,6 +516,7 @@ export async function logAudit(
         },
       });
       const previousIntegrityHash = pickIntegrityHash(previous?.metadata) ?? null;
+      const createdAt = new Date();
       const integrityHash = computeIntegrityHash({
         action,
         ip: storedIp,

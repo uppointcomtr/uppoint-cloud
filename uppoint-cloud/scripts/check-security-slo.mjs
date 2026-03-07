@@ -23,6 +23,16 @@ const MIN_NOTIFICATION_TERMINAL_SAMPLE = Number.parseInt(
 );
 const WARN_ON_LOW_NOTIFICATION_SAMPLE = (process.env.SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE || "true")
   .toLowerCase();
+const NOTIFICATION_LOCK_STALE_SECONDS = Number.parseInt(
+  process.env.NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS || "120",
+  10,
+);
+const MAX_NOTIFICATION_STALE_LOCKS = Number.parseInt(
+  process.env.SECURITY_SLO_MAX_NOTIFICATION_STALE_LOCKS
+  || process.env.NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD
+  || "25",
+  10,
+);
 
 const ACTIONS = Object.keys(ACTION_THRESHOLDS);
 
@@ -115,6 +125,16 @@ async function main() {
   const notificationFailureRatio = terminalDeliveryCount > 0
     ? notificationFailedCount / terminalDeliveryCount
     : 0;
+  const notificationStaleLockThreshold = safeInt(MAX_NOTIFICATION_STALE_LOCKS, 25, 0);
+  const staleLockCutoff = new Date(Date.now() - safeInt(NOTIFICATION_LOCK_STALE_SECONDS, 120) * 1000);
+  const notificationStaleLockCount = await prisma.notificationOutbox.count({
+    where: {
+      status: "PENDING",
+      lockedAt: {
+        lt: staleLockCutoff,
+      },
+    },
+  });
 
   const violations = [];
   const advisories = [];
@@ -164,6 +184,14 @@ async function main() {
       note: "Failure-ratio alerting is not active until minimum terminal sample is reached and no canary terminal sample was observed.",
     });
   }
+  if (notificationStaleLockCount > notificationStaleLockThreshold) {
+    violations.push({
+      type: "notification_stale_lock_threshold",
+      staleLocks: notificationStaleLockCount,
+      threshold: notificationStaleLockThreshold,
+      staleSeconds: safeInt(NOTIFICATION_LOCK_STALE_SECONDS, 120),
+    });
+  }
 
   const report = {
     checkedAt: new Date().toISOString(),
@@ -181,6 +209,9 @@ async function main() {
       canarySent: notificationCanarySentCount,
       canaryFailed: notificationCanaryFailedCount,
       canaryTerminal: notificationCanaryTerminalCount,
+      staleLocks: notificationStaleLockCount,
+      staleLockThreshold: notificationStaleLockThreshold,
+      staleLockSeconds: safeInt(NOTIFICATION_LOCK_STALE_SECONDS, 120),
       maxFailedAbsolute: maxNotificationFailedAbsolute,
       maxFailureRatio,
       minTerminalSample: minNotificationTerminalSample,

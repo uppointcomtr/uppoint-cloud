@@ -68,12 +68,13 @@ export async function countUserActiveSessions(
 }
 
 export async function countUserNotificationByStatus(
-  input: { userId: string; status: NotificationOutboxStatus; since?: Date },
+  input: { userId: string; status: NotificationOutboxStatus; since?: Date; tenantId?: string },
   client: DashboardRepositoryClient = prisma,
 ): Promise<number> {
   return client.notificationOutbox.count({
     where: {
       userId: input.userId,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       status: input.status,
       ...(input.since
         ? {
@@ -87,12 +88,13 @@ export async function countUserNotificationByStatus(
 }
 
 export async function countUserAuditFailuresSince(
-  input: { userId: string; since: Date },
+  input: { userId: string; since: Date; tenantId?: string },
   client: DashboardRepositoryClient = prisma,
 ): Promise<number> {
   return client.auditLog.count({
     where: {
       userId: input.userId,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       result: "FAILURE",
       createdAt: {
         gte: input.since,
@@ -102,12 +104,13 @@ export async function countUserAuditFailuresSince(
 }
 
 export async function listRecentUserAuditEvents(
-  input: { userId: string; take?: number },
+  input: { userId: string; take?: number; tenantId?: string },
   client: DashboardRepositoryClient = prisma,
 ): Promise<DashboardAuditEvent[]> {
   return client.auditLog.findMany({
     where: {
       userId: input.userId,
+      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
     },
     orderBy: {
       createdAt: "desc",

@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "crypto";
 import type { Prisma } from "@prisma/client";
+import { z } from "zod";
 
 import { prisma } from "@/db/client";
 import { logAudit } from "@/lib/audit-log";
@@ -16,10 +17,12 @@ type NotificationOutboxStatus = "PENDING" | "SENT" | "FAILED";
 const DEFAULT_DISPATCH_BATCH_SIZE = 20;
 const MAX_ALLOWED_BATCH_SIZE = 200;
 const MAX_SCOPE_PARTITION_SIZE = 5;
-const LOCK_STALE_SECONDS = 120;
+const LOCK_STALE_SECONDS = env.NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS;
 const MAX_BACKOFF_SECONDS = 15 * 60;
 const IMMEDIATE_DISPATCH_BATCH_SIZE = 10;
 const IMMEDIATE_DISPATCH_THROTTLE_MS = 5_000;
+const EMAIL_RECIPIENT_SCHEMA = z.string().trim().email().max(254);
+const SMS_RECIPIENT_SCHEMA = z.string().trim().regex(/^\+?[1-9]\d{9,14}$/);
 
 let immediateDispatchInFlight: Promise<void> | null = null;
 let lastImmediateDispatchAtMs = 0;
@@ -34,6 +37,16 @@ interface NotificationOutboxRecord {
   body: string;
   attemptCount: number;
   maxAttempts: number;
+}
+
+function assertNotificationRecipient(channel: NotificationChannel, recipient: string): void {
+  const parsed = channel === "EMAIL"
+    ? EMAIL_RECIPIENT_SCHEMA.safeParse(recipient)
+    : SMS_RECIPIENT_SCHEMA.safeParse(recipient);
+
+  if (!parsed.success) {
+    throw new Error("INVALID_NOTIFICATION_RECIPIENT");
+  }
 }
 
 interface OutboxDependencies {
@@ -272,6 +285,8 @@ export async function enqueueEmailNotification(
   },
   dependencies: Pick<OutboxDependencies, "createOutboxRecord"> = defaultOutboxDependencies,
 ): Promise<void> {
+  assertNotificationRecipient("EMAIL", input.to);
+
   if (env.UPPOINT_EMAIL_BACKEND === "disabled") {
     if (env.NODE_ENV === "production") {
       throw new Error("EMAIL_BACKEND_DISABLED");
@@ -303,6 +318,8 @@ export async function enqueueSmsNotification(
   },
   dependencies: Pick<OutboxDependencies, "createOutboxRecord"> = defaultOutboxDependencies,
 ): Promise<void> {
+  assertNotificationRecipient("SMS", input.to);
+
   if (!env.UPPOINT_SMS_ENABLED) {
     if (env.NODE_ENV === "production") {
       throw new Error("SMS_BACKEND_DISABLED");

@@ -63,7 +63,6 @@ async function main() {
   const signingSecret =
     process.env.AUDIT_ANCHOR_SIGNING_SECRET
     || process.env.AUDIT_LOG_SIGNING_SECRET
-    || process.env.AUTH_SECRET
     || "";
   const signerKeyId = process.env.AUDIT_ANCHOR_SIGNING_KEY_ID || "audit-anchor/default";
 
@@ -74,10 +73,7 @@ async function main() {
   }
 
   const chainHead = await prisma.auditLog.findFirst({
-    orderBy: [
-      { createdAt: "desc" },
-      { id: "desc" },
-    ],
+    orderBy: [{ id: "desc" }],
     select: {
       id: true,
       createdAt: true,

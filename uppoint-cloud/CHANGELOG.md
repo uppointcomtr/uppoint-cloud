@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-03-07 (security hardening: audit integrity + tenant scope + outbox guardrails)
+
+### Changed
+- Fixed audit-integrity verification reliability and release-gate behavior:
+  - switched verifier chain walk to deterministic ID ordering,
+  - added explicit legacy signing-key verification support (`AUDIT_LOG_SIGNING_SECRET_LEGACY`),
+  - added strict cutoff control for chain mismatch enforcement (`AUDIT_INTEGRITY_CHAIN_STRICT_SINCE`),
+  - removed `AUTH_SECRET` fallback from audit/anchor verification/export scripts.
+- Hardened audit signing configuration:
+  - production now requires dedicated `AUDIT_LOG_SIGNING_SECRET` and `AUDIT_ANCHOR_SIGNING_SECRET`,
+  - `lib/audit-log.ts` no longer derives audit integrity signing from `AUTH_SECRET`.
+- Hardened multi-tenant dashboard behavior:
+  - tenant-scoped aggregates (notification/audit counters and event list) now fail closed when tenant context is unresolved,
+  - repository layer now supports tenant-scoped filtering for dashboard aggregate queries.
+- Hardened outbox and auth surfaces:
+  - added channel-aware recipient validation at outbox boundary (`EMAIL` and E.164 SMS),
+  - replaced protected-route prefix matching with explicit protected route registry entries,
+  - tightened callback URL sanitization on login to locale-normalized `/dashboard` scope.
+- Improved ops scalability/monitoring defaults:
+  - removed process-local Prisma rate-limit cleanup side effect (cleanup remains cron-driven),
+  - added SMTP pool caps (`UPPOINT_EMAIL_POOL_MAX_CONNECTIONS`, `UPPOINT_EMAIL_POOL_MAX_MESSAGES`),
+  - added notification stale-lock SLO signal (`NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS`, threshold reporting in `check-security-slo.mjs`).
+- Synced docs and findings register for new env keys and closure evidence.
+
 ## 2026-03-05 (topbar control sizing: equal square buttons)
 
 ### Changed

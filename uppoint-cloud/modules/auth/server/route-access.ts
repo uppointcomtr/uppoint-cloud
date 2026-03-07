@@ -6,7 +6,7 @@ import {
 } from "@/modules/i18n/paths";
 
 interface ProtectedRouteRule {
-  prefix: string;
+  path: string;
   preserveCallbackUrl?: boolean;
 }
 
@@ -18,7 +18,11 @@ export const EXPLICIT_PUBLIC_ROUTES = new Set([
   "/verify-email",
 ]);
 export const PROTECTED_ROUTES: ProtectedRouteRule[] = [
-  { prefix: "/dashboard", preserveCallbackUrl: true },
+  { path: "/dashboard", preserveCallbackUrl: true },
+  { path: "/dashboard/security", preserveCallbackUrl: true },
+  { path: "/dashboard/notifications", preserveCallbackUrl: true },
+  { path: "/dashboard/tenant", preserveCallbackUrl: true },
+  { path: "/dashboard/modules", preserveCallbackUrl: true },
 ];
 const AUTHENTICATED_HOME_PATH = "/dashboard";
 const UNAUTHENTICATED_HOME_PATH = "/login";
@@ -29,7 +33,7 @@ function isExplicitlyPublicRoute(pathname: string): boolean {
 
 export function hasExplicitProtectedRouteRule(pathname: string): boolean {
   return PROTECTED_ROUTES.some(
-    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    ({ path }) => pathname === path,
   );
 }
 
@@ -47,9 +51,9 @@ export function shouldPreserveCallbackUrl(pathname: string): boolean {
   }
 
   return PROTECTED_ROUTES.some(
-    ({ prefix, preserveCallbackUrl }) =>
+    ({ path, preserveCallbackUrl }) =>
       Boolean(preserveCallbackUrl)
-      && (pathname === prefix || pathname.startsWith(`${prefix}/`)),
+      && pathname === path,
   );
 }
 

@@ -44,7 +44,9 @@ const serverEnvSchema = z.object({
   AUDIT_FALLBACK_LOG_PATH: z.string().trim().min(1).optional(),
   AUDIT_FALLBACK_CHAIN_STATE_PATH: z.string().trim().min(1).optional(),
   AUDIT_LOG_SIGNING_SECRET: z.string().min(32).optional(),
+  AUDIT_ANCHOR_SIGNING_SECRET: z.string().min(32).optional(),
   HEALTHCHECK_TOKEN: z.string().min(16).optional(),
+  UPPOINT_CLOSED_SYSTEM_MODE: booleanFromString.default(true),
   UPPOINT_ALLOWED_HOSTS: z.string().optional(),
   UPPOINT_ALLOWED_ORIGINS: z.string().optional(),
   RATE_LIMIT_REDIS_URL: z.string().url().optional(),
@@ -64,6 +66,8 @@ const serverEnvSchema = z.object({
   UPPOINT_EMAIL_HOST_USER: z.string().min(1).optional(),
   UPPOINT_EMAIL_HOST_PASSWORD: z.string().min(1).optional(),
   UPPOINT_EMAIL_USE_TLS: booleanFromString.default(true),
+  UPPOINT_EMAIL_POOL_MAX_CONNECTIONS: z.coerce.number().int().min(1).max(50).default(5),
+  UPPOINT_EMAIL_POOL_MAX_MESSAGES: z.coerce.number().int().min(1).max(10000).default(100),
   UPPOINT_SMS_ENABLED: booleanFromString.default(false),
   UPPOINT_SMS_API_URL: z.string().url().optional(),
   UPPOINT_SMS_USERNAME: z.string().min(1).optional(),
@@ -73,6 +77,8 @@ const serverEnvSchema = z.object({
   UPPOINT_SMS_DATACODING: z.coerce.number().int().min(0).max(2).default(2),
   UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS: booleanFromString.default(false),
   NOTIFICATION_PAYLOAD_SECRET: z.string().min(32).optional(),
+  NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS: z.coerce.number().int().min(30).max(3600).default(120),
+  NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD: z.coerce.number().int().min(1).max(10000).default(25),
 }).superRefine((input, context) => {
   let appUrl: URL | null = null;
   let databaseUrl: URL | null = null;
@@ -175,6 +181,22 @@ const serverEnvSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ["UPPOINT_SMS_ENABLED"],
         message: "UPPOINT_SMS_ENABLED must be true in production for OTP delivery",
+      });
+    }
+
+    if (!input.AUDIT_LOG_SIGNING_SECRET) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AUDIT_LOG_SIGNING_SECRET"],
+        message: "AUDIT_LOG_SIGNING_SECRET must be set in production",
+      });
+    }
+
+    if (!input.AUDIT_ANCHOR_SIGNING_SECRET) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AUDIT_ANCHOR_SIGNING_SECRET"],
+        message: "AUDIT_ANCHOR_SIGNING_SECRET must be set in production",
       });
     }
 
@@ -310,7 +332,9 @@ const parsedEnv = serverEnvSchema.safeParse({
   AUDIT_FALLBACK_LOG_PATH: process.env.AUDIT_FALLBACK_LOG_PATH,
   AUDIT_FALLBACK_CHAIN_STATE_PATH: process.env.AUDIT_FALLBACK_CHAIN_STATE_PATH,
   AUDIT_LOG_SIGNING_SECRET: process.env.AUDIT_LOG_SIGNING_SECRET,
+  AUDIT_ANCHOR_SIGNING_SECRET: process.env.AUDIT_ANCHOR_SIGNING_SECRET,
   HEALTHCHECK_TOKEN: process.env.HEALTHCHECK_TOKEN,
+  UPPOINT_CLOSED_SYSTEM_MODE: process.env.UPPOINT_CLOSED_SYSTEM_MODE,
   UPPOINT_ALLOWED_HOSTS: process.env.UPPOINT_ALLOWED_HOSTS,
   UPPOINT_ALLOWED_ORIGINS: process.env.UPPOINT_ALLOWED_ORIGINS,
   RATE_LIMIT_REDIS_URL: process.env.RATE_LIMIT_REDIS_URL,
@@ -330,6 +354,8 @@ const parsedEnv = serverEnvSchema.safeParse({
   UPPOINT_EMAIL_HOST_USER: process.env.UPPOINT_EMAIL_HOST_USER,
   UPPOINT_EMAIL_HOST_PASSWORD: process.env.UPPOINT_EMAIL_HOST_PASSWORD,
   UPPOINT_EMAIL_USE_TLS: process.env.UPPOINT_EMAIL_USE_TLS,
+  UPPOINT_EMAIL_POOL_MAX_CONNECTIONS: process.env.UPPOINT_EMAIL_POOL_MAX_CONNECTIONS,
+  UPPOINT_EMAIL_POOL_MAX_MESSAGES: process.env.UPPOINT_EMAIL_POOL_MAX_MESSAGES,
   UPPOINT_SMS_ENABLED: process.env.UPPOINT_SMS_ENABLED,
   UPPOINT_SMS_API_URL: process.env.UPPOINT_SMS_API_URL,
   UPPOINT_SMS_USERNAME: process.env.UPPOINT_SMS_USERNAME,
@@ -339,6 +365,8 @@ const parsedEnv = serverEnvSchema.safeParse({
   UPPOINT_SMS_DATACODING: process.env.UPPOINT_SMS_DATACODING,
   UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS: process.env.UPPOINT_SMS_INCLUDE_BODY_CREDENTIALS,
   NOTIFICATION_PAYLOAD_SECRET: process.env.NOTIFICATION_PAYLOAD_SECRET,
+  NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS: process.env.NOTIFICATION_OUTBOX_LOCK_STALE_SECONDS,
+  NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD: process.env.NOTIFICATION_OUTBOX_STALE_LOCK_ALERT_THRESHOLD,
 });
 
 if (!parsedEnv.success) {

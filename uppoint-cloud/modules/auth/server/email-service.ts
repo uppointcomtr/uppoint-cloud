@@ -39,6 +39,9 @@ function getTransporter() {
     host: smtpConfig.host,
     port: smtpConfig.port,
     secure: useImplicitTls,
+    pool: true,
+    maxConnections: env.UPPOINT_EMAIL_POOL_MAX_CONNECTIONS,
+    maxMessages: env.UPPOINT_EMAIL_POOL_MAX_MESSAGES,
     auth: {
       user: smtpConfig.user,
       pass: smtpConfig.password,

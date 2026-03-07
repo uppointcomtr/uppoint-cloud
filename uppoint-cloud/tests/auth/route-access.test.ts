@@ -9,7 +9,7 @@ import {
 describe("resolveAuthRedirect", () => {
   it("redirects unauthenticated dashboard requests to locale login", () => {
     expect(resolveAuthRedirect("/tr/dashboard", false)).toBe("/tr/login");
-    expect(resolveAuthRedirect("/en/dashboard/projects", false)).toBe("/en/login");
+    expect(resolveAuthRedirect("/en/dashboard/security", false)).toBe("/en/login");
   });
 
   it("redirects authenticated auth-page requests to locale dashboard", () => {
@@ -36,7 +36,7 @@ describe("resolveAuthRedirect", () => {
 describe("shouldPreserveCallbackUrl", () => {
   it("returns true for protected routes configured with callback preservation", () => {
     expect(shouldPreserveCallbackUrl("/dashboard")).toBe(true);
-    expect(shouldPreserveCallbackUrl("/dashboard/instances")).toBe(true);
+    expect(shouldPreserveCallbackUrl("/dashboard/security")).toBe(true);
   });
 
   it("returns false for public/auth routes", () => {
@@ -53,7 +53,7 @@ describe("shouldPreserveCallbackUrl", () => {
 describe("protected route intent", () => {
   it("matches explicit protected route registry", () => {
     expect(hasExplicitProtectedRouteRule("/dashboard")).toBe(true);
-    expect(hasExplicitProtectedRouteRule("/dashboard/instances")).toBe(true);
+    expect(hasExplicitProtectedRouteRule("/dashboard/security")).toBe(true);
   });
 
   it("does not auto-protect unknown paths without explicit registry", () => {

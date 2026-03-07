@@ -123,4 +123,43 @@ describe("getDashboardOverview", () => {
       }),
     );
   });
+
+  it("fails closed for tenant-scoped aggregates when tenant selection is required", async () => {
+    const countUserNotificationByStatus = vi.fn(async () => 999);
+    const countUserAuditFailuresSince = vi.fn(async () => 999);
+    const listRecentUserAuditEvents = vi.fn(async () => ([
+      {
+        action: "tenant_access_denied",
+        result: "FAILURE",
+        reason: "TENANT_SELECTION_REQUIRED",
+        createdAt: new Date("2026-03-05T08:20:00.000Z"),
+      },
+    ]));
+    const dependencies = createBaseDependencies({
+      resolveTenantContext: vi.fn(async () => {
+        throw new UserTenantContextError("TENANT_SELECTION_REQUIRED");
+      }),
+      countUserNotificationByStatus,
+      countUserAuditFailuresSince,
+      listRecentUserAuditEvents,
+    });
+
+    const result = await getDashboardOverview({
+      userId: "user_1",
+      sessionExpiresAt: "2026-03-05T10:30:00.000Z",
+    }, dependencies);
+
+    expect(result.tenant).toBeNull();
+    expect(result.tenantErrorCode).toBe("TENANT_SELECTION_REQUIRED");
+    expect(result.notifications).toEqual({
+      pending: 0,
+      sent24h: 0,
+      failed24h: 0,
+    });
+    expect(result.auditFailures24h).toBe(0);
+    expect(result.recentAuditEvents).toEqual([]);
+    expect(countUserNotificationByStatus).not.toHaveBeenCalled();
+    expect(countUserAuditFailuresSince).not.toHaveBeenCalled();
+    expect(listRecentUserAuditEvents).not.toHaveBeenCalled();
+  });
 });

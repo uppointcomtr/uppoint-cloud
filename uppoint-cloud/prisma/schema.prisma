@@ -157,7 +157,7 @@ model PasswordResetChallenge {
 }
 
 // Tracks auth request attempts per IP for rate limiting.
-// Uses an append-only pattern; old rows are cleaned up probabilistically.
+// Uses an append-only pattern; old rows are pruned by scheduled cleanup jobs.
 model RateLimitAttempt {
   id        String   @id @default(cuid())
   key       String   // "<action>:<ip>" e.g. "register:1.2.3.4"

@@ -63,9 +63,10 @@ export interface DashboardOverviewDependencies {
     userId: string;
     status: NotificationOutboxStatus;
     since?: Date;
+    tenantId?: string;
   }) => Promise<number>;
-  countUserAuditFailuresSince: (input: { userId: string; since: Date }) => Promise<number>;
-  listRecentUserAuditEvents: (input: { userId: string; take?: number }) => Promise<DashboardAuditEvent[]>;
+  countUserAuditFailuresSince: (input: { userId: string; since: Date; tenantId?: string }) => Promise<number>;
+  listRecentUserAuditEvents: (input: { userId: string; take?: number; tenantId?: string }) => Promise<DashboardAuditEvent[]>;
   listUserTenantOptions: (input: { userId: string; take?: number }) => Promise<DashboardTenantMembershipOption[]>;
   countUserActiveSessions: (input: { userId: string; now: Date }) => Promise<number>;
   logAudit: typeof logAudit;
@@ -135,29 +136,45 @@ export async function getDashboardOverview(
     throw new Error("DASHBOARD_USER_NOT_FOUND");
   }
 
+  const selectedTenantId = tenantContext?.tenantId;
   const [pendingCount, sent24hCount, failed24hCount, auditFailures24h, recentAuditEvents, activeSessions] = await Promise.all([
-    dependencies.countUserNotificationByStatus({
-      userId: input.userId,
-      status: NotificationOutboxStatus.PENDING,
-    }),
-    dependencies.countUserNotificationByStatus({
-      userId: input.userId,
-      status: NotificationOutboxStatus.SENT,
-      since: since24h,
-    }),
-    dependencies.countUserNotificationByStatus({
-      userId: input.userId,
-      status: NotificationOutboxStatus.FAILED,
-      since: since24h,
-    }),
-    dependencies.countUserAuditFailuresSince({
-      userId: input.userId,
-      since: since24h,
-    }),
-    dependencies.listRecentUserAuditEvents({
-      userId: input.userId,
-      take: 6,
-    }),
+    selectedTenantId
+      ? dependencies.countUserNotificationByStatus({
+          userId: input.userId,
+          tenantId: selectedTenantId,
+          status: NotificationOutboxStatus.PENDING,
+        })
+      : Promise.resolve(0),
+    selectedTenantId
+      ? dependencies.countUserNotificationByStatus({
+          userId: input.userId,
+          tenantId: selectedTenantId,
+          status: NotificationOutboxStatus.SENT,
+          since: since24h,
+        })
+      : Promise.resolve(0),
+    selectedTenantId
+      ? dependencies.countUserNotificationByStatus({
+          userId: input.userId,
+          tenantId: selectedTenantId,
+          status: NotificationOutboxStatus.FAILED,
+          since: since24h,
+        })
+      : Promise.resolve(0),
+    selectedTenantId
+      ? dependencies.countUserAuditFailuresSince({
+          userId: input.userId,
+          tenantId: selectedTenantId,
+          since: since24h,
+        })
+      : Promise.resolve(0),
+    selectedTenantId
+      ? dependencies.listRecentUserAuditEvents({
+          userId: input.userId,
+          tenantId: selectedTenantId,
+          take: 6,
+        })
+      : Promise.resolve([]),
     dependencies.countUserActiveSessions({
       userId: input.userId,
       now,

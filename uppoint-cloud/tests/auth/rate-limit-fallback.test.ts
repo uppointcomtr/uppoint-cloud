@@ -50,21 +50,19 @@ describe("checkRateLimit Prisma fallback", () => {
     }));
   });
 
-  it("allows requests under limit and schedules deterministic cleanup only once per interval", async () => {
+  it("allows requests under limit using Prisma fallback without in-process cleanup side effects", async () => {
     mocks.count.mockResolvedValue(0);
     mocks.create.mockResolvedValue({ id: "attempt_1" });
-    mocks.deleteMany.mockResolvedValue({ count: 3 });
 
     const { checkRateLimit } = await loadRateLimitModule();
 
     const first = await checkRateLimit("register", "127.0.0.1", 5, 60);
     const second = await checkRateLimit("register", "127.0.0.1", 5, 60);
-    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(first.allowed).toBe(true);
     expect(second.allowed).toBe(true);
     expect(mocks.create).toHaveBeenCalledTimes(2);
-    expect(mocks.deleteMany).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteMany).not.toHaveBeenCalled();
   });
 
   it("blocks requests when count is already at limit", async () => {

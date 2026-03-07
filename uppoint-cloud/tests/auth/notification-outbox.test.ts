@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   dispatchNotificationOutboxBatch,
   enqueueEmailNotification,
+  enqueueSmsNotification,
 } from "@/modules/notifications/server/outbox";
 
 describe("notification outbox", () => {
@@ -57,6 +58,27 @@ describe("notification outbox", () => {
     expect(sendEmail).toHaveBeenCalledTimes(1);
     expect(markSent).toHaveBeenCalledTimes(1);
     expect(markFailedAttempt).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid email recipients before enqueue", async () => {
+    await expect(enqueueEmailNotification(
+      {
+        to: "invalid-email",
+        subject: "Test",
+        text: "Body",
+      },
+      { createOutboxRecord: vi.fn(async () => {}) },
+    )).rejects.toThrow("INVALID_NOTIFICATION_RECIPIENT");
+  });
+
+  it("rejects invalid sms recipients before enqueue", async () => {
+    await expect(enqueueSmsNotification(
+      {
+        to: "abc",
+        message: "123456",
+      },
+      { createOutboxRecord: vi.fn(async () => {}) },
+    )).rejects.toThrow("INVALID_NOTIFICATION_RECIPIENT");
   });
 
   it("marks notification as failed after max attempts", async () => {

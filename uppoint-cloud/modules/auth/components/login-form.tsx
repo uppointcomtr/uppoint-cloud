@@ -17,7 +17,7 @@ import {
 } from "@/modules/auth/schemas/auth-schemas";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
-import { withLocale } from "@/modules/i18n/paths";
+import { stripLocaleFromPath, withLocale } from "@/modules/i18n/paths";
 
 import { AuthCard } from "./auth-card";
 import { ForgotPasswordModal } from "./forgot-password-modal";
@@ -37,6 +37,21 @@ interface LoginFormProps {
   dictionary: Dictionary["login"];
   passwordRecoveryDictionary: Dictionary["passwordRecovery"];
   validation: Dictionary["validation"];
+}
+
+function resolveSafeCallbackUrl(rawCallbackUrl: string | null, locale: Locale): string {
+  const fallback = withLocale("/dashboard", locale);
+  if (!rawCallbackUrl || !rawCallbackUrl.startsWith("/") || rawCallbackUrl.startsWith("//")) {
+    return fallback;
+  }
+
+  const normalizedPath = rawCallbackUrl.replace(/\/{2,}/g, "/");
+  const strippedPath = stripLocaleFromPath(normalizedPath);
+  if (strippedPath !== "/dashboard" && !strippedPath.startsWith("/dashboard/")) {
+    return fallback;
+  }
+
+  return withLocale(strippedPath, locale);
 }
 
 function mapLoginChallengeError(
@@ -74,7 +89,7 @@ export function LoginForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallbackUrl = searchParams.get("callbackUrl");
-  const callbackUrl = rawCallbackUrl?.startsWith("/") ? rawCallbackUrl : withLocale("/dashboard", locale);
+  const callbackUrl = resolveSafeCallbackUrl(rawCallbackUrl, locale);
   const prefilledEmail = searchParams.get("email") ?? "";
 
   const [mode, setMode] = useState<LoginMode>("email");

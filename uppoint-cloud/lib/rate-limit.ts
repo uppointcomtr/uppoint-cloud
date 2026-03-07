@@ -31,11 +31,6 @@ const upstashRedis = upstashConfig
   : null;
 
 const limiterCache = new Map<string, Ratelimit>();
-const PRISMA_FALLBACK_CLEANUP_WINDOW_MS = 24 * 60 * 60 * 1000;
-const PRISMA_FALLBACK_CLEANUP_INTERVAL_MS = 10 * 60 * 1000;
-
-let lastPrismaFallbackCleanupAtMs = 0;
-let prismaFallbackCleanupRunning = false;
 
 const LOCAL_REDIS_SLIDING_WINDOW_SCRIPT = `
 redis.call("ZREMRANGEBYSCORE", KEYS[1], 0, ARGV[1])
@@ -290,7 +285,6 @@ async function checkPrismaFallbackRateLimit(
         return { allowed: false, retryAfterSeconds: windowSeconds };
       }
 
-      schedulePrismaFallbackCleanup(nowMs);
       return { allowed: true };
     } catch (error) {
       if (
@@ -314,29 +308,6 @@ async function checkPrismaFallbackRateLimit(
     allowed: false,
     retryAfterSeconds: Math.max(1, windowSeconds),
   };
-}
-
-function schedulePrismaFallbackCleanup(nowMs: number): void {
-  if (prismaFallbackCleanupRunning) {
-    return;
-  }
-
-  if (nowMs - lastPrismaFallbackCleanupAtMs < PRISMA_FALLBACK_CLEANUP_INTERVAL_MS) {
-    return;
-  }
-
-  lastPrismaFallbackCleanupAtMs = nowMs;
-  prismaFallbackCleanupRunning = true;
-  const cutoff = new Date(nowMs - PRISMA_FALLBACK_CLEANUP_WINDOW_MS);
-
-  prisma.rateLimitAttempt
-    .deleteMany({ where: { createdAt: { lt: cutoff } } })
-    .catch((error) => {
-      console.error("[rate-limit] Prisma fallback cleanup failed:", error);
-    })
-    .finally(() => {
-      prismaFallbackCleanupRunning = false;
-    });
 }
 
 export function normalizeRateLimitIdentifier(value: string): string {
