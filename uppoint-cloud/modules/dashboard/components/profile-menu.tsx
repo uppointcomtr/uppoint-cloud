@@ -11,7 +11,6 @@ import {
   UserCircle2,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { performLogout } from "@/modules/auth/client/logout";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
@@ -24,15 +23,22 @@ interface ProfileMenuProps {
   email: string;
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+const menuItemClass =
+  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground";
+
 export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
 
     function handlePointerDown(event: MouseEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
@@ -41,14 +47,11 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
     }
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
+      if (event.key === "Escape") setIsOpen(false);
     }
 
     window.addEventListener("mousedown", handlePointerDown);
     window.addEventListener("keydown", handleEscape);
-
     return () => {
       window.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleEscape);
@@ -62,9 +65,10 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
   const forgotPasswordPath = withLocale("/forgot-password", locale);
   const loginPath = withLocale("/login", locale);
 
+  const initials = getInitials(displayName);
+
   async function handleLogout() {
     if (isLoggingOut) return;
-
     setIsLoggingOut(true);
     setIsOpen(false);
     await performLogout({ callbackUrl: loginPath });
@@ -74,93 +78,72 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-background/80 shadow-sm transition-colors hover:bg-accent/50"
+        onClick={() => setIsOpen((c) => !c)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-primary/10 text-primary text-xs font-bold shadow-sm transition-colors hover:bg-primary/15"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={dictionary.buttonLabel}
         title={dictionary.buttonLabel}
       >
-        <UserCircle2 className="h-4 w-4 text-primary" />
+        {initials}
       </button>
 
       {isOpen ? (
         <div
           role="menu"
           aria-label={dictionary.menuLabel}
-          className="absolute right-0 z-50 mt-2 w-[22rem] rounded-2xl border border-border/70 bg-card/95 p-3 shadow-[0_30px_70px_-40px_rgba(15,23,42,0.75)] backdrop-blur"
+          className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border/70 bg-popover shadow-xl"
         >
-          <div className="mb-3 rounded-xl border border-border/60 bg-background/80 p-3">
-            <div className="flex items-start gap-3">
-              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <UserCircle2 className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 space-y-0.5">
-                <p className="truncate text-sm font-semibold">{displayName}</p>
-                <p className="truncate text-xs text-muted-foreground">{email}</p>
-              </div>
+          {/* User info header */}
+          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/60">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm font-bold">
+              {initials}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold leading-tight">{displayName}</p>
+              <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">{email}</p>
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Link
-              href={dashboardPath}
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
-            >
-              <UserCircle2 className="h-4 w-4 text-muted-foreground" />
+          {/* Navigation links */}
+          <div className="p-1.5">
+            <Link href={dashboardPath} role="menuitem" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <UserCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
               {dictionary.accountOverview}
             </Link>
-            <Link
-              href={securityPath}
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
-            >
-              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <Link href={securityPath} role="menuitem" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
               {dictionary.securityCenter}
             </Link>
-            <Link
-              href={notificationsPath}
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
-            >
-              <BellRing className="h-4 w-4 text-muted-foreground" />
+            <Link href={notificationsPath} role="menuitem" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <BellRing className="h-4 w-4 shrink-0 text-muted-foreground" />
               {dictionary.notificationCenter}
             </Link>
-            <Link
-              href={tenantPath}
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
-            >
-              <Building2 className="h-4 w-4 text-muted-foreground" />
+          </div>
+
+          <div className="border-t border-border/60 p-1.5">
+            <Link href={tenantPath} role="menuitem" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
               {dictionary.tenantContext}
             </Link>
-            <Link
-              href={forgotPasswordPath}
-              role="menuitem"
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-2 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-colors hover:border-border/70 hover:bg-accent/60"
-            >
-              <KeyRound className="h-4 w-4 text-muted-foreground" />
+            <Link href={forgotPasswordPath} role="menuitem" onClick={() => setIsOpen(false)} className={menuItemClass}>
+              <KeyRound className="h-4 w-4 shrink-0 text-muted-foreground" />
               {dictionary.resetPassword}
             </Link>
           </div>
 
-          <div className="mt-3 border-t border-border/60 pt-3">
-            <Button
+          {/* Logout */}
+          <div className="border-t border-border/60 p-1.5">
+            <button
               type="button"
-              variant="outline"
-              className="w-full justify-start border-border/70 bg-background/85"
+              role="menuitem"
               disabled={isLoggingOut}
               onClick={() => void handleLogout()}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 shrink-0" />
               {isLoggingOut ? dictionary.signOutLoading : dictionary.signOut}
-            </Button>
+            </button>
           </div>
         </div>
       ) : null}
