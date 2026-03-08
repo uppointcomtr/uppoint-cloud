@@ -91,6 +91,56 @@ jobs:
       - name: Run remote smoke suite
         run: npm run test:e2e:remote
 
+      - name: Install Playwright Chromium
+        if: always()
+        run: npx playwright install chromium
+
+      - name: Run dashboard security visual smoke
+        id: visual_smoke
+        if: always()
+        env:
+          E2E_VISUAL_SESSION_COOKIE: ${{ secrets.E2E_VISUAL_SESSION_COOKIE }}
+        run: |
+          set +e
+
+          if [ -n "${E2E_VISUAL_SESSION_COOKIE:-}" ]; then
+            export E2E_VISUAL_REQUIRE_AUTH=1
+            auth_mode="session-cookie"
+          else
+            export E2E_VISUAL_REQUIRE_AUTH=0
+            auth_mode="anonymous-redirect-check"
+          fi
+
+          npm run test:e2e:visual:remote
+          rc=$?
+
+          if [ "${rc}" -eq 0 ]; then
+            visual_state="passed"
+          elif [ "${E2E_VISUAL_REQUIRE_AUTH}" = "1" ]; then
+            visual_state="failed"
+          else
+            visual_state="advisory_failed"
+          fi
+
+          echo "state=${visual_state}" >> "${GITHUB_OUTPUT}"
+          echo "auth_mode=${auth_mode}" >> "${GITHUB_OUTPUT}"
+          echo "exit_code=${rc}" >> "${GITHUB_OUTPUT}"
+
+          if [ "${visual_state}" = "failed" ]; then
+            exit "${rc}"
+          fi
+
+          exit 0
+
+      - name: Upload dashboard security visual smoke artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-security-visual-smoke
+          path: uppoint-cloud/artifacts/security-visual-smoke
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Verify audit integrity chain (optional)
         id: audit_integrity
         if: always()
@@ -169,6 +219,8 @@ jobs:
           HEALTH_RESULT: ${{ steps.health.outputs.health_result }}
           HEALTH_GUARD: ${{ env.E2E_ENFORCE_HEALTH_200 }}
           AUDIT_INTEGRITY_STATE: ${{ steps.audit_integrity.outputs.state }}
+          VISUAL_SMOKE_STATE: ${{ steps.visual_smoke.outputs.state }}
+          VISUAL_SMOKE_AUTH_MODE: ${{ steps.visual_smoke.outputs.auth_mode }}
         run: |
           set -euo pipefail
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
@@ -197,5 +249,7 @@ jobs:
             echo "- E2E_HEALTHCHECK_TOKEN: ${health_token_state}"
             echo "- Health endpoint: ${HEALTH_RESULT:-unknown}"
             echo "- Health guard: ${HEALTH_GUARD}"
+            echo "- Dashboard security visual smoke: ${VISUAL_SMOKE_STATE:-not-run}"
+            echo "- Dashboard security visual auth mode: ${VISUAL_SMOKE_AUTH_MODE:-unknown}"
             echo "- Audit integrity check: ${AUDIT_INTEGRITY_STATE:-not-run}"
           } >> "${GITHUB_STEP_SUMMARY}"

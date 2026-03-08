@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-03-08 (ci: dashboard security visual smoke artifacts)
+
+### Added
+- Added remote visual smoke runner script:
+  - `scripts/run-security-visual-smoke.mjs`
+  - captures `/:locale/dashboard/security` screenshots for `tr/en` and `light/dark`
+  - writes machine + human summaries under `artifacts/security-visual-smoke/`.
+- Added package script:
+  - `npm run test:e2e:visual:remote`
+
+### Changed
+- Extended nightly remote smoke workflow:
+  - installs Playwright Chromium,
+  - runs dashboard security visual smoke,
+  - uploads artifact `dashboard-security-visual-smoke`,
+  - includes visual smoke status/auth mode in workflow summary.
+- Updated README with visual smoke run commands and optional `E2E_VISUAL_SESSION_COOKIE` secret usage.
+
 ## 2026-03-08 (dashboard security center redesign)
 
 ### Added
