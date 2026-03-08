@@ -397,27 +397,6 @@ cd /opt/uppoint-cloud
 E2E_BASE_URL=https://staging.example.com npm run test:e2e:remote
 ```
 
-Dashboard security visual smoke (TR/EN + light/dark screenshots):
-
-```bash
-cd /opt/uppoint-cloud
-npm run test:e2e:visual:remote
-```
-
-Optional authenticated visual mode:
-
-```bash
-cd /opt/uppoint-cloud
-E2E_VISUAL_SESSION_COOKIE="<next-auth-session-token>" \
-E2E_VISUAL_REQUIRE_AUTH=1 \
-npm run test:e2e:visual:remote
-```
-
-Visual artifact output:
-- `artifacts/security-visual-smoke/summary.md`
-- `artifacts/security-visual-smoke/summary.json`
-- `artifacts/security-visual-smoke/dashboard-security-<locale>-<theme>.png`
-
 GitHub Actions nightly/ondemand remote smoke:
 
 - Workflow file: [remote-auth-smoke.yml](/opt/.github/workflows/remote-auth-smoke.yml)
@@ -433,10 +412,6 @@ GitHub Actions nightly/ondemand remote smoke:
 Optional CI audit-integrity check:
 - set repository secret `AUDIT_INTEGRITY_DATABASE_URL` (read-only DB URL recommended).
 - workflow runs `npm run verify:audit-integrity` when this secret is configured and reachable from the selected runner network.
-- Optional authenticated visual security smoke:
-  - set repository secret `E2E_VISUAL_SESSION_COOKIE` (NextAuth session token for a smoke user)
-  - workflow runs `npm run test:e2e:visual:remote` and uploads `dashboard-security-visual-smoke` artifact
-  - when the secret is missing, workflow runs in anonymous redirect-check mode and still uploads artifacts
 - Required secret for production target:
   - `E2E_HEALTHCHECK_TOKEN` (production `/api/health` is token-gated; workflow fails closed if missing)
 - Optional repository variable:
@@ -464,7 +439,6 @@ Quick verification checklist for manual runs:
   - step `Require healthcheck token for production target` must be `success`
 - Summary check (UI):
   - open the run URL and confirm `E2E_HEALTHCHECK_TOKEN: configured`
-  - confirm `Dashboard security visual smoke` summary field
 
 Repository/app-root contract checks:
 
