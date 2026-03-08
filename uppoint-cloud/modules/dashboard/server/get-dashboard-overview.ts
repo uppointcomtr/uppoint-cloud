@@ -34,6 +34,8 @@ interface DashboardRuntimeSummary {
   rateLimitBackend: "redis-local" | "redis-upstash" | "prisma-fallback";
 }
 
+const SECURITY_EVENTS_TAKE = 60;
+
 export interface DashboardTenantSelectionOption extends DashboardTenantMembershipOption {
   isSelected: boolean;
 }
@@ -172,7 +174,7 @@ export async function getDashboardOverview(
       ? dependencies.listRecentUserAuditEvents({
           userId: input.userId,
           tenantId: selectedTenantId,
-          take: 6,
+          take: SECURITY_EVENTS_TAKE,
         })
       : Promise.resolve([]),
     dependencies.countUserActiveSessions({

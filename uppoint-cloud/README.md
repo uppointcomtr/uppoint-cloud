@@ -24,6 +24,10 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - account/session/verification/risk summary cards
     - tenant context visibility, explicit tenant selection, and quick actions
     - notification and security signal overview
+  - Security center view (`/:locale/dashboard/security`)
+    - account operations block (terminate all sessions, danger-zone account deletion flow)
+    - active session summary with latest device/IP visibility
+    - searchable, paginated security event table (date/event/IP/device)
   - Route protection via proxy + server-side checks
   - JWT session revocation via `User.tokenVersion` checks
   - Session policy:

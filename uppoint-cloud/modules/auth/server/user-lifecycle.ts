@@ -17,6 +17,7 @@ const defaultDependencies: SoftDeleteDependencies = {
 export async function softDeleteUser(
   userId: string,
   dependencies: SoftDeleteDependencies = defaultDependencies,
+  input: { ip?: string } = {},
 ): Promise<boolean> {
   const now = dependencies.now();
   // Unique tombstone preserves unique index safety and enables re-registration with original email.
@@ -24,7 +25,7 @@ export async function softDeleteUser(
   const deleted = await dependencies.softDelete({ userId, now, tombstoneEmail });
 
   if (deleted) {
-    await logAudit("user_soft_deleted", "unknown", userId, {
+    await logAudit("user_soft_deleted", input.ip ?? "unknown", userId, {
       reason: "USER_SOFT_DELETED",
       result: "SUCCESS",
     });

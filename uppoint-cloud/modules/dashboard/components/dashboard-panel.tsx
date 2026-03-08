@@ -19,6 +19,7 @@ import { withLocale } from "@/modules/i18n/paths";
 
 import type { DashboardOverview } from "../server/get-dashboard-overview";
 import { ProfileMenu } from "./profile-menu";
+import { SecurityCenter } from "./security-center";
 
 export type DashboardSection =
   | "overview"
@@ -154,44 +155,6 @@ function renderQuickActions(
             {labels.openPublicApp}
           </Link>
         </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function renderSecurityCard(
-  locale: Locale,
-  overview: DashboardOverview,
-  labels: DashboardPanelProps["dictionary"]["dashboard"]["security"],
-) {
-  return (
-    <Card className={corporateCardClass}>
-      <CardHeader>
-        <CardTitle className="text-base">{labels.title}</CardTitle>
-        <CardDescription>{labels.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <p>
-          <span className="text-muted-foreground">{labels.failures24h}:</span> {overview.auditFailures24h}
-        </p>
-        <div className="space-y-2">
-          {overview.recentAuditEvents.length === 0 ? (
-            <p className="text-muted-foreground">{labels.noEvents}</p>
-          ) : (
-            overview.recentAuditEvents.map((event) => (
-              <div
-                key={`${event.action}-${event.createdAt.toISOString()}`}
-                className="rounded-lg border border-border/50 bg-background/60 px-3 py-2"
-              >
-                <p className="font-medium">{event.action}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDateTime(event.createdAt, locale)} · {event.result ?? "UNKNOWN"}
-                  {event.reason ? ` · ${event.reason}` : ""}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
       </CardContent>
     </Card>
   );
@@ -566,10 +529,21 @@ export function DashboardPanel({
           ) : null}
 
           {activeSection === "security" ? (
-            <>
-              {renderSecurityCard(locale, overview, dashboard.security)}
-              {renderQuickActions(locale, dashboard.quickActions, overview.runtime.appUrl)}
-            </>
+            <SecurityCenter
+              locale={locale}
+              labels={dashboard.security}
+              activeSessions={overview.activeSessions}
+              auditFailures24h={overview.auditFailures24h}
+              events={overview.recentAuditEvents.map((event, index) => ({
+                id: `${event.action}-${event.createdAt.toISOString()}-${index}`,
+                action: event.action,
+                result: event.result,
+                reason: event.reason,
+                ip: event.ip,
+                userAgent: event.userAgent,
+                createdAtIso: event.createdAt.toISOString(),
+              }))}
+            />
           ) : null}
 
           {activeSection === "notifications" ? (

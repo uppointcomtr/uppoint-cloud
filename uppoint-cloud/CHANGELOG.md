@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-03-08 (dashboard security center redesign)
+
+### Added
+- Added new security-center UI component for `/:locale/dashboard/security`:
+  - `modules/dashboard/components/security-center.tsx`
+  - account operations, danger-zone confirmation flow, active session summary, and searchable/paginated security events table.
+- Added auth API endpoints:
+  - `POST /api/auth/logout/all` (terminate all sessions for authenticated user)
+  - `POST /api/auth/account/delete` (confirmed account soft-delete flow)
+- Added session-wide revoke service and tests:
+  - `modules/auth/server/session-security.ts`
+  - `tests/auth/session-security.test.ts`
+
+### Changed
+- Extended dashboard security event payload with IP and user-agent fields:
+  - `db/repositories/dashboard-repository.ts`
+  - `modules/dashboard/server/get-dashboard-overview.ts`
+- Updated security section translations in TR/EN dictionaries for new screen content and controls.
+- Updated dashboard security rendering to use new security-center component.
+
 ## 2026-03-08 (auth session policy: 4h idle default + 15d remember-me)
 
 ### Changed

@@ -57,3 +57,34 @@ export async function softDeleteUserWithCleanup(
     return true;
   });
 }
+
+export async function revokeAllUserSessions(
+  input: { userId: string },
+  client: typeof prisma = prisma,
+): Promise<boolean> {
+  return client.$transaction(async (tx) => {
+    const updated = await tx.user.updateMany({
+      where: {
+        id: input.userId,
+        deletedAt: null,
+      },
+      data: {
+        tokenVersion: {
+          increment: 1,
+        },
+      },
+    });
+
+    if (updated.count !== 1) {
+      return false;
+    }
+
+    await tx.session.deleteMany({
+      where: {
+        userId: input.userId,
+      },
+    });
+
+    return true;
+  });
+}

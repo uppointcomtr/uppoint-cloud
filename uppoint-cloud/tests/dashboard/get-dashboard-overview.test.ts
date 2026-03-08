@@ -37,6 +37,8 @@ function createBaseDependencies(overrides?: Partial<DashboardOverviewDependencie
         action: "login_success",
         result: "SUCCESS",
         reason: null,
+        ip: "88.236.40.120",
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0",
         createdAt: new Date("2026-03-05T08:10:00.000Z"),
       },
     ])),
@@ -132,6 +134,8 @@ describe("getDashboardOverview", () => {
         action: "tenant_access_denied",
         result: "FAILURE",
         reason: "TENANT_SELECTION_REQUIRED",
+        ip: "88.236.40.120",
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0",
         createdAt: new Date("2026-03-05T08:20:00.000Z"),
       },
     ]));

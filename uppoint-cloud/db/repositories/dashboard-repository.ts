@@ -22,6 +22,8 @@ export interface DashboardAuditEvent {
   action: string;
   result: string | null;
   reason: string | null;
+  ip: string | null;
+  userAgent: string | null;
   createdAt: Date;
 }
 
@@ -120,6 +122,8 @@ export async function listRecentUserAuditEvents(
       action: true,
       result: true,
       reason: true,
+      ip: true,
+      userAgent: true,
       createdAt: true,
     },
   });
