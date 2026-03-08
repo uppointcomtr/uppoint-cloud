@@ -79,6 +79,7 @@ export const trMessages = {
     title: "Oturum aç",
     description: "Uppoint Cloud uygulamasına devam edin.",
     accountPrefix: "Hesap",
+    rememberMe: "Beni hatırla (15 gün)",
     forgotPasswordLink: "Şifremi unuttum?",
     footerPrefix: "Uppoint Cloud'ta yeni misiniz?",
     footerLink: "Hesap oluştur",

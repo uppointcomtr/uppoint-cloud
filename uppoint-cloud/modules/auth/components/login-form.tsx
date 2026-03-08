@@ -100,6 +100,7 @@ export function LoginForm({
   const [emailPassword, setEmailPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [phonePassword, setPhonePassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -160,6 +161,7 @@ export function LoginForm({
     try {
       result = await signIn("credentials", {
         loginToken,
+        rememberMe: rememberMe ? "1" : "0",
         redirect: false,
         callbackUrl,
       });
@@ -540,6 +542,16 @@ export function LoginForm({
                   onChange={(event) => setEmailPassword(event.target.value)}
                 />
 
+                <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                    className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+                  />
+                  <span>{dictionary.rememberMe}</span>
+                </label>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -672,6 +684,16 @@ export function LoginForm({
                   value={phonePassword}
                   onChange={(event) => setPhonePassword(event.target.value)}
                 />
+
+                <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                    className="h-4 w-4 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+                  />
+                  <span>{dictionary.rememberMe}</span>
+                </label>
 
                 <div className="space-y-2">
                   <Button

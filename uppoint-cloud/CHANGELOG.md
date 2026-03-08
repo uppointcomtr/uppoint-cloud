@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-03-08 (auth session policy: 4h idle default + 15d remember-me)
+
+### Changed
+- Updated auth session policy in `auth.ts`:
+  - default sessions now expire after 4 hours of inactivity,
+  - `rememberMe` sessions now expire after 15 days of inactivity,
+  - session max age is aligned with remember-me upper bound.
+- Added server-side policy helpers in `modules/auth/server/session-policy.ts` and test coverage in `tests/auth/session-policy.test.ts`.
+- Updated login form to include remember-me option on password step for email/phone flows:
+  - `modules/auth/components/login-form.tsx`
+  - localized labels in `messages/tr.ts` and `messages/en.ts`.
+- Updated auth milestone documentation in `README.md`.
+
 ## 2026-03-07 (dashboard ux: profile menu redesign)
 
 ### Changed

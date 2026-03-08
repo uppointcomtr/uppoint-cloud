@@ -26,6 +26,9 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - notification and security signal overview
   - Route protection via proxy + server-side checks
   - JWT session revocation via `User.tokenVersion` checks
+  - Session policy:
+    - standard session expires after 4 hours of inactivity
+    - “Remember me” session expires after 15 days of inactivity
   - Atomic one-time token/code consumption for login/register/password-reset challenge flows
   - Database-backed auth persistence (Auth.js + Prisma adapter)
   - Notification outbox + async dispatcher for SMTP email + Verimor SMS

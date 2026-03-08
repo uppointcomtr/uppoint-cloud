@@ -79,6 +79,7 @@ export const enMessages = {
     title: "Sign in",
     description: "Continue to the Uppoint Cloud application.",
     accountPrefix: "Account",
+    rememberMe: "Remember me (15 days)",
     forgotPasswordLink: "Forgot password?",
     footerPrefix: "New to Uppoint Cloud?",
     footerLink: "Create account",
