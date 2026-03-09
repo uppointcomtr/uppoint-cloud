@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-03-09 (dashboard topbar identity line simplification)
+
+### Changed
+- Updated dashboard topbar secondary line in `modules/dashboard/components/dashboard-panel.tsx`:
+  - removed the “updated at” segment from the inline topbar metadata,
+  - switched account identity display from e-mail to resolved display name (ad soyad).
+
 ## 2026-03-09 (dashboard surface cleanup: remove glow overlays)
 
 ### Changed
