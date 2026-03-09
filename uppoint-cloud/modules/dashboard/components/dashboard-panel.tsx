@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Building2, LayoutDashboard, Layers3, ShieldCheck } from "lucide-react";
+import { Bell, Building2, ChevronRight, LayoutDashboard, Layers3, ShieldCheck } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -131,6 +131,20 @@ function navButtonClass(isActive: boolean): string {
       ? "border-l-primary bg-primary/[0.09] text-foreground"
       : "border-l-transparent text-muted-foreground hover:bg-accent/45 hover:text-foreground",
   );
+}
+
+function getActiveSectionLabel(
+  section: DashboardSection,
+  nav: { overview: string; security: string; notifications: string; tenant: string; modules: string },
+): string {
+  const map: Record<DashboardSection, string> = {
+    overview: nav.overview,
+    security: nav.security,
+    notifications: nav.notifications,
+    tenant: nav.tenant,
+    modules: nav.modules,
+  };
+  return map[section];
 }
 
 function getInitials(name: string): string {
@@ -459,40 +473,6 @@ export function DashboardPanel({
             ))}
           </nav>
 
-          {/* Tenant widget */}
-          <div className="px-3 pb-3">
-            <div className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
-              <p className="corp-kicker">{dashboard.tenant.title}</p>
-              {overview.tenant ? (
-                <div className="mt-2 space-y-0.5">
-                  <p className="text-sm font-medium truncate text-foreground">{overview.tenant.tenantId}</p>
-                  <p className="text-xs text-muted-foreground">{overview.tenant.role}</p>
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {resolveTenantStatusMessage(overview, dashboard.tenant)}
-                </p>
-              )}
-              {overview.tenantOptions.length > 1 ? (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {overview.tenantOptions.map((option) => (
-                    <Button
-                      key={option.tenantId}
-                      asChild
-                      size="sm"
-                      variant={option.isSelected ? "default" : "outline"}
-                      className="h-6 px-2 text-[11px]"
-                    >
-                      <Link href={createTenantHref(locale, activeSection, option.tenantId)}>
-                        {option.tenantName}
-                      </Link>
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </div>
-
           {/* User footer */}
           <div className="mt-auto border-t border-border/50 px-3 py-3">
             <div className="flex items-center gap-2.5">
@@ -512,16 +492,18 @@ export function DashboardPanel({
           {/* ── Top bar ── */}
           <header className="relative z-30 rounded-xl border border-border/60 bg-sidebar shadow-sm shadow-black/5">
             <div className="flex h-14 items-center justify-between px-5">
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <div className="h-5 w-0.5 shrink-0 rounded-full bg-primary" />
-                <div className="min-w-0">
-                  <h1 className="text-sm font-semibold leading-tight text-foreground truncate">{dashboard.title}</h1>
-                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-                    {dashboard.topbar.accountLabel}: {overview.user.email}
-                    {" · "}
-                    {dashboard.topbar.updatedAt}: {formatDateTime(overview.generatedAt, locale)}
-                  </p>
-                </div>
+                <Link
+                  href={withLocale("/dashboard", locale)}
+                  className="shrink-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {dashboard.title}
+                </Link>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-border" aria-hidden />
+                <span className="truncate text-sm font-semibold text-foreground">
+                  {getActiveSectionLabel(activeSection, dashboard.nav)}
+                </span>
               </div>
               <div className="flex shrink-0 items-center gap-1 ml-4">
                 <ThemeToggle
