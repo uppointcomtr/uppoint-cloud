@@ -126,11 +126,17 @@ function createTenantHref(
 
 function navButtonClass(isActive: boolean): string {
   return cn(
-    "group flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm font-medium transition-colors",
+    "group flex items-center gap-2.5 border-l-2 px-3 py-2 text-sm font-medium transition-colors",
     isActive
-      ? "border-primary/35 bg-primary/[0.14] text-foreground shadow-sm shadow-primary/10"
-      : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-accent/65 hover:text-foreground",
+      ? "border-l-primary bg-primary/[0.09] text-foreground"
+      : "border-l-transparent text-muted-foreground hover:bg-accent/45 hover:text-foreground",
   );
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return (parts[0] ?? "").slice(0, 2).toUpperCase();
+  return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
 }
 
 function renderQuickActions(
@@ -403,11 +409,13 @@ export function DashboardPanel({
         sessionExpires={overview.sessionExpiresAt.toISOString()}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[272px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-border/70 bg-sidebar/95 p-5 shadow-sm shadow-black/5 backdrop-blur xl:sticky xl:top-6 xl:h-[fit-content] dark:bg-sidebar/90">
-          <div className="space-y-4 border-b border-border/60 pb-5">
-            <Link href={withLocale("/dashboard", locale)} className="inline-block" aria-label="Uppoint Cloud">
-              <div className="relative h-12 w-[156px] shrink-0">
+      <div className="grid gap-6 xl:grid-cols-[256px_minmax(0,1fr)]">
+        {/* ── Sidebar ── */}
+        <aside className="flex flex-col overflow-hidden rounded-xl border border-border/60 bg-sidebar shadow-sm shadow-black/5 xl:sticky xl:top-6 xl:h-[fit-content]">
+          {/* Logo + brand */}
+          <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3.5">
+            <Link href={withLocale("/dashboard", locale)} aria-label="Uppoint Cloud" className="shrink-0">
+              <div className="relative h-8 w-[108px]">
                 <Image
                   src="/logo/uppoint-logo-black.webp"
                   alt="Uppoint Cloud"
@@ -426,11 +434,12 @@ export function DashboardPanel({
                 />
               </div>
             </Link>
-            <p className="corp-kicker">Cloud Control Plane</p>
-            <p className="text-sm leading-6 text-muted-foreground">{dashboard.description}</p>
+            <div className="h-4 w-px shrink-0 bg-border/60" />
+            <span className="corp-kicker leading-none">Control Plane</span>
           </div>
 
-          <nav className="mt-5 space-y-2 text-sm">
+          {/* Nav */}
+          <nav className="px-2 py-3 space-y-0.5">
             {navItems.map((item) => (
               <Link
                 key={item.section}
@@ -450,34 +459,29 @@ export function DashboardPanel({
             ))}
           </nav>
 
-          <div className="mt-6 rounded-xl border border-border/60 bg-background/75 p-4 shadow-sm dark:bg-background/55">
-            <p className="corp-kicker">
-              {dashboard.tenant.title}
-            </p>
-            {overview.tenant ? (
-              <div className="mt-3 space-y-1 text-sm">
-                <p>
-                  <span className="text-muted-foreground">{dashboard.tenant.tenantLabel}:</span> {overview.tenant.tenantId}
+          {/* Tenant widget */}
+          <div className="px-3 pb-3">
+            <div className="rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5">
+              <p className="corp-kicker">{dashboard.tenant.title}</p>
+              {overview.tenant ? (
+                <div className="mt-2 space-y-0.5">
+                  <p className="text-sm font-medium truncate text-foreground">{overview.tenant.tenantId}</p>
+                  <p className="text-xs text-muted-foreground">{overview.tenant.role}</p>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {resolveTenantStatusMessage(overview, dashboard.tenant)}
                 </p>
-                <p>
-                  <span className="text-muted-foreground">{dashboard.tenant.roleLabel}:</span> {overview.tenant.role}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-muted-foreground">
-                {resolveTenantStatusMessage(overview, dashboard.tenant)}
-              </p>
-            )}
-            {overview.tenantOptions.length > 1 ? (
-              <div className="mt-4 space-y-2">
-                <p className="text-xs text-muted-foreground">{dashboard.tenant.selectorLabel}</p>
-                <div className="flex flex-wrap gap-2">
+              )}
+              {overview.tenantOptions.length > 1 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
                   {overview.tenantOptions.map((option) => (
                     <Button
                       key={option.tenantId}
                       asChild
                       size="sm"
                       variant={option.isSelected ? "default" : "outline"}
+                      className="h-6 px-2 text-[11px]"
                     >
                       <Link href={createTenantHref(locale, activeSection, option.tenantId)}>
                         {option.tenantName}
@@ -485,48 +489,59 @@ export function DashboardPanel({
                     </Button>
                   ))}
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
 
-          <div className="mt-6">
-            <LogoutButton locale={locale} label={dictionary.logout.button} />
+          {/* User footer */}
+          <div className="mt-auto border-t border-border/50 px-3 py-3">
+            <div className="flex items-center gap-2.5">
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary text-xs font-bold">
+                {getInitials(displayName)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium leading-tight text-foreground">{displayName}</p>
+                <p className="truncate text-[11px] text-muted-foreground mt-0.5">{overview.user.email}</p>
+              </div>
+              <LogoutButton locale={locale} label={dictionary.logout.button} iconOnly />
+            </div>
           </div>
         </aside>
 
         <section className="space-y-6">
-          <header className="relative z-30 overflow-hidden rounded-2xl border border-border/70 bg-sidebar/95 shadow-sm shadow-black/5 backdrop-blur dark:bg-sidebar/90">
-            <div className="relative flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2.5">
-                <h1 className="corp-heading-1">{dashboard.title}</h1>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-md border border-border/70 bg-background/75 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+          {/* ── Top bar ── */}
+          <header className="relative z-30 rounded-xl border border-border/60 bg-sidebar shadow-sm shadow-black/5">
+            <div className="flex h-14 items-center justify-between px-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-5 w-0.5 shrink-0 rounded-full bg-primary" />
+                <div className="min-w-0">
+                  <h1 className="text-sm font-semibold leading-tight text-foreground truncate">{dashboard.title}</h1>
+                  <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
                     {dashboard.topbar.accountLabel}: {overview.user.email}
-                  </span>
-                  <span className="rounded-md border border-border/70 bg-background/75 px-2.5 py-1 text-xs text-muted-foreground">
+                    {" · "}
                     {dashboard.topbar.updatedAt}: {formatDateTime(overview.generatedAt, locale)}
-                  </span>
+                  </p>
                 </div>
               </div>
-              <div className="flex justify-end">
-                <div className="inline-flex items-center gap-2 rounded-xl border border-border/70 bg-background/80 p-2 shadow-sm dark:bg-background/60">
-                  <ThemeToggle
-                    labels={dictionary.header.theme}
-                    iconOnly
-                    className="border-border/80 bg-background/90 dark:bg-background/70"
-                  />
-                  <LocaleSwitcher
-                    locale={locale}
-                    labels={dictionary.header.locales}
-                    className="border-border/80 bg-background/90 dark:bg-background/70"
-                  />
-                  <ProfileMenu
-                    locale={locale}
-                    dictionary={dashboard.profileMenu}
-                    displayName={displayName}
-                    email={overview.user.email}
-                  />
-                </div>
+              <div className="flex shrink-0 items-center gap-1 ml-4">
+                <ThemeToggle
+                  labels={dictionary.header.theme}
+                  iconOnly
+                  className="border-border/70 bg-background/80 dark:bg-background/60"
+                />
+                <div className="h-4 w-px bg-border/60 mx-0.5" />
+                <LocaleSwitcher
+                  locale={locale}
+                  labels={dictionary.header.locales}
+                  className="border-border/70 bg-background/80 dark:bg-background/60"
+                />
+                <div className="h-4 w-px bg-border/60 mx-0.5" />
+                <ProfileMenu
+                  locale={locale}
+                  dictionary={dashboard.profileMenu}
+                  displayName={displayName}
+                  email={overview.user.email}
+                />
               </div>
             </div>
           </header>
