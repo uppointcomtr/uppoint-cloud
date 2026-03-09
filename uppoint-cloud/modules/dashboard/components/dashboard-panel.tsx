@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Building2, ChevronRight, LayoutDashboard, Layers3, ShieldCheck } from "lucide-react";
+import { Bell, Building2, ChevronRight, House, LayoutDashboard, Layers3, ShieldCheck } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -496,9 +496,10 @@ export function DashboardPanel({
                 <div className="h-5 w-0.5 shrink-0 rounded-full bg-primary" />
                 <Link
                   href={withLocale("/dashboard", locale)}
-                  className="shrink-0 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={dashboard.title}
+                  className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  {dashboard.title}
+                  <House className="h-4 w-4" />
                 </Link>
                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-border" aria-hidden />
                 <span className="truncate text-sm font-semibold text-foreground">
