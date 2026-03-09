@@ -73,13 +73,19 @@ export async function POST(request: NextRequest) {
       return identifierRateLimit;
     }
 
-    if (typeof token?.sessionJti === "string" && typeof token.exp === "number") {
-      const expiresAt = new Date(token.exp * 1000);
-      await revokeSessionJti({ jti: token.sessionJti, expiresAt });
-      await logAudit("session_revoked", ip, session?.user?.id, { reason: "logout", scope: "single-session" });
+    const sessionJti = typeof token?.sessionJti === "string" ? token.sessionJti : null;
+    const tokenExp = typeof token?.exp === "number" ? token.exp : null;
+    const hasSessionJti = sessionJti !== null && tokenExp !== null;
+
+    if (hasSessionJti) {
+      const expiresAt = new Date(tokenExp * 1000);
+      await revokeSessionJti({ jti: sessionJti, expiresAt });
     }
 
-    await logAudit("logout_success", ip, session?.user?.id);
+    await logAudit("logout_success", ip, session?.user?.id, {
+      scope: "single-session",
+      tokenRevoked: hasSessionJti,
+    });
 
     return NextResponse.json(ok({ accepted: true }), { status: 200 });
   });

@@ -188,6 +188,10 @@ export async function getDashboardOverview(
     isSelected: tenantContext?.tenantId === option.tenantId,
   }));
 
+  // JWT strategy may not persist rows in Session table for every active browser tab/device.
+  // Since this function runs only for an authenticated user context, active session count must be at least 1.
+  const normalizedActiveSessions = Math.max(activeSessions, 1);
+
   return {
     generatedAt: now,
     user,
@@ -201,7 +205,7 @@ export async function getDashboardOverview(
     },
     auditFailures24h,
     recentAuditEvents,
-    activeSessions,
+    activeSessions: normalizedActiveSessions,
     sessionExpiresAt: new Date(input.sessionExpiresAt),
     runtime: {
       appUrl: env.NEXT_PUBLIC_APP_URL,

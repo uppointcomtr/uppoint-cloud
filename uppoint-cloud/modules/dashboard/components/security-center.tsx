@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Laptop2, Search, ShieldAlert } from "lucide-react";
 
+import { AppModal } from "@/components/shared/app-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VerificationCodeInput } from "@/modules/auth/components/verification-code-input";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
@@ -29,8 +31,34 @@ interface SecurityCenterProps {
   events: SecurityEventRow[];
 }
 
-const DELETE_CONFIRM_TEXT = "DELETE";
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  code?: string;
+}
+
+type DeleteStep = "intro" | "emailCode" | "smsCode" | "confirm";
+
 const EVENTS_PER_PAGE = 5;
+
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 15_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    window.clearTimeout(timer);
+  });
+}
+
+function formatCountdown(seconds: number): string {
+  const safeSeconds = Math.max(0, seconds);
+  const minutesPart = Math.floor(safeSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const secondsPart = (safeSeconds % 60).toString().padStart(2, "0");
+  return `${minutesPart}:${secondsPart}`;
+}
 
 function resolveDeviceName(userAgent: string | null, fallback: string): string {
   if (!userAgent) {
@@ -92,6 +120,39 @@ function resolveActionLabel(
   return action.replace(/_/g, " ");
 }
 
+function resolveAccountDeleteErrorMessage(
+  errorCode: string | undefined,
+  labels: Dictionary["dashboard"]["security"],
+): string {
+  switch (errorCode) {
+    case "VALIDATION_FAILED":
+    case "INVALID_BODY":
+      return labels.deleteFlow.errors.validationFailed;
+    case "INVALID_EMAIL_CODE":
+      return labels.deleteFlow.errors.invalidEmailCode;
+    case "INVALID_SMS_CODE":
+      return labels.deleteFlow.errors.invalidSmsCode;
+    case "INVALID_OR_EXPIRED_CHALLENGE":
+      return labels.deleteFlow.errors.expiredChallenge;
+    case "MAX_ATTEMPTS_REACHED":
+      return labels.deleteFlow.errors.maxAttempts;
+    case "PHONE_NOT_AVAILABLE":
+      return labels.deleteFlow.noPhone;
+    case "SMS_NOT_ENABLED":
+      return labels.deleteFlow.smsDisabled;
+    case "DELETE_TOKEN_NOT_READY":
+    case "INVALID_OR_EXPIRED_DELETE_TOKEN":
+      return labels.deleteFlow.errors.tokenInvalid;
+    case "ACCOUNT_DELETE_CHALLENGE_START_FAILED":
+    case "ACCOUNT_DELETE_VERIFY_EMAIL_FAILED":
+    case "ACCOUNT_DELETE_VERIFY_SMS_FAILED":
+    case "ACCOUNT_DELETE_COMPLETE_FAILED":
+      return labels.deleteFlow.errors.unavailable;
+    default:
+      return labels.deleteFlow.errors.generic;
+  }
+}
+
 export function SecurityCenter({
   locale,
   labels,
@@ -102,18 +163,36 @@ export function SecurityCenter({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+
+  const [isEndSessionsModalOpen, setIsEndSessionsModalOpen] = useState(false);
   const [isEndingSessions, setIsEndingSessions] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [endSessionsError, setEndSessionsError] = useState<string | null>(null);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<DeleteStep>("intro");
+  const [deleteChallengeId, setDeleteChallengeId] = useState<string | null>(null);
+  const [deleteToken, setDeleteToken] = useState<string | null>(null);
+  const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
+  const [deleteEmailCode, setDeleteEmailCode] = useState("");
+  const [deleteSmsCode, setDeleteSmsCode] = useState("");
+  const [deleteExpiresAt, setDeleteExpiresAt] = useState<number | null>(null);
+  const [deleteNowTimestamp, setDeleteNowTimestamp] = useState(0);
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteInfo, setDeleteInfo] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  const normalizedEvents = useMemo(() => events.map((event) => ({
-    ...event,
-    device: resolveDeviceName(event.userAgent, labels.unknownDevice),
-    actionLabel: resolveActionLabel(event.action, labels.actionLabels),
-  })), [events, labels.actionLabels, labels.unknownDevice]);
+  const normalizedEvents = useMemo(
+    () =>
+      events.map((event) => ({
+        ...event,
+        device: resolveDeviceName(event.userAgent, labels.unknownDevice),
+        actionLabel: resolveActionLabel(event.action, labels.actionLabels),
+      })),
+    [events, labels.actionLabels, labels.unknownDevice],
+  );
 
   const filteredEvents = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -121,10 +200,11 @@ export function SecurityCenter({
       return normalizedEvents;
     }
 
-    return normalizedEvents.filter((event) =>
-      event.actionLabel.toLowerCase().includes(normalizedQuery)
-      || (event.ip ?? "").toLowerCase().includes(normalizedQuery)
-      || event.device.toLowerCase().includes(normalizedQuery),
+    return normalizedEvents.filter(
+      (event) =>
+        event.actionLabel.toLowerCase().includes(normalizedQuery) ||
+        (event.ip ?? "").toLowerCase().includes(normalizedQuery) ||
+        event.device.toLowerCase().includes(normalizedQuery),
     );
   }, [normalizedEvents, query]);
 
@@ -136,74 +216,318 @@ export function SecurityCenter({
   const currentSessionEvent = normalizedEvents[0] ?? null;
   const extraSessionCount = Math.max(activeSessions - (currentSessionEvent ? 1 : 0), 0);
 
-  async function handleEndAllSessions() {
-    if (isEndingSessions) return;
-    if (!window.confirm(labels.endAllSessionsConfirm)) return;
+  const deleteCountdownSeconds = useMemo(() => {
+    if (!deleteExpiresAt) {
+      return null;
+    }
 
-    setError(null);
-    setInfo(null);
-    setIsEndingSessions(true);
+    return Math.floor((deleteExpiresAt - deleteNowTimestamp) / 1000);
+  }, [deleteExpiresAt, deleteNowTimestamp]);
 
-    try {
-      const response = await fetch("/api/auth/logout/all", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
+  const isDeleteCodeExpired =
+    (deleteStep === "emailCode" || deleteStep === "smsCode") &&
+    deleteCountdownSeconds !== null &&
+    deleteCountdownSeconds <= 0;
 
-      if (!response.ok) {
-        setError(labels.feedback.actionFailed);
-        setIsEndingSessions(false);
-        return;
-      }
+  useEffect(() => {
+    if (!isDeleteModalOpen || (deleteStep !== "emailCode" && deleteStep !== "smsCode")) {
+      return;
+    }
 
-      setInfo(labels.feedback.sessionsEnded);
-      router.push(withLocale("/login", locale));
-      router.refresh();
-    } catch {
-      setError(labels.feedback.actionFailed);
-      setIsEndingSessions(false);
+    const intervalId = window.setInterval(() => {
+      setDeleteNowTimestamp(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isDeleteModalOpen, deleteStep]);
+
+  function resetDeleteFlow() {
+    setDeleteStep("intro");
+    setDeleteChallengeId(null);
+    setDeleteToken(null);
+    setMaskedPhone(null);
+    setDeleteEmailCode("");
+    setDeleteSmsCode("");
+    setDeleteExpiresAt(null);
+    setDeleteNowTimestamp(0);
+    setDeleteError(null);
+    setDeleteInfo(null);
+    setIsDeleteSubmitting(false);
+  }
+
+  function handleDeleteModalChange(open: boolean) {
+    setIsDeleteModalOpen(open);
+    if (!open) {
+      resetDeleteFlow();
     }
   }
 
-  async function handleDeleteAccount() {
-    if (isDeletingAccount) return;
-    if (deleteConfirmText !== DELETE_CONFIRM_TEXT) {
-      setError(labels.feedback.deleteConfirmMismatch);
+  async function handleEndAllSessionsConfirm() {
+    if (isEndingSessions) {
       return;
     }
 
     setError(null);
     setInfo(null);
-    setIsDeletingAccount(true);
+    setEndSessionsError(null);
+    setIsEndingSessions(true);
 
+    let response: Response;
     try {
-      const response = await fetch("/api/auth/account/delete", {
+      response = await fetchWithTimeout("/api/auth/logout/all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmText: deleteConfirmText }),
       });
-
-      if (!response.ok) {
-        setError(labels.feedback.actionFailed);
-        setIsDeletingAccount(false);
-        return;
-      }
-
-      setInfo(labels.feedback.accountDeleted);
-      router.push(withLocale("/login", locale));
-      router.refresh();
     } catch {
-      setError(labels.feedback.actionFailed);
-      setIsDeletingAccount(false);
+      setEndSessionsError(labels.feedback.actionFailed);
+      setIsEndingSessions(false);
+      return;
     }
+
+    if (!response.ok) {
+      setEndSessionsError(labels.feedback.actionFailed);
+      setIsEndingSessions(false);
+      return;
+    }
+
+    setInfo(labels.feedback.sessionsEnded);
+    setIsEndSessionsModalOpen(false);
+    router.push(withLocale("/login", locale));
+    router.refresh();
+  }
+
+  async function requestDeleteEmailCode() {
+    if (isDeleteSubmitting) {
+      return;
+    }
+
+    setDeleteError(null);
+    setDeleteInfo(null);
+    setIsDeleteSubmitting(true);
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout("/api/auth/account/delete/challenge/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale }),
+      });
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    let payload: ApiResponse<{ challengeId: string; emailCodeExpiresAt: string }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    if (!response.ok || !payload.success || !payload.data) {
+      setDeleteError(resolveAccountDeleteErrorMessage(payload.error, labels));
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    setDeleteChallengeId(payload.data.challengeId);
+    setDeleteExpiresAt(new Date(payload.data.emailCodeExpiresAt).getTime());
+    setDeleteNowTimestamp(Date.now());
+    setDeleteEmailCode("");
+    setDeleteStep("emailCode");
+    setIsDeleteSubmitting(false);
+  }
+
+  async function verifyDeleteEmailCode() {
+    if (isDeleteSubmitting) {
+      return;
+    }
+
+    setDeleteError(null);
+    setDeleteInfo(null);
+
+    if (!deleteChallengeId) {
+      setDeleteError(labels.deleteFlow.errors.expiredChallenge);
+      return;
+    }
+
+    if (!/^\d{6}$/.test(deleteEmailCode.trim())) {
+      setDeleteError(labels.deleteFlow.errors.validationFailed);
+      return;
+    }
+
+    if (isDeleteCodeExpired) {
+      setDeleteError(labels.deleteFlow.errors.expiredChallenge);
+      return;
+    }
+
+    setIsDeleteSubmitting(true);
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout("/api/auth/account/delete/challenge/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeId: deleteChallengeId,
+          emailCode: deleteEmailCode.trim(),
+          locale,
+        }),
+      });
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    let payload: ApiResponse<{ smsCodeExpiresAt: string; maskedPhone: string }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    if (!response.ok || !payload.success || !payload.data) {
+      setDeleteError(resolveAccountDeleteErrorMessage(payload.error, labels));
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    setMaskedPhone(payload.data.maskedPhone);
+    setDeleteExpiresAt(new Date(payload.data.smsCodeExpiresAt).getTime());
+    setDeleteNowTimestamp(Date.now());
+    setDeleteSmsCode("");
+    setDeleteStep("smsCode");
+    setIsDeleteSubmitting(false);
+  }
+
+  async function verifyDeleteSmsCode() {
+    if (isDeleteSubmitting) {
+      return;
+    }
+
+    setDeleteError(null);
+    setDeleteInfo(null);
+
+    if (!deleteChallengeId) {
+      setDeleteError(labels.deleteFlow.errors.expiredChallenge);
+      return;
+    }
+
+    if (!/^\d{6}$/.test(deleteSmsCode.trim())) {
+      setDeleteError(labels.deleteFlow.errors.validationFailed);
+      return;
+    }
+
+    if (isDeleteCodeExpired) {
+      setDeleteError(labels.deleteFlow.errors.expiredChallenge);
+      return;
+    }
+
+    setIsDeleteSubmitting(true);
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout("/api/auth/account/delete/challenge/verify-sms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeId: deleteChallengeId,
+          smsCode: deleteSmsCode.trim(),
+        }),
+      });
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    let payload: ApiResponse<{ deleteToken: string }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    if (!response.ok || !payload.success || !payload.data) {
+      setDeleteError(resolveAccountDeleteErrorMessage(payload.error, labels));
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    setDeleteToken(payload.data.deleteToken);
+    setDeleteStep("confirm");
+    setIsDeleteSubmitting(false);
+  }
+
+  async function completeDeleteAccount() {
+    if (isDeleteSubmitting) {
+      return;
+    }
+
+    setDeleteError(null);
+    setDeleteInfo(null);
+
+    if (!deleteChallengeId || !deleteToken) {
+      setDeleteError(labels.deleteFlow.errors.tokenInvalid);
+      return;
+    }
+
+    setIsDeleteSubmitting(true);
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout("/api/auth/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challengeId: deleteChallengeId,
+          deleteToken,
+        }),
+      });
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    let payload: ApiResponse<{ accepted: boolean }>;
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      setDeleteError(labels.deleteFlow.errors.unavailable);
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    if (!response.ok || !payload.success || !payload.data?.accepted) {
+      setDeleteError(resolveAccountDeleteErrorMessage(payload.error, labels));
+      setIsDeleteSubmitting(false);
+      return;
+    }
+
+    setInfo(labels.feedback.accountDeleted);
+    setDeleteInfo(labels.feedback.accountDeleted);
+    handleDeleteModalChange(false);
+    router.push(withLocale("/login", locale));
+    router.refresh();
   }
 
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold">{labels.accountTitle}</h2>
-          <p className="text-sm text-muted-foreground">{labels.accountDescription}</p>
+          <h2 className="corp-section-title">{labels.accountTitle}</h2>
+          <p className="corp-body-muted">{labels.accountDescription}</p>
         </div>
 
         <div className="mt-5 space-y-4">
@@ -216,18 +540,17 @@ export function SecurityCenter({
               type="button"
               variant="outline"
               className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
-              disabled={isEndingSessions}
-              onClick={() => void handleEndAllSessions()}
+              onClick={() => {
+                setEndSessionsError(null);
+                setIsEndSessionsModalOpen(true);
+              }}
             >
-              {isEndingSessions ? labels.actions.processing : labels.endAllSessionsAction}
+              {labels.endAllSessionsAction}
             </Button>
           </div>
 
           <div className="rounded-xl border border-red-200 bg-red-50/70 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-red-600 dark:text-red-300">
-              {labels.dangerZoneLabel}
-            </p>
-            <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <p className="font-medium text-red-700 dark:text-red-200">{labels.deleteAccountTitle}</p>
                 <p className="text-sm text-red-700/90 dark:text-red-300/90">{labels.deleteAccountDescription}</p>
@@ -236,46 +559,11 @@ export function SecurityCenter({
                 type="button"
                 variant="outline"
                 className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
-                onClick={() => setShowDeleteConfirm((current) => !current)}
+                onClick={() => handleDeleteModalChange(true)}
               >
                 {labels.deleteAccountAction}
               </Button>
             </div>
-
-            {showDeleteConfirm ? (
-              <div className="mt-4 rounded-lg border border-red-200/80 bg-background/80 p-3 dark:border-red-900/70">
-                <p className="text-sm font-medium text-foreground">{labels.deleteConfirmHint}</p>
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    value={deleteConfirmText}
-                    onChange={(event) => setDeleteConfirmText(event.target.value)}
-                    placeholder={labels.deleteConfirmPlaceholder}
-                    className="h-9"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      disabled={isDeletingAccount}
-                      onClick={() => void handleDeleteAccount()}
-                    >
-                      {isDeletingAccount ? labels.actions.processing : labels.deleteConfirmAction}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      disabled={isDeletingAccount}
-                      onClick={() => {
-                        setShowDeleteConfirm(false);
-                        setDeleteConfirmText("");
-                      }}
-                    >
-                      {labels.deleteCancel}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
 
@@ -298,7 +586,7 @@ export function SecurityCenter({
       <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <h3 className="text-lg font-semibold">{labels.activeSessionsTitle}</h3>
+            <h3 className="corp-section-title">{labels.activeSessionsTitle}</h3>
             <p className="text-sm text-muted-foreground">{labels.activeSessionsDescription}</p>
           </div>
           <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -344,7 +632,7 @@ export function SecurityCenter({
       <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <h3 className="text-lg font-semibold">{labels.eventsTitle}</h3>
+            <h3 className="corp-section-title">{labels.eventsTitle}</h3>
             <p className="text-sm text-muted-foreground">{labels.eventsDescription}</p>
           </div>
           <div className="relative w-full sm:w-72">
@@ -439,6 +727,211 @@ export function SecurityCenter({
           {labels.failures24h}: {auditFailures24h}
         </p>
       </section>
+
+      <AppModal
+        open={isEndSessionsModalOpen}
+        onOpenChange={setIsEndSessionsModalOpen}
+        title={labels.endAllSessionsModal.title}
+        description={labels.endAllSessionsModal.description}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">{labels.endAllSessionsConfirm}</p>
+          {endSessionsError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{endSessionsError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isEndingSessions}
+              onClick={() => setIsEndSessionsModalOpen(false)}
+            >
+              {labels.endAllSessionsModal.cancel}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+              disabled={isEndingSessions}
+              onClick={() => void handleEndAllSessionsConfirm()}
+            >
+              {isEndingSessions ? labels.actions.processing : labels.endAllSessionsModal.confirm}
+            </Button>
+          </div>
+        </div>
+      </AppModal>
+
+      <AppModal
+        open={isDeleteModalOpen}
+        onOpenChange={handleDeleteModalChange}
+        title={labels.deleteFlow.modalTitle}
+        description={labels.deleteFlow.modalDescription}
+      >
+        <div className="space-y-4">
+          {deleteStep === "intro" ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{labels.deleteFlow.introDescription}</p>
+              <div className="rounded-lg border border-red-200/80 bg-red-50/70 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+                {labels.deleteFlow.finalWarning}
+              </div>
+            </div>
+          ) : null}
+
+          {deleteStep === "emailCode" ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">{labels.deleteFlow.fields.emailCode}</p>
+              <VerificationCodeInput
+                id="account-delete-email-code"
+                value={deleteEmailCode}
+                onChange={setDeleteEmailCode}
+                placeholder={labels.deleteFlow.placeholders.code}
+                autoFocus
+                className="w-full"
+              />
+              {deleteCountdownSeconds !== null ? (
+                <p className="text-xs text-muted-foreground">
+                  {labels.deleteFlow.countdownPrefix} {formatCountdown(deleteCountdownSeconds)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {deleteStep === "smsCode" ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">{labels.deleteFlow.fields.smsCode}</p>
+              {maskedPhone ? (
+                <p className="text-xs text-muted-foreground">
+                  {labels.deleteFlow.smsSentToPrefix} {maskedPhone}
+                </p>
+              ) : null}
+              <VerificationCodeInput
+                id="account-delete-sms-code"
+                value={deleteSmsCode}
+                onChange={setDeleteSmsCode}
+                placeholder={labels.deleteFlow.placeholders.code}
+                autoFocus
+                className="w-full"
+              />
+              {deleteCountdownSeconds !== null ? (
+                <p className="text-xs text-muted-foreground">
+                  {labels.deleteFlow.countdownPrefix} {formatCountdown(deleteCountdownSeconds)}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {deleteStep === "confirm" ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">{labels.deleteFlow.confirmDescription}</p>
+              <div className="rounded-lg border border-red-200/80 bg-red-50/70 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+                {labels.deleteFlow.finalWarning}
+              </div>
+            </div>
+          ) : null}
+
+          {(deleteError || deleteInfo) ? (
+            <div className="space-y-2">
+              {deleteError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{deleteError}</AlertDescription>
+                </Alert>
+              ) : null}
+              {deleteInfo ? (
+                <Alert>
+                  <AlertDescription>{deleteInfo}</AlertDescription>
+                </Alert>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isDeleteSubmitting}
+              onClick={() => handleDeleteModalChange(false)}
+            >
+              {labels.deleteFlow.buttons.cancel}
+            </Button>
+
+            {deleteStep === "intro" ? (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isDeleteSubmitting}
+                onClick={() => void requestDeleteEmailCode()}
+              >
+                {isDeleteSubmitting ? labels.actions.processing : labels.deleteFlow.buttons.sendEmailCode}
+              </Button>
+            ) : null}
+
+            {deleteStep === "emailCode" ? (
+              <>
+                {isDeleteCodeExpired ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isDeleteSubmitting}
+                    onClick={() => {
+                      resetDeleteFlow();
+                      void requestDeleteEmailCode();
+                    }}
+                  >
+                    {labels.deleteFlow.buttons.restart}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={isDeleteSubmitting}
+                  onClick={() => void verifyDeleteEmailCode()}
+                >
+                  {isDeleteSubmitting ? labels.actions.processing : labels.deleteFlow.buttons.verifyEmailCode}
+                </Button>
+              </>
+            ) : null}
+
+            {deleteStep === "smsCode" ? (
+              <>
+                {isDeleteCodeExpired ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isDeleteSubmitting}
+                    onClick={() => {
+                      resetDeleteFlow();
+                      void requestDeleteEmailCode();
+                    }}
+                  >
+                    {labels.deleteFlow.buttons.restart}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={isDeleteSubmitting}
+                  onClick={() => void verifyDeleteSmsCode()}
+                >
+                  {isDeleteSubmitting ? labels.actions.processing : labels.deleteFlow.buttons.verifySmsCode}
+                </Button>
+              </>
+            ) : null}
+
+            {deleteStep === "confirm" ? (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isDeleteSubmitting}
+                onClick={() => void completeDeleteAccount()}
+              >
+                {isDeleteSubmitting ? labels.actions.processing : labels.deleteFlow.buttons.completeDelete}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </AppModal>
     </div>
   );
 }

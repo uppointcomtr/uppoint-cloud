@@ -79,7 +79,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
       <button
         type="button"
         onClick={() => setIsOpen((c) => !c)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-primary/10 text-primary text-xs font-bold shadow-sm transition-colors hover:bg-primary/15"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/80 bg-background/90 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-accent/80 dark:bg-background/70"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={dictionary.buttonLabel}
@@ -92,7 +92,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
         <div
           role="menu"
           aria-label={dictionary.menuLabel}
-          className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border/70 bg-popover shadow-xl"
+          className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border/70 bg-popover/95 shadow-xl backdrop-blur-sm"
         >
           {/* User info header */}
           <div className="flex items-center gap-3 px-4 py-3.5 border-b border-border/60">

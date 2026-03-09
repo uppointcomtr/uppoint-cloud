@@ -32,10 +32,10 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
           {dictionary.errorLabel}
         </p>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="corp-heading-1">
           {staleServerActionError ? dictionary.staleActionTitle : dictionary.somethingWentWrongTitle}
         </h1>
-        <p className="text-muted-foreground">
+        <p className="corp-body-muted">
           {staleServerActionError
             ? dictionary.staleActionDescription
             : error.digest

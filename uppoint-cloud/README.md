@@ -25,14 +25,16 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - tenant context visibility, explicit tenant selection, and quick actions
     - notification and security signal overview
   - Security center view (`/:locale/dashboard/security`)
-    - account operations block (terminate all sessions, danger-zone account deletion flow)
+    - account operations block with modal-based critical actions
+    - terminate-all-sessions now requires explicit popup confirmation
+    - danger-zone account deletion now requires email OTP + SMS OTP verification before final deletion
     - active session summary with latest device/IP visibility
     - searchable, paginated security event table (date/event/IP/device)
   - Route protection via proxy + server-side checks
   - JWT session revocation via `User.tokenVersion` checks
   - Session policy:
     - standard session expires after 4 hours of inactivity
-    - “Remember me” session expires after 15 days of inactivity
+    - “Remember me” session expires after 30 days of inactivity
   - Atomic one-time token/code consumption for login/register/password-reset challenge flows
   - Database-backed auth persistence (Auth.js + Prisma adapter)
   - Notification outbox + async dispatcher for SMTP email + Verimor SMS
@@ -241,6 +243,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Login OTP challenge service: [modules/auth/server/login-challenge.ts](/opt/uppoint-cloud/modules/auth/server/login-challenge.ts)
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
 - Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)
+- Account deletion challenge service: [modules/auth/server/account-delete-challenge.ts](/opt/uppoint-cloud/modules/auth/server/account-delete-challenge.ts)
 - Notification outbox service: [modules/notifications/server/outbox.ts](/opt/uppoint-cloud/modules/notifications/server/outbox.ts)
 - User soft-delete lifecycle service: [modules/auth/server/user-lifecycle.ts](/opt/uppoint-cloud/modules/auth/server/user-lifecycle.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)

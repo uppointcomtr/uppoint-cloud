@@ -95,11 +95,15 @@ echo "[cleanup] PasswordResetToken: ${PRT_DELETED} satır silindi"
 PRC_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"PasswordResetChallenge\" WHERE \"emailCodeExpiresAt\" < NOW() - INTERVAL '1 hour' RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] PasswordResetChallenge: ${PRC_DELETED} satır silindi"
 
-# 5. VerificationToken — süresi dolmuş tokenlar (PK: identifier+token, id yok)
+# 5. AccountDeleteChallenge — tüm expire alanları geçmiş kayıtlar
+ADC_DELETED=$("${PSQL[@]}" -c "SELECT CASE WHEN to_regclass('\"AccountDeleteChallenge\"') IS NULL THEN 0 ELSE (WITH d AS (DELETE FROM \"AccountDeleteChallenge\" WHERE \"emailCodeExpiresAt\" < NOW() - INTERVAL '1 hour' RETURNING id) SELECT count(*) FROM d) END;")
+echo "[cleanup] AccountDeleteChallenge: ${ADC_DELETED} satır silindi"
+
+# 6. VerificationToken — süresi dolmuş tokenlar (PK: identifier+token, id yok)
 VT_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"VerificationToken\" WHERE \"expires\" < NOW() RETURNING token) SELECT count(*) FROM d;")
 echo "[cleanup] VerificationToken: ${VT_DELETED} satır silindi"
 
-# 6. AuditLog — retention süresinden eski kayıtlar
+# 7. AuditLog — retention süresinden eski kayıtlar
 if [ "$AUDIT_LOG_ARCHIVE_BEFORE_DELETE" = "true" ]; then
   mkdir -p "$AUDIT_LOG_ARCHIVE_DIR"
   chmod 700 "$AUDIT_LOG_ARCHIVE_DIR"
@@ -124,24 +128,24 @@ fi
 AL_DELETED=$("${PSQL[@]}" -c "WITH retention_guard AS (SELECT set_config('uppoint.audit_retention_delete', '1', true)), d AS (DELETE FROM \"AuditLog\" WHERE \"createdAt\" < NOW() - INTERVAL '${AUDIT_LOG_RETENTION_DAYS} days' RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] AuditLog (>${AUDIT_LOG_RETENTION_DAYS} gün): ${AL_DELETED} satır silindi"
 
-# 7. RegistrationVerificationChallenge — süresi dolmuş kayıtlar
+# 8. RegistrationVerificationChallenge — süresi dolmuş kayıtlar
 RVC_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"RegistrationVerificationChallenge\" WHERE \"emailCodeExpiresAt\" < NOW() - INTERVAL '1 hour' RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] RegistrationVerificationChallenge: ${RVC_DELETED} satır silindi"
 
-# 8. RevokedSessionToken — süresi dolmuş JTI blacklist kayıtları
+# 9. RevokedSessionToken — süresi dolmuş JTI blacklist kayıtları
 #    (Kod içinde lazy cleanup var ama pasif token'lar asla silinmez; bu tablo şişebilir)
 RST_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"RevokedSessionToken\" WHERE \"expiresAt\" < NOW() RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] RevokedSessionToken: ${RST_DELETED} satır silindi"
 
-# 9. IdempotencyRecord — süresi geçmiş kayıtlar
+# 10. IdempotencyRecord — süresi geçmiş kayıtlar
 IDR_DELETED=$("${PSQL[@]}" -c "WITH d AS (DELETE FROM \"IdempotencyRecord\" WHERE \"expiresAt\" < NOW() RETURNING id) SELECT count(*) FROM d;")
 echo "[cleanup] IdempotencyRecord: ${IDR_DELETED} satır silindi"
 
-# 10. NotificationOutbox — gönderilmiş/kalıcı hataya düşmüş eski kayıtlar
+# 11. NotificationOutbox — gönderilmiş/kalıcı hataya düşmüş eski kayıtlar
 NO_DELETED=$("${PSQL[@]}" -c "SELECT CASE WHEN to_regclass('\"NotificationOutbox\"') IS NULL THEN 0 ELSE (WITH d AS (DELETE FROM \"NotificationOutbox\" WHERE \"status\" IN ('SENT','FAILED') AND \"updatedAt\" < NOW() - INTERVAL '${NOTIFICATION_OUTBOX_RETENTION_DAYS} days' RETURNING id) SELECT count(*) FROM d) END;")
 echo "[cleanup] NotificationOutbox (>${NOTIFICATION_OUTBOX_RETENTION_DAYS} gün): ${NO_DELETED} satır silindi"
 
-# 11. Legacy E2E kullanıcı kalıntıları — doğrulanmamış ve ilişkisiz test hesapları
+# 12. Legacy E2E kullanıcı kalıntıları — doğrulanmamış ve ilişkisiz test hesapları
 #     Sadece e2e-unverified örüntüsüne sahip, eski, tenant/oturum/hesap ilişkisi olmayan kayıtları temizler.
 E2E_USERS_DELETED=$("${PSQL[@]}" -c "WITH d AS (
   DELETE FROM \"User\" u

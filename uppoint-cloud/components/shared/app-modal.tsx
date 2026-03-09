@@ -80,9 +80,9 @@ export function AppModal({
 
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="icon-sm"
-            className="-mr-1"
+            className="-mr-1 shrink-0 border-border/70 bg-background/80 shadow-sm hover:bg-accent"
             onClick={() => onOpenChange(false)}
             aria-label="Close dialog"
           >

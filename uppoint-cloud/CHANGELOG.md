@@ -1,5 +1,112 @@
 # Changelog
 
+## 2026-03-09 (dashboard surface cleanup: remove glow overlays)
+
+### Changed
+- Removed glow overlays from dashboard control-panel surfaces in `modules/dashboard/components/dashboard-panel.tsx`:
+  - removed page-level radial glow backdrop,
+  - removed topbar gradient overlay layer.
+- Aligned topbar surface tone with sidebar (`bg-sidebar`) for a more uniform corporate shell.
+
+## 2026-03-09 (dashboard nav interaction: remove jump animation)
+
+### Changed
+- Removed vertical hover translation from sidebar navigation items to prevent jump-like motion during menu transitions:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+- Kept navigation feedback with color/background transitions only.
+
+## 2026-03-09 (dashboard navigation: corporate sidebar and topbar refresh)
+
+### Changed
+- Refined dashboard shell navigation visuals for a more corporate control-plane look:
+  - upgraded sidebar surface hierarchy and spacing,
+  - added icon-supported left navigation items with stronger active/hover states,
+  - introduced branded sidebar context kicker (`Cloud Control Plane`).
+- Redesigned dashboard topbar container and controls:
+  - added subtle gradient-backed topbar surface treatment,
+  - grouped theme/locale/profile controls into a unified control capsule,
+  - improved account/update metadata chips for clearer operational context.
+- Updated profile menu trigger styling to align with the topbar control language.
+
+## 2026-03-09 (auth session policy: remember-me extended to 30 days)
+
+### Changed
+- Extended remember-me idle session policy from 15 days to 30 days:
+  - `modules/auth/server/session-policy.ts`
+- Updated login remember-me labels for TR/EN:
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Updated policy test wording:
+  - `tests/auth/session-policy.test.ts`
+- Updated documentation:
+  - `README.md`
+
+## 2026-03-08 (audit cleanup: remove duplicate logout revocation event)
+
+### Changed
+- Simplified single-session logout audit flow in `app/api/auth/logout/route.ts`:
+  - removed extra `session_revoked` audit emission from the logout endpoint,
+  - kept JTI revocation behavior unchanged,
+  - enriched canonical `logout_success` audit with `scope: "single-session"` and `tokenRevoked` metadata.
+- Result: security timeline no longer shows duplicate/misleading revocation rows for normal logout flows.
+
+## 2026-03-08 (dashboard session counter normalization for jwt strategy)
+
+### Changed
+- Normalized dashboard active session count to report at least `1` for authenticated users when JWT session strategy is active and `Session` table count is `0`:
+  - `modules/dashboard/server/get-dashboard-overview.ts`
+- Added regression test coverage:
+  - `tests/dashboard/get-dashboard-overview.test.ts`
+
+## 2026-03-08 (security center: modal confirmations + dual OTP account deletion)
+
+### Added
+- Added account deletion OTP challenge domain and persistence:
+  - `modules/auth/server/account-delete-challenge.ts`
+  - `db/repositories/auth-account-delete-repository.ts`
+  - `prisma/schema.prisma` (`AccountDeleteChallenge` model)
+  - `prisma/migrations/20260308204500_add_account_delete_challenge/migration.sql`
+- Added new auth endpoints for account-delete verification flow:
+  - `POST /api/auth/account/delete/challenge/start`
+  - `POST /api/auth/account/delete/challenge/verify-email`
+  - `POST /api/auth/account/delete/challenge/verify-sms`
+- Added account-delete challenge unit tests:
+  - `tests/auth/account-delete-challenge.test.ts`
+
+### Changed
+- Updated `POST /api/auth/account/delete` to require verified challenge payload (`challengeId` + `deleteToken`) instead of plain text confirmation.
+- Reworked security center UI (`modules/dashboard/components/security-center.tsx`):
+  - `Tüm oturumları sonlandır` action now uses an explicit popup confirmation.
+  - `Hesabı sil` action now uses popup-based dual verification flow:
+    - email OTP step
+    - SMS OTP step
+    - final permanent-delete confirmation step
+- Extended TR/EN security dictionaries for modal and OTP delete flow content:
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Included `AccountDeleteChallenge` retention cleanup in `scripts/cleanup-db.sh`.
+- Updated docs to describe the new security-center deletion flow (`README.md`).
+
+## 2026-03-08 (ui typography: corporate global scale outside auth pages)
+
+### Added
+- Added centralized corporate typography utility classes in global styles:
+  - `.corp-heading-1`, `.corp-heading-2`, `.corp-heading-3`
+  - `.corp-section-title`, `.corp-body-muted`, `.corp-kicker`, `.corp-value`
+  - location: `app/globals.css`
+
+### Changed
+- Applied the new typography scale to non-auth application surfaces:
+  - dashboard shell titles and KPI values (`modules/dashboard/components/dashboard-panel.tsx`)
+  - security center headings/descriptions (`modules/dashboard/components/security-center.tsx`)
+  - global and localized error/not-found pages
+    - `app/not-found.tsx`
+    - `app/[locale]/error.tsx`
+    - `app/[locale]/dashboard/error.tsx`
+    - `app/global-error.tsx`
+- Standardized security section heading scale to match dashboard notifications card-title scale (`corp-section-title`).
+- Login/Register pages were intentionally left untouched.
+
 ## 2026-03-08 (dashboard security center redesign)
 
 ### Added

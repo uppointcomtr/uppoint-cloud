@@ -13,7 +13,7 @@ describe("session-policy", () => {
     expect(resolveIdleTimeoutSeconds(false)).toBe(NORMAL_SESSION_IDLE_TIMEOUT_SECONDS);
   });
 
-  it("uses 15-day timeout when remember-me is enabled", () => {
+  it("uses 30-day timeout when remember-me is enabled", () => {
     expect(resolveIdleTimeoutSeconds(true)).toBe(REMEMBER_ME_SESSION_IDLE_TIMEOUT_SECONDS);
   });
 

@@ -37,13 +37,8 @@ export async function loadDashboardPageData(input: {
   }
 
   const parsedSessionExpiresAt = parseSessionExpiry(session.expires);
-  if (!parsedSessionExpiresAt) {
-    await logAudit("session_revoked", "unknown", session.user.id, {
-      reason: "INVALID_SESSION_EXPIRY_FALLBACK",
-      result: "FAILURE",
-      expiresType: typeof session.expires,
-    });
-  }
+  // Invalid expiry is handled with a safe fallback, but this is not a real revocation event.
+  // Do not emit `session_revoked` here to avoid misleading duplicate security records.
   const sessionExpiresAt = parsedSessionExpiresAt ?? new Date(SESSION_EXPIRY_FALLBACK_ISO);
 
   const tenantIdValue = input.rawSearchParams.tenantId;

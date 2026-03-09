@@ -18,8 +18,8 @@ export default function NotFound() {
         <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
           404
         </p>
-        <h1 className="text-3xl font-bold tracking-tight">{dictionary.notFoundTitle}</h1>
-        <p className="text-muted-foreground">
+        <h1 className="corp-heading-1">{dictionary.notFoundTitle}</h1>
+        <p className="corp-body-muted">
           {dictionary.notFoundDescription}
         </p>
       </div>

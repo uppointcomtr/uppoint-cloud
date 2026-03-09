@@ -2,16 +2,19 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
+import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
-import { softDeleteUser } from "@/modules/auth/server/user-lifecycle";
+import {
+  AccountDeleteChallengeError,
+  completeAccountDeleteChallenge,
+} from "@/modules/auth/server/account-delete-challenge";
 
 const deleteAccountSchema = z.object({
-  confirmText: z.string().trim().min(1).max(64),
+  challengeId: z.string().trim().min(1).max(191),
+  deleteToken: z.string().trim().min(32).max(512),
 });
-
-const DELETE_CONFIRM_TEXT = "DELETE";
 
 export async function GET() {
   return NextResponse.json(
@@ -67,16 +70,65 @@ export async function POST(request: Request) {
 
     const parsed = deleteAccountSchema.safeParse(payload);
     if (!parsed.success) {
+      await logAudit("account_delete_challenge_failed", ip, session.user.id, {
+        step: "complete",
+        reason: "VALIDATION_FAILED",
+      });
       return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
     }
 
-    if (parsed.data.confirmText !== DELETE_CONFIRM_TEXT) {
-      return NextResponse.json(fail("DELETE_CONFIRMATION_REQUIRED"), { status: 400 });
+    const challengeRateLimit = await enforceFailClosedIdentifierRateLimit({
+      rateLimitAction: "account-delete-complete-challenge",
+      identifier: parsed.data.challengeId,
+      rateLimitMax: 6,
+      rateLimitWindowSeconds: 900,
+      auditActionName: "account-delete-complete",
+      auditScope: "challenge",
+      ip,
+      userId: session.user.id,
+    });
+    if (challengeRateLimit) {
+      return challengeRateLimit;
     }
 
-    const deleted = await softDeleteUser(session.user.id, undefined, { ip });
-    if (!deleted) {
-      return NextResponse.json(fail("ACCOUNT_DELETE_FAILED"), { status: 400 });
+    try {
+      const completion = await completeAccountDeleteChallenge({
+        challengeId: parsed.data.challengeId,
+        deleteToken: parsed.data.deleteToken,
+        userId: session.user.id,
+      });
+
+      await logAudit("account_delete_success", ip, completion.userId, {
+        step: "complete",
+        result: "SUCCESS",
+      });
+      await logAudit("user_soft_deleted", ip, completion.userId, {
+        reason: "USER_SOFT_DELETED",
+        result: "SUCCESS",
+      });
+    } catch (error) {
+      if (error instanceof AccountDeleteChallengeError) {
+        const status =
+          error.code === "INVALID_OR_EXPIRED_DELETE_TOKEN" ||
+          error.code === "DELETE_TOKEN_NOT_READY" ||
+          error.code === "INVALID_OR_EXPIRED_CHALLENGE"
+            ? 400
+            : 500;
+
+        await logAudit("account_delete_challenge_failed", ip, session.user.id, {
+          step: "complete",
+          reason: error.code,
+        });
+
+        return NextResponse.json(fail(error.code), { status });
+      }
+
+      await logAudit("account_delete_challenge_failed", ip, session.user.id, {
+        step: "complete",
+        reason: "ACCOUNT_DELETE_COMPLETE_FAILED",
+      });
+      console.error("Failed to complete account-delete challenge", error);
+      return NextResponse.json(fail("ACCOUNT_DELETE_COMPLETE_FAILED"), { status: 500 });
     }
 
     return NextResponse.json(ok({ accepted: true }), { status: 200 });

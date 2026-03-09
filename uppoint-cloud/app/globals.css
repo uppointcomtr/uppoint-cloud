@@ -131,3 +131,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Corporate typography scale for non-auth application surfaces */
+  .corp-heading-1 {
+    @apply text-3xl leading-tight font-semibold tracking-tight text-foreground md:text-[2rem];
+  }
+
+  .corp-heading-2 {
+    @apply text-2xl leading-tight font-semibold tracking-tight text-foreground;
+  }
+
+  .corp-heading-3 {
+    @apply text-xl leading-7 font-semibold tracking-tight text-foreground;
+  }
+
+  .corp-section-title {
+    @apply text-[1.0625rem] leading-6 font-semibold tracking-tight text-foreground;
+  }
+
+  .corp-body-muted {
+    @apply text-sm leading-6 text-muted-foreground;
+  }
+
+  .corp-kicker {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground;
+  }
+
+  .corp-value {
+    @apply text-lg leading-7 font-semibold text-foreground;
+  }
+}

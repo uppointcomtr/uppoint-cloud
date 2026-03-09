@@ -1,7 +1,7 @@
 import "server-only";
 
 export const NORMAL_SESSION_IDLE_TIMEOUT_SECONDS = 4 * 60 * 60; // 4 hours
-export const REMEMBER_ME_SESSION_IDLE_TIMEOUT_SECONDS = 15 * 24 * 60 * 60; // 15 days
+export const REMEMBER_ME_SESSION_IDLE_TIMEOUT_SECONDS = 30 * 24 * 60 * 60; // 30 days
 export const SESSION_MAX_AGE_SECONDS = REMEMBER_ME_SESSION_IDLE_TIMEOUT_SECONDS;
 
 export function resolveIdleTimeoutSeconds(rememberMe: boolean): number {

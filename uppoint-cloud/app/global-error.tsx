@@ -30,10 +30,10 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     <html lang={locale}>
       <body className="m-0 flex min-h-screen items-center justify-center bg-background text-foreground">
         <div className="w-full max-w-md px-8 py-10 text-center">
-          <h1 className="mb-3 text-2xl font-semibold tracking-tight">
+          <h1 className="corp-heading-2 mb-3">
             {staleServerActionError ? dictionary.staleActionTitle : dictionary.unexpectedErrorTitle}
           </h1>
-          <p className="mb-6 text-sm text-muted-foreground">
+          <p className="corp-body-muted mb-6">
             {staleServerActionError
               ? dictionary.staleActionDescription
               : error.digest

@@ -166,4 +166,18 @@ describe("getDashboardOverview", () => {
     expect(countUserAuditFailuresSince).not.toHaveBeenCalled();
     expect(listRecentUserAuditEvents).not.toHaveBeenCalled();
   });
+
+  it("reports at least one active session for authenticated JWT session context", async () => {
+    const dependencies = createBaseDependencies({
+      countUserActiveSessions: vi.fn(async () => 0),
+    });
+
+    const result = await getDashboardOverview({
+      userId: "user_1",
+      tenantId: "tenant_1",
+      sessionExpiresAt: "2026-03-05T10:30:00.000Z",
+    }, dependencies);
+
+    expect(result.activeSessions).toBe(1);
+  });
 });
