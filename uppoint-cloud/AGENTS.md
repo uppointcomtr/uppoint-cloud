@@ -328,6 +328,9 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * All core user-facing pages and reusable UI components must be implemented to work correctly in both light and dark modes
 * Avoid building components that only look correct in a single theme
 * Theme behavior must be consistent across layouts, forms, dialogs, navigation, feedback states, and shared UI elements
+* Dashboard and application typography must use the canonical utility scale from `app/globals.css`; do not invent page-local heading sizes when an existing utility fits
+* Use `corp-section-title` for section headings and `corp-body-muted` for supporting section copy across dashboard surfaces unless a stronger page-level title is explicitly justified
+* Treat `/[locale]/dashboard/security` as the canonical reference surface for dashboard heading, subheading, and body-copy hierarchy; keep new dashboard pages aligned with that typography contract
 * Default styling decisions must account for readability, contrast, accessibility, and visual consistency in both themes
 * Do not hardcode colors in a way that breaks theme support
 * Prefer a maintainable token/theme-based approach so theme behavior remains predictable as the product grows

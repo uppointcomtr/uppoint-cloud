@@ -1,16 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowUpRight,
-  CheckCircle2,
-  KeyRound,
-  Mail,
-  PencilLine,
-  Phone,
-  UserRound,
-} from "lucide-react";
+import { PencilLine, UserRound } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -62,6 +54,15 @@ function resolveDisplayName(name: string | null, email: string): string {
   return localPart.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) {
+    return (parts[0] ?? "").slice(0, 2).toUpperCase();
+  }
+
+  return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
+}
+
 function mapProfileUpdateError(
   errorCode: string | undefined,
   labels: Dictionary["dashboard"]["account"],
@@ -100,30 +101,50 @@ function VerificationBadge({
   );
 }
 
-function SummaryMetric({
-  label,
+function InfoRow({
+  title,
   value,
+  description,
+  badge,
+  actionLabel,
+  onAction,
+  disabled = false,
 }: {
-  label: string;
+  title: string;
   value: string;
+  description?: string;
+  badge?: ReactNode;
+  actionLabel: string;
+  onAction: () => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-xl border border-border/60 bg-background/70 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="text-sm font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}
+    <div className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:justify-between">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-base font-semibold tracking-tight text-foreground">
+            {title}
+          </p>
+          {badge}
+        </div>
+        <p className="mt-1 break-all text-base text-muted-foreground">{value}</p>
+        {description ? (
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
+      </div>
 
-function GuardrailItem({ label }: { label: string }) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/65 px-4 py-3">
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <CheckCircle2 className="size-3.5" />
-      </span>
-      <p className="text-sm leading-6 text-foreground">{label}</p>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 min-w-[132px] rounded-xl border-border/70 bg-background/80 px-5"
+        onClick={onAction}
+        disabled={disabled}
+      >
+        <PencilLine className="size-4" />
+        {actionLabel}
+      </Button>
     </div>
   );
 }
@@ -136,7 +157,9 @@ export function AccountCenter({
   user,
 }: AccountCenterProps) {
   const router = useRouter();
-  const [nameValue, setNameValue] = useState(user.name ?? "");
+  const [currentName, setCurrentName] = useState(user.name ?? "");
+  const [draftName, setDraftName] = useState(user.name ?? "");
+  const [isEditingName, setIsEditingName] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [nameInfo, setNameInfo] = useState<string | null>(null);
@@ -149,16 +172,16 @@ export function AccountCenter({
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const displayName = useMemo(
-    () => resolveDisplayName(nameValue, emailValue),
-    [nameValue, emailValue],
+    () => resolveDisplayName(currentName, emailValue),
+    [currentName, emailValue],
   );
-  const normalizedName = nameValue.trim().replace(/\s+/g, " ");
+  const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const normalizedDraftName = draftName.trim().replace(/\s+/g, " ");
   const canSaveName =
-    normalizedName.length >= 3 && normalizedName !== (user.name?.trim() ?? "");
+    normalizedDraftName.length >= 3 &&
+    normalizedDraftName !== (currentName.trim() || "");
   const canChangeEmail = Boolean(phoneValue && phoneVerifiedAt);
   const canChangePhone = Boolean(emailVerifiedAt);
-  const verifiedChannelsCount =
-    Number(Boolean(emailVerifiedAt)) + Number(Boolean(phoneVerifiedAt));
 
   async function handleSaveName() {
     if (isSavingName || !canSaveName) {
@@ -176,7 +199,7 @@ export function AccountCenter({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: normalizedName,
+          name: normalizedDraftName,
         }),
       });
     } catch {
@@ -200,10 +223,18 @@ export function AccountCenter({
       return;
     }
 
-    setNameValue(payload.data.name);
+    setCurrentName(payload.data.name);
+    setDraftName(payload.data.name);
     setNameInfo(labels.profile.feedback.saved);
+    setIsEditingName(false);
     setIsSavingName(false);
     router.refresh();
+  }
+
+  function cancelNameEdit() {
+    setDraftName(currentName);
+    setIsEditingName(false);
+    setNameError(null);
   }
 
   function handleContactChangeCompleted(result: {
@@ -225,241 +256,168 @@ export function AccountCenter({
 
   return (
     <>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_288px]">
-        {/* ── Main column ── */}
-        <div className="space-y-6">
-          {/* Profile Card */}
-          <Card className={`${cardClass} overflow-hidden`}>
-            <CardHeader className="pb-0">
-              <CardTitle className="corp-section-title">
-                {labels.profile.title}
-              </CardTitle>
-              <CardDescription>{labels.profile.description}</CardDescription>
-            </CardHeader>
+      <Card className={`${cardClass} overflow-hidden`}>
+        <CardHeader className="border-b border-border/60 pb-6">
+          <CardTitle className="corp-section-title">
+            {labels.layout.profileHeading}
+          </CardTitle>
+          <CardDescription className="corp-body-muted">{labels.description}</CardDescription>
+        </CardHeader>
 
-            <CardContent className="space-y-5 pt-6">
-              {nameError ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{nameError}</AlertDescription>
-                </Alert>
-              ) : null}
+        <CardContent className="space-y-8 px-6 py-7 md:px-8">
+          {nameError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{nameError}</AlertDescription>
+            </Alert>
+          ) : null}
 
-              {nameInfo ? (
-                <Alert>
-                  <AlertDescription>{nameInfo}</AlertDescription>
-                </Alert>
-              ) : null}
+          {nameInfo ? (
+            <Alert>
+              <AlertDescription>{nameInfo}</AlertDescription>
+            </Alert>
+          ) : null}
 
-              {/* Identity header */}
-              <div className="flex items-center gap-4 rounded-2xl border border-primary/10 bg-[linear-gradient(135deg,theme(colors.primary/.07),transparent_60%)] px-5 py-4">
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm">
-                  <UserRound className="size-6" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-foreground">
-                    {displayName}
-                  </p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {emailValue}
-                  </p>
-                </div>
-              </div>
+          {identityInfo ? (
+            <Alert>
+              <AlertDescription>{identityInfo}</AlertDescription>
+            </Alert>
+          ) : null}
 
-              {/* Metrics row */}
-              <div className="grid grid-cols-3 gap-3">
-                <SummaryMetric
-                  label={labels.overview.verifiedChannels}
-                  value={`${verifiedChannelsCount}/2`}
-                />
-                <SummaryMetric
-                  label={labels.overview.protectedChanges}
-                  value={labels.overview.protectedChangesValue}
-                />
-                <SummaryMetric
-                  label={labels.overview.resetFlow}
-                  value={labels.overview.resetFlowValue}
-                />
-              </div>
+          <section className="rounded-3xl border border-border/60 bg-background/65 px-5 py-6 md:px-7">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center">
+              <span className="inline-flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">
+                {initials}
+              </span>
 
-              {/* Name input + save */}
-              <div className="space-y-3">
-                <FloatingInput
-                  id="account-full-name"
-                  label={labels.profile.fields.name}
-                  value={nameValue}
-                  onChange={(event) => setNameValue(event.target.value)}
-                  autoComplete="name"
-                />
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {labels.profile.nameHint}
+              <div className="min-w-0">
+                <p className="truncate text-2xl font-semibold tracking-tight text-foreground">
+                  {displayName}
                 </p>
-                <Button
-                  type="button"
-                  onClick={() => void handleSaveName()}
-                  disabled={!canSaveName || isSavingName}
-                  className="w-full sm:w-auto"
-                >
-                  {isSavingName
-                    ? labels.profile.buttons.saving
-                    : labels.profile.buttons.save}
-                </Button>
+                <p className="mt-1 truncate text-base text-muted-foreground">
+                  {emailValue}
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          {/* Identity Card */}
-          <Card className={cardClass}>
-            <CardHeader>
-              <CardTitle className="corp-section-title">
-                {labels.identity.title}
-              </CardTitle>
-              <CardDescription>{labels.identity.description}</CardDescription>
-            </CardHeader>
+          <section className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="corp-section-title">{labels.layout.personalInfoHeading}</h2>
+              <p className="corp-body-muted">{labels.layout.personalInfoDescription}</p>
+            </div>
 
-            <CardContent className="space-y-4">
-              {identityInfo ? (
-                <Alert>
-                  <AlertDescription>{identityInfo}</AlertDescription>
-                </Alert>
-              ) : null}
+            <div className="overflow-hidden rounded-3xl border border-border/60 bg-background/65">
+              <div className="border-b border-border/60">
+                {isEditingName ? (
+                  <div className="space-y-4 px-5 py-5">
+                    <div className="flex items-center gap-2">
+                      <UserRound className="size-4 text-muted-foreground" />
+                      <p className="text-base font-semibold tracking-tight text-foreground">
+                        {labels.profile.fields.name}
+                      </p>
+                    </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                {/* Email tile */}
-                <div className="flex flex-col rounded-2xl border border-border/60 bg-background/65 p-5">
-                  <span className="mb-3 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Mail className="size-5" />
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">
-                      {labels.identity.emailTitle}
+                    <FloatingInput
+                      id="account-full-name"
+                      label={labels.profile.fields.name}
+                      value={draftName}
+                      onChange={(event) => setDraftName(event.target.value)}
+                      autoComplete="name"
+                    />
+
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {labels.profile.nameHint}
                     </p>
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-xl"
+                        onClick={cancelNameEdit}
+                      >
+                        {labels.layout.cancelEdit}
+                      </Button>
+                      <Button
+                        type="button"
+                        className="rounded-xl"
+                        onClick={() => void handleSaveName()}
+                        disabled={!canSaveName || isSavingName}
+                      >
+                        {isSavingName
+                          ? labels.profile.buttons.saving
+                          : labels.profile.buttons.save}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <InfoRow
+                    title={labels.profile.fields.name}
+                    value={displayName}
+                    actionLabel={labels.layout.editAction}
+                    onAction={() => {
+                      setDraftName(currentName);
+                      setNameInfo(null);
+                      setNameError(null);
+                      setIsEditingName(true);
+                    }}
+                  />
+                )}
+              </div>
+
+              <div className="border-b border-border/60">
+                <InfoRow
+                  title={labels.identity.emailTitle}
+                  value={emailValue}
+                  description={
+                    canChangeEmail
+                      ? labels.identity.emailHint
+                      : labels.identity.emailDisabledHint
+                  }
+                  badge={
                     <VerificationBadge
                       verified={Boolean(emailVerifiedAt)}
                       labels={labels.verification}
                     />
-                  </div>
-                  <p className="mt-1 break-all text-sm text-muted-foreground">
-                    {emailValue}
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    {canChangeEmail
-                      ? labels.identity.emailHint
-                      : labels.identity.emailDisabledHint}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-4 w-full justify-between rounded-xl"
-                    disabled={!canChangeEmail}
-                    onClick={() => setActiveModal("EMAIL")}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <PencilLine className="size-4" />
-                      {labels.identity.changeEmail}
-                    </span>
-                    <ArrowUpRight className="size-4" />
-                  </Button>
-                </div>
+                  }
+                  actionLabel={labels.layout.editAction}
+                  onAction={() => setActiveModal("EMAIL")}
+                  disabled={!canChangeEmail}
+                />
+              </div>
 
-                {/* Phone tile */}
-                <div className="flex flex-col rounded-2xl border border-border/60 bg-background/65 p-5">
-                  <span className="mb-3 flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Phone className="size-5" />
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">
-                      {labels.identity.phoneTitle}
-                    </p>
+              <div className="border-b border-border/60">
+                <InfoRow
+                  title={labels.identity.phoneTitle}
+                  value={phoneValue ?? labels.identity.noPhone}
+                  description={
+                    canChangePhone
+                      ? labels.identity.phoneHint
+                      : labels.identity.phoneDisabledHint
+                  }
+                  badge={
                     <VerificationBadge
                       verified={Boolean(phoneVerifiedAt)}
                       labels={labels.verification}
                     />
-                  </div>
-                  <p className="mt-1 break-all text-sm text-muted-foreground">
-                    {phoneValue ?? labels.identity.noPhone}
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                    {canChangePhone
-                      ? labels.identity.phoneHint
-                      : labels.identity.phoneDisabledHint}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-4 w-full justify-between rounded-xl"
-                    disabled={!canChangePhone}
-                    onClick={() => setActiveModal("PHONE")}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <PencilLine className="size-4" />
-                      {labels.identity.changePhone}
-                    </span>
-                    <ArrowUpRight className="size-4" />
-                  </Button>
-                </div>
+                  }
+                  actionLabel={labels.layout.editAction}
+                  onAction={() => setActiveModal("PHONE")}
+                  disabled={!canChangePhone}
+                />
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* ── Sidebar column ── */}
-        <div className="space-y-6">
-          {/* Access Card */}
-          <Card className={cardClass}>
-            <CardHeader>
-              <CardTitle className="corp-section-title">
-                {labels.access.title}
-              </CardTitle>
-              <CardDescription>{labels.access.description}</CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-3">
-              <div className="rounded-2xl border border-border/60 bg-background/65 p-4">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <KeyRound className="size-4" />
-                  </span>
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-semibold text-foreground">
-                      {labels.access.passwordTitle}
-                    </p>
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      {labels.access.passwordDescription}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  className="mt-4 w-full justify-between rounded-xl"
-                  onClick={() => setIsPasswordModalOpen(true)}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <KeyRound className="size-4" />
-                    {labels.access.openPasswordFlow}
-                  </span>
-                  <ArrowUpRight className="size-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Guardrails Card */}
-          <Card className={cardClass}>
-            <CardHeader>
-              <CardTitle className="corp-section-title">
-                {labels.guardrails.title}
-              </CardTitle>
-              <CardDescription>{labels.guardrails.description}</CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-2.5">
-              <GuardrailItem label={labels.guardrails.emailRequirement} />
-              <GuardrailItem label={labels.guardrails.phoneRequirement} />
-              <GuardrailItem label={labels.guardrails.passwordRequirement} />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+              <InfoRow
+                title={labels.layout.passwordHeading}
+                value={labels.layout.maskedPassword}
+                description={labels.access.passwordDescription}
+                actionLabel={labels.layout.editAction}
+                onAction={() => setIsPasswordModalOpen(true)}
+              />
+            </div>
+          </section>
+        </CardContent>
+      </Card>
 
       <AccountContactChangeModal
         open={activeModal === "EMAIL"}

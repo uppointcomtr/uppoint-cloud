@@ -294,6 +294,15 @@ export const enMessages = {
     account: {
       title: "Account center",
       description: "Manage profile and contact channels with controlled verification steps.",
+      layout: {
+        profileHeading: "Profile",
+        personalInfoHeading: "Personal information",
+        personalInfoDescription: "Manage identity and contact fields here with controlled verification steps.",
+        passwordHeading: "Password",
+        maskedPassword: "********",
+        editAction: "Edit",
+        cancelEdit: "Cancel",
+      },
       overview: {
         verifiedChannels: "Verified channels",
         protectedChanges: "Change model",

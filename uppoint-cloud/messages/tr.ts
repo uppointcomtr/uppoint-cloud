@@ -294,6 +294,15 @@ export const trMessages = {
     account: {
       title: "Hesap merkezi",
       description: "Profil ve iletişim kanallarınızı kontrollü doğrulama adımlarıyla yönetin.",
+      layout: {
+        profileHeading: "Profil",
+        personalInfoHeading: "Kişisel bilgiler",
+        personalInfoDescription: "Kimlik ve iletişim alanlarını bu bölümden güvenli doğrulama ile yönetin.",
+        passwordHeading: "Şifre",
+        maskedPassword: "********",
+        editAction: "Düzenle",
+        cancelEdit: "Vazgeç",
+      },
       overview: {
         verifiedChannels: "Doğrulanmış kanal",
         protectedChanges: "Değişiklik modeli",

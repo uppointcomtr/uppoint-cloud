@@ -3,6 +3,10 @@
 ## 2026-03-11 (account center UI redesign)
 
 ### Changed
+- Aligned account-center typography with the dashboard/security reference surface:
+  - section headings now use `corp-section-title`
+  - section descriptions now use `corp-body-muted`
+  - row labels use a single consistent title weight/size
 - Redesigned `modules/dashboard/components/account-center.tsx` for cleaner visual hierarchy:
   - Main grid breakpoint lowered from `2xl` to `xl` so two-column layout activates on standard desktop screens
   - Profile card simplified: identity header and metrics row separated into distinct visual zones, removed redundant inline summary box
@@ -32,11 +36,12 @@
   - `tests/auth/account-profile.test.ts`
 
 ### Changed
-- Reworked the account-center UI into a clearer two-column management surface:
-  - left column: profile summary, display-name editing, contact channel cards
-  - right column: password reset entry point and verification guardrails
+- Restyled the account center into a single-card profile surface with the requested heading hierarchy:
+  - top section: `Profil`
+  - details section: `Kişisel bilgiler`
+  - row-based edit actions for full name, email, phone, and password
 - Added in-page password renewal entry point on the account-center using the existing secure forgot-password modal flow.
-- Removed the redundant security-center promo card from the account-center sidebar to keep the right column focused.
+- Removed the redundant security-center promo surface from the account page.
 - Replaced generic contact-change modal labels such as `new value` with field-specific labels (`new email address`, `new phone number`, etc.).
 - Updated profile menu account link to open the new account-center surface instead of the generic dashboard overview.
 - Extended dashboard shell routing and protected-route registry for `/dashboard/account`.
