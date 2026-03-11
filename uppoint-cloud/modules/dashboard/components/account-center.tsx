@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -10,7 +9,6 @@ import {
   Mail,
   PencilLine,
   Phone,
-  ShieldCheck,
   UserRound,
 } from "lucide-react";
 
@@ -31,7 +29,6 @@ import {
 } from "@/modules/auth/components/shared/request-utils";
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
-import { withLocale } from "@/modules/i18n/paths";
 
 import { AccountContactChangeModal } from "./account-contact-change-modal";
 
@@ -162,7 +159,6 @@ export function AccountCenter({
   const canChangePhone = Boolean(emailVerifiedAt);
   const verifiedChannelsCount =
     Number(Boolean(emailVerifiedAt)) + Number(Boolean(phoneVerifiedAt));
-  const securityPath = withLocale("/dashboard/security", locale);
 
   async function handleSaveName() {
     if (isSavingName || !canSaveName) {
@@ -418,7 +414,6 @@ export function AccountCenter({
             </CardHeader>
 
             <CardContent className="space-y-3">
-              {/* Password */}
               <div className="rounded-2xl border border-border/60 bg-background/65 p-4">
                 <div className="flex items-start gap-3">
                   <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -443,36 +438,6 @@ export function AccountCenter({
                     {labels.access.openPasswordFlow}
                   </span>
                   <ArrowUpRight className="size-4" />
-                </Button>
-              </div>
-
-              {/* Security center */}
-              <div className="rounded-2xl border border-border/60 bg-background/65 p-4">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <ShieldCheck className="size-4" />
-                  </span>
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-semibold text-foreground">
-                      {labels.access.securityTitle}
-                    </p>
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      {labels.access.securityDescription}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="mt-4 w-full justify-between rounded-xl"
-                >
-                  <Link prefetch={false} href={securityPath}>
-                    <span className="inline-flex items-center gap-2">
-                      <ShieldCheck className="size-4" />
-                      {labels.access.openSecurityCenter}
-                    </span>
-                    <ArrowUpRight className="size-4" />
-                  </Link>
                 </Button>
               </div>
             </CardContent>

@@ -36,6 +36,7 @@
   - left column: profile summary, display-name editing, contact channel cards
   - right column: password reset entry point and verification guardrails
 - Added in-page password renewal entry point on the account-center using the existing secure forgot-password modal flow.
+- Removed the redundant security-center promo card from the account-center sidebar to keep the right column focused.
 - Replaced generic contact-change modal labels such as `new value` with field-specific labels (`new email address`, `new phone number`, etc.).
 - Updated profile menu account link to open the new account-center surface instead of the generic dashboard overview.
 - Extended dashboard shell routing and protected-route registry for `/dashboard/account`.
