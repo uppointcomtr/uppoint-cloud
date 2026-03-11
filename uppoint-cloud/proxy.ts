@@ -96,7 +96,9 @@ function getOrCreateRequestId(request: NextRequest): string {
 function buildForwardHeaders(request: NextRequest, requestId: string): Headers {
   const headers = new Headers(request.headers);
   const host = request.headers.get("host");
+  const locale = extractLocaleFromPath(request.nextUrl.pathname) ?? defaultLocale;
   headers.set("x-request-id", requestId);
+  headers.set("x-uppoint-locale", locale);
   if (host) {
     // Security-sensitive: normalize forwarded host to authoritative Host header.
     headers.set("x-forwarded-host", host);

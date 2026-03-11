@@ -79,6 +79,7 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     const trLoginHtml = await trLoginResponse.text();
     expect(trLoginHtml).toContain("Oturum aç");
     expect(trLoginHtml).toContain("E-Posta");
+    expect(trLoginHtml).toMatch(/<html[^>]*lang="tr"/i);
 
     if (baseUrl.startsWith("https://")) {
       const cspHeader = trLoginResponse.headers.get("content-security-policy");
@@ -103,6 +104,7 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     const enLoginHtml = await enLoginResponse.text();
     expect(enLoginHtml).toContain("Sign in");
     expect(enLoginHtml).toContain("Email");
+    expect(enLoginHtml).toMatch(/<html[^>]*lang="en"/i);
 
     const enRegisterResponse = await fetchWithTimeout("/en/register");
     expect(enRegisterResponse.status).toBe(200);
@@ -110,7 +112,7 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(enRegisterHtml).toContain("Create account");
   });
 
-  it("protects dashboard security route and preserves callback redirect for unauthenticated users", async () => {
+  it("protects dashboard routes and preserves localized callback redirects for unauthenticated users", async () => {
     const response = await fetchWithTimeout("/tr/dashboard/security", {
       redirect: "manual",
     });
@@ -120,6 +122,33 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(location).toContain("/tr/login");
     expect(location).toContain("callbackUrl=");
     expect(decodeURIComponent(location)).toContain("/tr/dashboard/security");
+
+    const enResponse = await fetchWithTimeout("/en/dashboard", {
+      redirect: "manual",
+    });
+    expect([302, 307, 308]).toContain(enResponse.status);
+    const enLocation = enResponse.headers.get("location") ?? "";
+    expect(enLocation).toContain("/en/login");
+    expect(enLocation).toContain("callbackUrl=");
+    expect(decodeURIComponent(enLocation)).toContain("/en/dashboard");
+  });
+
+  it("exposes read-only auth infrastructure endpoints with stable JSON contracts", async () => {
+    const csrfResponse = await fetchWithTimeout("/api/auth/csrf");
+    expect(csrfResponse.status).toBe(200);
+    expect(csrfResponse.headers.get("content-type") ?? "").toContain("application/json");
+    const csrfPayload = await csrfResponse.json() as { csrfToken?: unknown };
+    expect(typeof csrfPayload.csrfToken).toBe("string");
+    expect((csrfPayload.csrfToken as string).length).toBeGreaterThan(16);
+
+    const sessionResponse = await fetchWithTimeout("/api/auth/session");
+    expect(sessionResponse.status).toBe(200);
+    expect(sessionResponse.headers.get("content-type") ?? "").toContain("application/json");
+    const sessionPayload = await sessionResponse.json() as { expires?: unknown; user?: unknown } | null;
+    expect(typeof sessionPayload).toBe("object");
+    if (sessionPayload && sessionPayload.expires !== undefined) {
+      expect(typeof sessionPayload.expires).toBe("string");
+    }
   });
 
   it.runIf(allowMutations)("returns neutral response for unverified email login challenge", async () => {

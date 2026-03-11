@@ -5,14 +5,6 @@ import { Bell, Building2, ChevronRight, House, LayoutDashboard, Layers3, ShieldC
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { LogoutButton } from "@/modules/auth/components/logout-button";
 import { SessionTimeoutWarning } from "@/modules/auth/components/session-timeout-warning";
 import type { Locale } from "@/modules/i18n/config";
@@ -21,15 +13,18 @@ import { withLocale } from "@/modules/i18n/paths";
 import { cn } from "@/lib/utils";
 
 import type { DashboardOverview } from "../server/get-dashboard-overview";
+import {
+  ModulesCard,
+  NotificationsCard,
+  OverviewCards,
+  QuickActionsCard,
+  TenantCard,
+  type DashboardActiveSection,
+} from "./dashboard-section-cards";
 import { ProfileMenu } from "./profile-menu";
 import { SecurityCenter } from "./security-center";
 
-export type DashboardSection =
-  | "overview"
-  | "security"
-  | "notifications"
-  | "tenant"
-  | "modules";
+export type DashboardSection = DashboardActiveSection;
 
 interface DashboardPanelProps {
   locale: Locale;
@@ -42,49 +37,6 @@ interface NavItem {
   section: DashboardSection;
   label: string;
   icon: LucideIcon;
-}
-
-const corporateCardClass = "border-border/70 bg-card/90 shadow-sm";
-
-function formatDateTime(value: Date | null, locale: Locale): string {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(value);
-}
-
-function renderVerificationStatus(
-  isVerified: boolean,
-  labels: DashboardPanelProps["dictionary"]["dashboard"]["verification"],
-) {
-  return (
-    <span
-      className={isVerified
-        ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-        : "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"}
-    >
-      {isVerified ? labels.verified : labels.pending}
-    </span>
-  );
-}
-
-function resolveTenantStatusMessage(
-  overview: DashboardOverview,
-  labels: DashboardPanelProps["dictionary"]["dashboard"]["tenant"],
-): string {
-  if (overview.tenantErrorCode === "TENANT_NOT_FOUND") {
-    return labels.noMembership;
-  }
-
-  if (overview.tenantErrorCode === "TENANT_SELECTION_REQUIRED") {
-    return labels.selectionRequired;
-  }
-
-  return labels.accessDenied;
 }
 
 function resolveDisplayName(name: string | null, email: string): string {
@@ -116,14 +68,6 @@ function getSectionPath(locale: Locale, section: DashboardSection): string {
   }
 }
 
-function createTenantHref(
-  locale: Locale,
-  activeSection: DashboardSection,
-  tenantId: string,
-): string {
-  return `${getSectionPath(locale, activeSection)}?tenantId=${encodeURIComponent(tenantId)}`;
-}
-
 function navButtonClass(isActive: boolean): string {
   return cn(
     "group flex items-center gap-2.5 border-l-2 px-3 py-2 text-sm font-medium transition-colors",
@@ -151,251 +95,6 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return (parts[0] ?? "").slice(0, 2).toUpperCase();
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
-}
-
-function renderQuickActions(
-  locale: Locale,
-  labels: DashboardPanelProps["dictionary"]["dashboard"]["quickActions"],
-  appUrl: string,
-) {
-  return (
-    <Card className={corporateCardClass}>
-      <CardHeader>
-        <CardTitle className="corp-section-title">{labels.title}</CardTitle>
-        <CardDescription>{labels.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-wrap gap-3">
-        <Button asChild variant="outline">
-          <Link prefetch={false} href={withLocale("/forgot-password", locale)}>
-            {labels.resetPassword}
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link prefetch={false} href={withLocale("/login", locale)}>
-            {labels.openLogin}
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href={appUrl} target="_blank" rel="noreferrer">
-            {labels.openPublicApp}
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function renderNotificationsCard(
-  overview: DashboardOverview,
-  labels: DashboardPanelProps["dictionary"]["dashboard"]["notifications"],
-) {
-  const hasNotificationIssues = overview.notifications.failed24h > 0;
-
-  return (
-    <Card className={corporateCardClass}>
-      <CardHeader>
-        <CardTitle className="corp-section-title">{labels.title}</CardTitle>
-        <CardDescription>{labels.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-            <p className="text-xs text-muted-foreground">{labels.pending}</p>
-            <p className="corp-value mt-1">{overview.notifications.pending}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-            <p className="text-xs text-muted-foreground">{labels.sent24h}</p>
-            <p className="corp-value mt-1">{overview.notifications.sent24h}</p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-            <p className="text-xs text-muted-foreground">{labels.failed24h}</p>
-            <p className="corp-value mt-1">{overview.notifications.failed24h}</p>
-          </div>
-        </div>
-        <p className={hasNotificationIssues ? "text-amber-600 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-300"}>
-          {hasNotificationIssues ? labels.attention : labels.healthy}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function renderTenantCard(
-  locale: Locale,
-  activeSection: DashboardSection,
-  overview: DashboardOverview,
-  labels: DashboardPanelProps["dictionary"]["dashboard"]["tenant"],
-) {
-  return (
-    <Card className={corporateCardClass}>
-      <CardHeader>
-        <CardTitle className="corp-section-title">{labels.title}</CardTitle>
-        <CardDescription>{labels.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm">
-        {overview.tenant ? (
-          <>
-            <p>
-              <span className="text-muted-foreground">{labels.tenantLabel}:</span> {overview.tenant.tenantId}
-            </p>
-            <p>
-              <span className="text-muted-foreground">{labels.roleLabel}:</span> {overview.tenant.role}
-            </p>
-          </>
-        ) : (
-          <p className="text-muted-foreground">{resolveTenantStatusMessage(overview, labels)}</p>
-        )}
-
-        {overview.tenantOptions.length > 0 ? (
-          <div className="space-y-2 pt-2">
-            <p className="text-xs text-muted-foreground">{labels.availableTenantsLabel}</p>
-            <div className="space-y-2">
-              {overview.tenantOptions.map((option) => (
-                <div
-                  key={`${option.tenantId}-${option.role}`}
-                  className={option.isSelected
-                    ? "rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2"
-                    : "rounded-lg border border-border/50 bg-background/60 px-3 py-2"}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium">{option.tenantName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {labels.tenantLabel}: {option.tenantId} · {labels.roleLabel}: {option.role}
-                        {option.isSelected ? ` · ${labels.activeLabel}` : ""}
-                      </p>
-                    </div>
-                    {!option.isSelected ? (
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={createTenantHref(locale, activeSection, option.tenantId)}>
-                          {labels.selectorLabel}
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-function renderModulesCard(
-  labels: DashboardPanelProps["dictionary"]["dashboard"]["modules"],
-) {
-  return (
-    <Card className="border-border/60">
-      <CardHeader>
-        <CardTitle className="corp-section-title">{labels.title}</CardTitle>
-        <CardDescription>{labels.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.instances}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.comingSoon}</p>
-        </div>
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.network}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.comingSoon}</p>
-        </div>
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.backup}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.comingSoon}</p>
-        </div>
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.billing}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.comingSoon}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function renderOverviewCards(
-  locale: Locale,
-  overview: DashboardOverview,
-  dictionary: DashboardPanelProps["dictionary"]["dashboard"],
-) {
-  const isUserLocked = Boolean(
-    overview.user.lockedUntil && overview.user.lockedUntil > overview.generatedAt,
-  );
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <Card className={corporateCardClass}>
-        <CardHeader className="pb-3">
-          <CardTitle className="corp-section-title">{dictionary.session.title}</CardTitle>
-          <CardDescription>{dictionary.session.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            <span className="text-muted-foreground">{dictionary.session.activeSessions}:</span> {overview.activeSessions}
-          </p>
-          <p>
-            <span className="text-muted-foreground">{dictionary.session.lastLoginAt}:</span>{" "}
-            {formatDateTime(overview.user.lastLoginAt, locale)}
-          </p>
-          <p>
-            <span className="text-muted-foreground">{dictionary.session.expiresAt}:</span>{" "}
-            {formatDateTime(overview.sessionExpiresAt, locale)}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className={corporateCardClass}>
-        <CardHeader className="pb-3">
-          <CardTitle className="corp-section-title">{dictionary.verification.title}</CardTitle>
-          <CardDescription>{dictionary.verification.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">{dictionary.verification.email}</span>
-            {renderVerificationStatus(Boolean(overview.user.emailVerified), dictionary.verification)}
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">{dictionary.verification.phone}</span>
-            {renderVerificationStatus(Boolean(overview.user.phoneVerifiedAt), dictionary.verification)}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className={corporateCardClass}>
-        <CardHeader className="pb-3">
-          <CardTitle className="corp-section-title">{dictionary.risk.title}</CardTitle>
-          <CardDescription>{dictionary.risk.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            <span className="text-muted-foreground">{dictionary.risk.failedAttempts}:</span> {overview.user.failedLoginAttempts}
-          </p>
-          <p>
-            <span className="text-muted-foreground">{dictionary.risk.lockedUntil}:</span>{" "}
-            {isUserLocked ? formatDateTime(overview.user.lockedUntil, locale) : dictionary.risk.notLocked}
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className={corporateCardClass}>
-        <CardHeader className="pb-3">
-          <CardTitle className="corp-section-title">{dictionary.runtime.title}</CardTitle>
-          <CardDescription>{dictionary.runtime.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            <span className="text-muted-foreground">{dictionary.runtime.rateLimitBackend}:</span>{" "}
-            {dictionary.runtime.backends[overview.runtime.rateLimitBackend]}
-          </p>
-          <p>
-            <span className="text-muted-foreground">{dictionary.runtime.transportMode}:</span>{" "}
-            {overview.runtime.internalTransportMode}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
 }
 
 export function DashboardPanel({
@@ -531,8 +230,8 @@ export function DashboardPanel({
 
           {activeSection === "overview" ? (
             <>
-              {renderOverviewCards(locale, overview, dashboard)}
-              {renderQuickActions(locale, dashboard.quickActions, overview.runtime.appUrl)}
+              <OverviewCards locale={locale} overview={overview} labels={dashboard} />
+              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
 
@@ -563,22 +262,22 @@ export function DashboardPanel({
 
           {activeSection === "notifications" ? (
             <>
-              {renderNotificationsCard(overview, dashboard.notifications)}
-              {renderQuickActions(locale, dashboard.quickActions, overview.runtime.appUrl)}
+              <NotificationsCard overview={overview} labels={dashboard} />
+              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
 
           {activeSection === "tenant" ? (
             <>
-              {renderTenantCard(locale, activeSection, overview, dashboard.tenant)}
-              {renderQuickActions(locale, dashboard.quickActions, overview.runtime.appUrl)}
+              <TenantCard locale={locale} activeSection={activeSection} overview={overview} labels={dashboard} />
+              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
 
           {activeSection === "modules" ? (
             <>
-              {renderModulesCard(dashboard.modules)}
-              {renderQuickActions(locale, dashboard.quickActions, overview.runtime.appUrl)}
+              <ModulesCard labels={dashboard} />
+              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
         </section>

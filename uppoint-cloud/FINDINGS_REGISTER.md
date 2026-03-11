@@ -139,6 +139,10 @@ It does not replace `CHANGELOG.md`; it complements it.
 | F86 | `verify:security-gate` allowed remote-smoke skip-by-default in production flow | release-governance/security-testing | High | None | closed | 2026-03-11 | 2026-03-11 | codex | `scripts/verify-security-gate.sh`, `README.md` | Default `SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1` and fail closed if production tries to skip remote smoke |
 | F87 | Security center component mixed too many responsibilities in one file | architecture/layering | Low | Low | closed | 2026-03-11 | 2026-03-11 | codex | `modules/dashboard/components/security-center.tsx`, `modules/dashboard/components/security-active-sessions-panel.tsx`, `modules/dashboard/components/security-events-table.tsx` | Split active-sessions and events-table into dedicated components while keeping destructive flows in container |
 | F88 | Dashboard security protected-route behavior lacked dedicated HTTP smoke assertion | security/regression-coverage | Low | None | closed | 2026-03-11 | 2026-03-11 | codex | `tests/e2e/auth-http-smoke.test.ts` | Add route-level smoke assertion to ensure unauthenticated access redirects `/tr/dashboard/security` to localized login with callback |
+| F89 | Locale-specific pages rendered incorrect root `html[lang]` for non-default locale | i18n/accessibility | Medium | Low | closed | 2026-03-11 | 2026-03-11 | codex | `proxy.ts`, `app/layout.tsx`, `tests/e2e/auth-http-smoke.test.ts`, `tests/i18n/default-locale-contract.test.ts` | Forward resolved locale via proxy header, resolve `html` lang server-side with default fallback, and verify TR/EN markers in remote smoke and contract tests |
+| F90 | Remote read-only smoke lacked baseline assertions for auth infra endpoints and EN protected-route redirect | security/regression-coverage | Medium | None | closed | 2026-03-11 | 2026-03-11 | codex | `tests/e2e/auth-http-smoke.test.ts`, `npm run verify:security-gate` output | Extend remote read-only smoke with `/api/auth/csrf`, `/api/auth/session`, and `/en/dashboard` redirect assertions |
+| F91 | Dashboard panel component retained mixed section-card responsibilities after shell growth | architecture/layering | Low | Low | closed | 2026-03-11 | 2026-03-11 | codex | `modules/dashboard/components/dashboard-panel.tsx`, `modules/dashboard/components/dashboard-section-cards.tsx` | Extract section-card rendering and helpers into dedicated component module while keeping dashboard shell/layout orchestration in panel |
+| F92 | Restore drill execute-path evidence was missing from canonical runtime log | operational/resilience | Medium | None | closed | 2026-03-11 | 2026-03-11 | codex | `scripts/restore-drill-db.sh --execute --confirm`, `/var/log/uppoint-postgres-restore-drill.log`, `npm run verify:restore-drill-freshness` | Run execute-mode restore drill safely against temporary drill DB and append fresh success evidence to canonical log path |
 
 ## Change Log (Register-only)
 
@@ -235,6 +239,10 @@ Record only register updates here (not general product changes).
 | 2026-03-11 | F86 | Closed: security gate remote smoke is now required by default and production skip is blocked fail-closed | gate script + README policy update |
 | 2026-03-11 | F87 | Closed: security center responsibilities split into dedicated active-sessions/events components | security-center decomposition into focused subcomponents |
 | 2026-03-11 | F88 | Closed: added dedicated unauthenticated redirect smoke test for `/tr/dashboard/security` | `tests/e2e/auth-http-smoke.test.ts` |
+| 2026-03-11 | F89 | Closed: root html lang now resolves from forwarded locale header with default fallback and TR/EN smoke assertions | `proxy.ts`, `app/layout.tsx`, i18n+e2e tests |
+| 2026-03-11 | F90 | Closed: remote read-only smoke now validates auth infra endpoints and EN dashboard redirect callback behavior | `tests/e2e/auth-http-smoke.test.ts` |
+| 2026-03-11 | F91 | Closed: dashboard section cards extracted into dedicated module for clearer component boundaries | `modules/dashboard/components/dashboard-section-cards.tsx`, `dashboard-panel.tsx` |
+| 2026-03-11 | F92 | Closed: restore-drill execute evidence written to canonical runtime log and freshness check passes | `scripts/restore-drill-db.sh --execute --confirm`, `/var/log/uppoint-postgres-restore-drill.log`, `verify:restore-drill-freshness` |
 
 ## Audit Output Contract
 

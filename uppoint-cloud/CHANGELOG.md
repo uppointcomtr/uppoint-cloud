@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-03-11 (findings closure round: locale lang, dashboard layering, remote smoke, restore-drill evidence)
+
+### Added
+- Added dedicated dashboard section-card module:
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+
+### Changed
+- Fixed locale-to-HTML language propagation:
+  - proxy now forwards `x-uppoint-locale` from URL locale resolution (`proxy.ts`),
+  - root layout now resolves `<html lang>` from forwarded locale with default fallback (`app/layout.tsx`).
+- Expanded remote read-only smoke coverage (`tests/e2e/auth-http-smoke.test.ts`):
+  - validate `<html lang="tr">` / `<html lang="en">` markers,
+  - validate unauthenticated EN dashboard redirect callback behavior,
+  - validate read-only auth infra contracts (`/api/auth/csrf`, `/api/auth/session`).
+- Reduced dashboard component coupling:
+  - moved section-card rendering/helpers out of `dashboard-panel.tsx` into `dashboard-section-cards.tsx`.
+- Refreshed i18n contract test to match locale-header based root-lang behavior:
+  - `tests/i18n/default-locale-contract.test.ts`.
+- Produced fresh restore drill execute evidence in canonical runtime log:
+  - `scripts/restore-drill-db.sh --execute --confirm`
+  - `/var/log/uppoint-postgres-restore-drill.log`.
+- Updated findings register closures:
+  - `FINDINGS_REGISTER.md` (`F89`, `F90`, `F91`, `F92`).
+
 ## 2026-03-11 (dashboard security hardening + findings closure round)
 
 ### Added

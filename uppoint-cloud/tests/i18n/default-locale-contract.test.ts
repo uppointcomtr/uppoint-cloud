@@ -9,9 +9,11 @@ describe("default locale contract", () => {
     expect(defaultLocale).toBe("tr");
   });
 
-  it("uses default locale in root html lang attribute", () => {
+  it("resolves root html lang from forwarded locale header with default fallback", () => {
     const layoutPath = path.join(process.cwd(), "app", "layout.tsx");
     const source = readFileSync(layoutPath, "utf8");
-    expect(source).toContain("<html lang={defaultLocale} suppressHydrationWarning>");
+    expect(source).toContain('requestHeaders.get("x-uppoint-locale")');
+    expect(source).toContain("return defaultLocale;");
+    expect(source).toContain("<html lang={htmlLocale} suppressHydrationWarning>");
   });
 });
