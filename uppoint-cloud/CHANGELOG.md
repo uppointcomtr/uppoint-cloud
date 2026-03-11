@@ -1,5 +1,68 @@
 # Changelog
 
+## 2026-03-11 (account center UI redesign)
+
+### Changed
+- Redesigned `modules/dashboard/components/account-center.tsx` for cleaner visual hierarchy:
+  - Main grid breakpoint lowered from `2xl` to `xl` so two-column layout activates on standard desktop screens
+  - Profile card simplified: identity header and metrics row separated into distinct visual zones, removed redundant inline summary box
+  - Save button moved below name input (full width at mobile, auto at sm+)
+  - Identity card tiles changed to `sm:grid-cols-2` (two columns from 640px instead of xl-only)
+  - Tile layout changed to `flex flex-col` for consistent button placement at the bottom
+  - Access card: two sub-sections extracted (password + security center) with their own buttons, smaller icon size (9 → 9)
+  - Guardrails card: removed duplicate email/phone status rows; now shows only the three guardrail items cleanly
+
+## 2026-03-11 (account center + audited contact change verification)
+
+### Added
+- Added authenticated account-center route and dashboard surface:
+  - `app/[locale]/dashboard/account/page.tsx`
+  - `modules/dashboard/components/account-center.tsx`
+  - `modules/dashboard/components/account-contact-change-modal.tsx`
+- Added audited account profile and contact-change auth APIs:
+  - `PATCH /api/auth/account/profile`
+  - `POST /api/auth/account/contact/change/start`
+  - `POST /api/auth/account/contact/change/verify-email`
+  - `POST /api/auth/account/contact/change/verify-sms`
+  - `POST /api/auth/account/contact/change/complete`
+- Added account contact-change domain persistence:
+  - `AccountContactChangeChallenge` model in `prisma/schema.prisma`
+  - `prisma/migrations/20260311120000_add_account_contact_change_challenge/migration.sql`
+- Added unit coverage for account profile/contact-change flows:
+  - `tests/auth/account-profile.test.ts`
+
+### Changed
+- Reworked the account-center UI into a clearer two-column management surface:
+  - left column: profile summary, display-name editing, contact channel cards
+  - right column: password reset entry point and verification guardrails
+- Added in-page password renewal entry point on the account-center using the existing secure forgot-password modal flow.
+- Replaced generic contact-change modal labels such as `new value` with field-specific labels (`new email address`, `new phone number`, etc.).
+- Updated profile menu account link to open the new account-center surface instead of the generic dashboard overview.
+- Extended dashboard shell routing and protected-route registry for `/dashboard/account`.
+- Extended dashboard user snapshot to include phone data for authenticated account management.
+- Added cleanup coverage for expired account contact-change challenge rows in `scripts/cleanup-db.sh`.
+- Extended audit action catalog and security-event translations for:
+  - profile updates,
+  - contact-change start/verify/complete success and failure events.
+- Updated README to document the new profile-management and verified contact-change flows.
+
+## 2026-03-11 (security events ui simplification)
+
+### Changed
+- Simplified the dashboard security events table in [security-events-table.tsx](/opt/uppoint-cloud/modules/dashboard/components/security-events-table.tsx):
+  - removed the user-facing `Request ID` column,
+  - aligned table width and empty-state column span,
+  - removed hidden `requestId` search matching so filtering now reflects only visible columns.
+
+## 2026-03-11 (dashboard navbar transition polish)
+
+### Changed
+- Refined dashboard navigation interaction states for a smoother corporate feel:
+  - sidebar menu items now use softer border/background/shadow transitions instead of the harsher left-border swap,
+  - sidebar icons now transition inside dedicated icon surfaces for more stable active/hover feedback,
+  - topbar theme/locale controls now use consistent hover/border transitions,
+  - profile menu trigger and dropdown entries now use softer hover states and an animated open surface.
+
 ## 2026-03-11 (findings closure round: locale lang, dashboard layering, remote smoke, restore-drill evidence)
 
 ### Added
