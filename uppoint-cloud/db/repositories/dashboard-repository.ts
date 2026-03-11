@@ -22,6 +22,7 @@ export interface DashboardAuditEvent {
   action: string;
   result: string | null;
   reason: string | null;
+  requestId: string | null;
   ip: string | null;
   userAgent: string | null;
   createdAt: Date;
@@ -93,10 +94,19 @@ export async function countUserAuditFailuresSince(
   input: { userId: string; since: Date; tenantId?: string },
   client: DashboardRepositoryClient = prisma,
 ): Promise<number> {
+  const tenantScopeFilter = input.tenantId
+    ? {
+        OR: [
+          { tenantId: input.tenantId },
+          { tenantId: null },
+        ],
+      }
+    : {};
+
   return client.auditLog.count({
     where: {
       userId: input.userId,
-      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+      ...tenantScopeFilter,
       result: "FAILURE",
       createdAt: {
         gte: input.since,
@@ -109,10 +119,19 @@ export async function listRecentUserAuditEvents(
   input: { userId: string; take?: number; tenantId?: string },
   client: DashboardRepositoryClient = prisma,
 ): Promise<DashboardAuditEvent[]> {
+  const tenantScopeFilter = input.tenantId
+    ? {
+        OR: [
+          { tenantId: input.tenantId },
+          { tenantId: null },
+        ],
+      }
+    : {};
+
   return client.auditLog.findMany({
     where: {
       userId: input.userId,
-      ...(input.tenantId ? { tenantId: input.tenantId } : {}),
+      ...tenantScopeFilter,
     },
     orderBy: {
       createdAt: "desc",
@@ -122,6 +141,7 @@ export async function listRecentUserAuditEvents(
       action: true,
       result: true,
       reason: true,
+      requestId: true,
       ip: true,
       userAgent: true,
       createdAt: true,

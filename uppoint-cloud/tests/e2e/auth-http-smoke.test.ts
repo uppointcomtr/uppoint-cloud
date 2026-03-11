@@ -110,6 +110,18 @@ describe.runIf(process.env.RUN_E2E === "1")("Auth HTTP E2E Smoke", () => {
     expect(enRegisterHtml).toContain("Create account");
   });
 
+  it("protects dashboard security route and preserves callback redirect for unauthenticated users", async () => {
+    const response = await fetchWithTimeout("/tr/dashboard/security", {
+      redirect: "manual",
+    });
+
+    expect([302, 307, 308]).toContain(response.status);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toContain("/tr/login");
+    expect(location).toContain("callbackUrl=");
+    expect(decodeURIComponent(location)).toContain("/tr/dashboard/security");
+  });
+
   it.runIf(allowMutations)("returns neutral response for unverified email login challenge", async () => {
     const registerResponse = await fetchWithTimeout("/api/auth/register", {
       method: "POST",

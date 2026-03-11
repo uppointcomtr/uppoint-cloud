@@ -405,6 +405,7 @@ export const trMessages = {
         event: "Olay",
         ip: "IP adresi",
         device: "Cihaz",
+        requestId: "İstek ID",
       },
       actionLabels: {
         login_success: "Giriş başarılı",

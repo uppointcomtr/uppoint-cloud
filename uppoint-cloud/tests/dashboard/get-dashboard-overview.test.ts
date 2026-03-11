@@ -37,6 +37,7 @@ function createBaseDependencies(overrides?: Partial<DashboardOverviewDependencie
         action: "login_success",
         result: "SUCCESS",
         reason: null,
+        requestId: "req-1",
         ip: "88.236.40.120",
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0",
         createdAt: new Date("2026-03-05T08:10:00.000Z"),
@@ -94,6 +95,12 @@ describe("getDashboardOverview", () => {
     });
     expect(result.auditFailures24h).toBe(3);
     expect(result.activeSessions).toBe(2);
+    expect(result.currentSession).toEqual({
+      ip: null,
+      userAgent: null,
+      observedAt: new Date("2026-03-05T08:30:00.000Z"),
+      loginAt: new Date("2026-03-05T08:00:00.000Z"),
+    });
     expect(["redis-local", "redis-upstash", "prisma-fallback"]).toContain(result.runtime.rateLimitBackend);
   });
 
@@ -134,6 +141,7 @@ describe("getDashboardOverview", () => {
         action: "tenant_access_denied",
         result: "FAILURE",
         reason: "TENANT_SELECTION_REQUIRED",
+        requestId: "req-2",
         ip: "88.236.40.120",
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0",
         createdAt: new Date("2026-03-05T08:20:00.000Z"),

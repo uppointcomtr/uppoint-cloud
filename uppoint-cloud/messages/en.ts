@@ -405,6 +405,7 @@ export const enMessages = {
         event: "Event",
         ip: "IP address",
         device: "Device",
+        requestId: "Request ID",
       },
       actionLabels: {
         login_success: "Login success",

@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-03-11 (dashboard security hardening + findings closure round)
+
+### Added
+- Added dedicated dashboard security subcomponents to improve layering:
+  - `modules/dashboard/components/security-active-sessions-panel.tsx`
+  - `modules/dashboard/components/security-events-table.tsx`
+- Added tenant-scope repository regression tests for dashboard audit views:
+  - `tests/dashboard/dashboard-repository-tenant-audit-scope.test.ts`
+- Added HTTP smoke assertion for protected security route redirect:
+  - `tests/e2e/auth-http-smoke.test.ts`
+
+### Changed
+- Corrected active-session rendering source in dashboard security surface:
+  - active session card now uses trusted request context + `lastLoginAt`,
+  - no longer derives current device snapshot from latest audit row.
+- Corrected tenant-selected audit query scope in dashboard repository:
+  - includes account-level rows (`tenantId IS NULL`) together with selected-tenant rows.
+- Extended dashboard security event payload with `requestId` and rendered it in the security table for forensic traceability.
+- Hardened security release gate behavior:
+  - `verify:security-gate` now requires remote smoke by default,
+  - production-mode explicit skip is fail-closed.
+- Updated related docs and findings records:
+  - `README.md`
+  - `FINDINGS_REGISTER.md`
+
 ## 2026-03-09 (dashboard topbar identity line simplification)
 
 ### Changed

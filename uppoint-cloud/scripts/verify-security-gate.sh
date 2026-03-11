@@ -93,13 +93,30 @@ else
   echo "[security-gate] skip verify:restore-drill (no postgres backup artifact found)"
 fi
 
-case "${SECURITY_GATE_REQUIRE_REMOTE_SMOKE:-0}" in
+EFFECTIVE_NODE_ENV="${NODE_ENV:-}"
+if [ -z "${EFFECTIVE_NODE_ENV}" ]; then
+  EFFECTIVE_NODE_ENV="$(read_env_value "${ENV_FILE}" "NODE_ENV")"
+fi
+if [ -z "${EFFECTIVE_NODE_ENV}" ]; then
+  EFFECTIVE_NODE_ENV="development"
+fi
+
+REMOTE_SMOKE_REQUIRED="${SECURITY_GATE_REQUIRE_REMOTE_SMOKE:-1}"
+case "${REMOTE_SMOKE_REQUIRED}" in
   1|true|TRUE|yes|YES)
     echo "[security-gate] remote smoke verification (read-only)"
     E2E_ALLOW_MUTATIONS=0 npm run test:e2e:remote
     ;;
+  0|false|FALSE|no|NO)
+    if [ "${EFFECTIVE_NODE_ENV}" = "production" ]; then
+      echo "[security-gate] refusing to skip remote smoke in production (SECURITY_GATE_REQUIRE_REMOTE_SMOKE=0)" >&2
+      exit 1
+    fi
+    echo "[security-gate] skip remote smoke verification (explicit override in non-production)"
+    ;;
   *)
-    echo "[security-gate] skip remote smoke verification (SECURITY_GATE_REQUIRE_REMOTE_SMOKE is not enabled)"
+    echo "[security-gate] invalid SECURITY_GATE_REQUIRE_REMOTE_SMOKE value: ${REMOTE_SMOKE_REQUIRED}" >&2
+    exit 1
     ;;
 esac
 

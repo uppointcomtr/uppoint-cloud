@@ -1,10 +1,12 @@
 import "server-only";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
+import { resolveTrustedClientIp } from "@/lib/security/client-ip";
 import { parseSessionExpiry } from "@/modules/auth/server/session-expiry";
 import type { DashboardOverview } from "@/modules/dashboard/server/get-dashboard-overview";
 import { getDashboardOverview } from "@/modules/dashboard/server/get-dashboard-overview";
@@ -52,10 +54,22 @@ export async function loadDashboardPageData(input: {
     });
   }
 
+  const requestHeaders = await headers();
+  const realIp = requestHeaders.get("x-real-ip")?.trim() ?? null;
+  const forwardedFor = requestHeaders.get("x-forwarded-for");
+  const resolvedClientIp = resolveTrustedClientIp({
+    realIpHeader: realIp,
+    forwardedForHeader: forwardedFor,
+    isProduction: process.env.NODE_ENV === "production",
+  });
+  const requestUserAgent = requestHeaders.get("user-agent");
+
   const overview = await getDashboardOverview({
     userId: session.user.id,
     sessionExpiresAt: sessionExpiresAt.toISOString(),
     tenantId: parsedSearchParams.success ? parsedSearchParams.data.tenantId : undefined,
+    currentRequestIp: resolvedClientIp,
+    currentRequestUserAgent: requestUserAgent,
   });
 
   return {

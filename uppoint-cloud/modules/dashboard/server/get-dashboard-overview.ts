@@ -34,6 +34,13 @@ interface DashboardRuntimeSummary {
   rateLimitBackend: "redis-local" | "redis-upstash" | "prisma-fallback";
 }
 
+interface DashboardCurrentSessionContext {
+  ip: string | null;
+  userAgent: string | null;
+  observedAt: Date;
+  loginAt: Date | null;
+}
+
 const SECURITY_EVENTS_TAKE = 60;
 
 export interface DashboardTenantSelectionOption extends DashboardTenantMembershipOption {
@@ -50,6 +57,7 @@ export interface DashboardOverview {
   auditFailures24h: number;
   recentAuditEvents: DashboardAuditEvent[];
   activeSessions: number;
+  currentSession: DashboardCurrentSessionContext;
   sessionExpiresAt: Date;
   runtime: DashboardRuntimeSummary;
 }
@@ -101,7 +109,13 @@ function resolveRateLimitBackend(): DashboardRuntimeSummary["rateLimitBackend"] 
 }
 
 export async function getDashboardOverview(
-  input: { userId: string; sessionExpiresAt: string; tenantId?: string },
+  input: {
+    userId: string;
+    sessionExpiresAt: string;
+    tenantId?: string;
+    currentRequestIp?: string | null;
+    currentRequestUserAgent?: string | null;
+  },
   dependencies: DashboardOverviewDependencies = defaultDependencies,
 ): Promise<DashboardOverview> {
   const now = dependencies.now();
@@ -206,6 +220,12 @@ export async function getDashboardOverview(
     auditFailures24h,
     recentAuditEvents,
     activeSessions: normalizedActiveSessions,
+    currentSession: {
+      ip: input.currentRequestIp?.trim() ? input.currentRequestIp.trim() : null,
+      userAgent: input.currentRequestUserAgent?.trim() ? input.currentRequestUserAgent.trim().slice(0, 255) : null,
+      observedAt: now,
+      loginAt: user.lastLoginAt,
+    },
     sessionExpiresAt: new Date(input.sessionExpiresAt),
     runtime: {
       appUrl: env.NEXT_PUBLIC_APP_URL,

@@ -340,10 +340,10 @@ One-shot full gate:
 npm run verify
 ```
 
-Strict security gate with remote read-only smoke:
+Strict security gate (remote read-only smoke is required by default):
 
 ```bash
-SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1 npm run verify:security-gate
+npm run verify:security-gate
 ```
 
 Weekly ops/CI baseline:
@@ -360,8 +360,8 @@ Notes:
 - `npm run verify` performs lint + type-check + tests + local E2E + `next build` + workflow layout drift check.
 - `npm run build:deploy` (used by `verify:deploy`) performs build + service restart.
 - `npm run verify:security-gate` also enforces findings freshness and restore-drill log freshness checks.
-- Optional gate controls:
-  - `SECURITY_GATE_REQUIRE_REMOTE_SMOKE=1` runs remote read-only auth smoke (`E2E_ALLOW_MUTATIONS=0`) against `E2E_BASE_URL`.
+- Gate controls:
+  - `SECURITY_GATE_REQUIRE_REMOTE_SMOKE` defaults to `1`; in production, setting `0` is rejected fail-closed.
   - `FINDINGS_MAX_AGE_DAYS` overrides closed high/critical finding freshness window (default `30` days).
 
 ## E2E smoke tests

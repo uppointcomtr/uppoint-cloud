@@ -547,10 +547,17 @@ export function DashboardPanel({
                 action: event.action,
                 result: event.result,
                 reason: event.reason,
+                requestId: event.requestId,
                 ip: event.ip,
                 userAgent: event.userAgent,
                 createdAtIso: event.createdAt.toISOString(),
               }))}
+              currentSession={{
+                ip: overview.currentSession.ip,
+                userAgent: overview.currentSession.userAgent,
+                observedAtIso: overview.currentSession.observedAt.toISOString(),
+                loginAtIso: overview.currentSession.loginAt?.toISOString() ?? null,
+              }}
             />
           ) : null}
 
