@@ -24,6 +24,11 @@ enum NotificationOutboxStatus {
   FAILED
 }
 
+enum AccountContactChangeType {
+  EMAIL
+  PHONE
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -43,6 +48,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   passwordResetChallenges PasswordResetChallenge[]
   accountDeleteChallenges AccountDeleteChallenge[]
+  contactChangeChallenges AccountContactChangeChallenge[]
   loginChallenges LoginChallenge[]
   registrationVerificationChallenges RegistrationVerificationChallenge[]
   tenantMemberships TenantMembership[]
@@ -180,6 +186,36 @@ model AccountDeleteChallenge {
   @@index([emailCodeExpiresAt])
   @@index([smsCodeExpiresAt])
   @@index([deleteTokenExpiresAt])
+}
+
+model AccountContactChangeChallenge {
+  id                  String                   @id @default(cuid())
+  userId              String
+  type                AccountContactChangeType
+  nextEmail           String?
+  nextPhone           String?
+  emailCodeHash       String
+  emailCodeVerifiedAt DateTime?
+  emailCodeExpiresAt  DateTime
+  emailCodeAttempts   Int                      @default(0)
+  smsCodeHash         String?
+  smsCodeVerifiedAt   DateTime?
+  smsCodeExpiresAt    DateTime?
+  smsCodeAttempts     Int                      @default(0)
+  changeTokenHash     String?
+  changeTokenExpiresAt DateTime?
+  changeTokenUsedAt   DateTime?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([nextEmail])
+  @@index([nextPhone])
+  @@index([emailCodeExpiresAt])
+  @@index([smsCodeExpiresAt])
+  @@index([changeTokenExpiresAt])
 }
 
 // Tracks auth request attempts per IP for rate limiting.

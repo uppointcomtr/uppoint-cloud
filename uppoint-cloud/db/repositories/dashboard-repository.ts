@@ -11,6 +11,7 @@ export interface DashboardUserSnapshot {
   id: string;
   name: string | null;
   email: string;
+  phone: string | null;
   emailVerified: Date | null;
   phoneVerifiedAt: Date | null;
   failedLoginAttempts: number;
@@ -47,6 +48,7 @@ export async function findActiveUserDashboardSnapshot(
       id: true,
       name: true,
       email: true,
+      phone: true,
       emailVerified: true,
       phoneVerifiedAt: true,
       failedLoginAttempts: true,

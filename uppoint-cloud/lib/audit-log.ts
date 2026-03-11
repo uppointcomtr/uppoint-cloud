@@ -31,6 +31,13 @@ export type AuditAction =
   | "account_delete_sms_verified"
   | "account_delete_success"
   | "account_delete_challenge_failed"
+  | "profile_updated"
+  | "profile_update_failed"
+  | "account_contact_change_started"
+  | "account_contact_change_email_verified"
+  | "account_contact_change_sms_verified"
+  | "account_contact_change_completed"
+  | "account_contact_change_failed"
   | "session_revoked"
   | "email_verified"
   | "email_verification_failed"
@@ -59,6 +66,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "login_challenge_start_failed",
   "password_reset_failed",
   "account_delete_challenge_failed",
+  "account_contact_change_failed",
   "session_revoked",
   "edge_host_rejected",
   "edge_origin_rejected",

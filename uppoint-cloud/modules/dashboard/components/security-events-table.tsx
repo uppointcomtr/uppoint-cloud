@@ -65,7 +65,6 @@ export function SecurityEventsTable({
       (event) =>
         event.actionLabel.toLowerCase().includes(normalizedQuery) ||
         (event.reason ?? "").toLowerCase().includes(normalizedQuery) ||
-        (event.requestId ?? "").toLowerCase().includes(normalizedQuery) ||
         (event.ip ?? "").toLowerCase().includes(normalizedQuery) ||
         event.device.toLowerCase().includes(normalizedQuery),
     );
@@ -98,20 +97,19 @@ export function SecurityEventsTable({
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-border/60">
-        <table className="w-full min-w-[860px] text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-background/80 text-xs uppercase tracking-[0.08em] text-muted-foreground">
             <tr>
               <th className="px-4 py-3 text-left">{labels.columns.date}</th>
               <th className="px-4 py-3 text-left">{labels.columns.event}</th>
               <th className="px-4 py-3 text-left">{labels.columns.ip}</th>
               <th className="px-4 py-3 text-left">{labels.columns.device}</th>
-              <th className="px-4 py-3 text-left">{labels.columns.requestId}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {pagedEvents.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-6">
+                <td colSpan={4} className="px-4 py-6">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <ShieldAlert className="h-4 w-4" />
                     <span>{labels.noEvents}</span>
@@ -144,7 +142,6 @@ export function SecurityEventsTable({
                   </td>
                   <td className="px-4 py-3 font-mono text-[13px]">{event.ip ?? labels.unknownIp}</td>
                   <td className="px-4 py-3">{event.device}</td>
-                  <td className="px-4 py-3 font-mono text-[12px]">{event.requestId ?? "—"}</td>
                 </tr>
               ))
             )}

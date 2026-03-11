@@ -19,6 +19,7 @@ export const EXPLICIT_PUBLIC_ROUTES = new Set([
 ]);
 export const PROTECTED_ROUTES: ProtectedRouteRule[] = [
   { path: "/dashboard", preserveCallbackUrl: true },
+  { path: "/dashboard/account", preserveCallbackUrl: true },
   { path: "/dashboard/security", preserveCallbackUrl: true },
   { path: "/dashboard/notifications", preserveCallbackUrl: true },
   { path: "/dashboard/tenant", preserveCallbackUrl: true },

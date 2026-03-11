@@ -133,6 +133,18 @@
 }
 
 @layer components {
+  @keyframes corp-menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.35rem) scale(0.985);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
   /* Corporate typography scale for non-auth application surfaces */
   .corp-heading-1 {
     @apply text-3xl leading-tight font-semibold tracking-tight text-foreground md:text-[2rem];
@@ -160,5 +172,10 @@
 
   .corp-value {
     @apply text-lg leading-7 font-semibold text-foreground;
+  }
+
+  .corp-menu-surface {
+    animation: corp-menu-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform-origin: top right;
   }
 }

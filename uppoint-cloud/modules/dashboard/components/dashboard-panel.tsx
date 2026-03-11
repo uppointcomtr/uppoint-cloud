@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Building2, ChevronRight, House, LayoutDashboard, Layers3, ShieldCheck } from "lucide-react";
+import { Bell, Building2, ChevronRight, House, LayoutDashboard, Layers3, ShieldCheck, UserCircle2 } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -21,6 +21,7 @@ import {
   TenantCard,
   type DashboardActiveSection,
 } from "./dashboard-section-cards";
+import { AccountCenter } from "./account-center";
 import { ProfileMenu } from "./profile-menu";
 import { SecurityCenter } from "./security-center";
 
@@ -57,6 +58,8 @@ function getSectionPath(locale: Locale, section: DashboardSection): string {
   switch (section) {
     case "overview":
       return withLocale("/dashboard", locale);
+    case "account":
+      return withLocale("/dashboard/account", locale);
     case "security":
       return withLocale("/dashboard/security", locale);
     case "notifications":
@@ -70,19 +73,20 @@ function getSectionPath(locale: Locale, section: DashboardSection): string {
 
 function navButtonClass(isActive: boolean): string {
   return cn(
-    "group flex items-center gap-2.5 border-l-2 px-3 py-2 text-sm font-medium transition-colors",
+    "group flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-150 ease-out",
     isActive
-      ? "border-l-primary bg-primary/[0.09] text-foreground"
-      : "border-l-transparent text-muted-foreground hover:bg-accent/45 hover:text-foreground",
+      ? "border-primary/20 bg-primary/10 text-foreground shadow-sm shadow-primary/5"
+      : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-background/80 hover:text-foreground hover:shadow-sm",
   );
 }
 
 function getActiveSectionLabel(
   section: DashboardSection,
-  nav: { overview: string; security: string; notifications: string; tenant: string; modules: string },
+  nav: { overview: string; account: string; security: string; notifications: string; tenant: string; modules: string },
 ): string {
   const map: Record<DashboardSection, string> = {
     overview: nav.overview,
+    account: nav.account,
     security: nav.security,
     notifications: nav.notifications,
     tenant: nav.tenant,
@@ -108,6 +112,7 @@ export function DashboardPanel({
 
   const navItems: NavItem[] = [
     { section: "overview", label: dashboard.nav.overview, icon: LayoutDashboard },
+    { section: "account", label: dashboard.nav.account, icon: UserCircle2 },
     { section: "security", label: dashboard.nav.security, icon: ShieldCheck },
     { section: "notifications", label: dashboard.nav.notifications, icon: Bell },
     { section: "tenant", label: dashboard.nav.tenant, icon: Building2 },
@@ -154,19 +159,17 @@ export function DashboardPanel({
           {/* Nav */}
           <nav className="px-2 py-3 space-y-0.5">
             {navItems.map((item) => (
-              <Link
-                key={item.section}
-                href={getSectionPath(locale, item.section)}
-                className={navButtonClass(item.section === activeSection)}
-              >
-                <item.icon
+              <Link key={item.section} href={getSectionPath(locale, item.section)} className={navButtonClass(item.section === activeSection)}>
+                <span
                   className={cn(
-                    "h-4 w-4 shrink-0",
+                    "flex size-7 shrink-0 items-center justify-center rounded-md transition-[background-color,color] duration-150 ease-out",
                     item.section === activeSection
-                      ? "text-primary"
-                      : "text-muted-foreground transition-colors group-hover:text-foreground",
+                      ? "bg-primary/12 text-primary"
+                      : "text-muted-foreground group-hover:bg-accent group-hover:text-foreground",
                   )}
-                />
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                </span>
                 <span className="truncate">{item.label}</span>
               </Link>
             ))}
@@ -209,13 +212,13 @@ export function DashboardPanel({
                 <ThemeToggle
                   labels={dictionary.header.theme}
                   iconOnly
-                  className="border-border/70 bg-background/80 dark:bg-background/60"
+                  className="border-border/70 bg-background/80 shadow-none transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border hover:bg-background dark:bg-background/60"
                 />
                 <div className="h-4 w-px bg-border/60 mx-0.5" />
                 <LocaleSwitcher
                   locale={locale}
                   labels={dictionary.header.locales}
-                  className="border-border/70 bg-background/80 dark:bg-background/60"
+                  className="border-border/70 bg-background/80 shadow-none transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border hover:bg-background dark:bg-background/60"
                 />
                 <div className="h-4 w-px bg-border/60 mx-0.5" />
                 <ProfileMenu
@@ -233,6 +236,22 @@ export function DashboardPanel({
               <OverviewCards locale={locale} overview={overview} labels={dashboard} />
               <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
+          ) : null}
+
+          {activeSection === "account" ? (
+            <AccountCenter
+              locale={locale}
+              labels={dashboard.account}
+              passwordRecoveryLabels={dictionary.passwordRecovery}
+              validationLabels={dictionary.validation}
+              user={{
+                name: overview.user.name,
+                email: overview.user.email,
+                phone: overview.user.phone,
+                emailVerified: overview.user.emailVerified?.toISOString() ?? null,
+                phoneVerifiedAt: overview.user.phoneVerifiedAt?.toISOString() ?? null,
+              }}
+            />
           ) : null}
 
           {activeSection === "security" ? (

@@ -24,6 +24,19 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - account/session/verification/risk summary cards
     - tenant context visibility, explicit tenant selection, and quick actions
     - notification and security signal overview
+  - Account center (`/:locale/dashboard/account`)
+    - dedicated profile-management surface linked from the profile dropdown and dashboard navigation
+    - full-name update with authenticated, audited server-side persistence
+    - integrated password-renewal entry point with in-page secure reset modal
+    - email change flow:
+      - new email verification code (3 min countdown)
+      - current verified phone SMS code (3 min countdown)
+      - final confirmed apply step
+    - phone change flow:
+      - current verified email verification code (3 min countdown)
+      - new phone SMS code (3 min countdown)
+      - final confirmed apply step
+    - contact changes invalidate pending login/password-reset/account-delete challenges for the user
   - Security center view (`/:locale/dashboard/security`)
     - account operations block with modal-based critical actions
     - terminate-all-sessions now requires explicit popup confirmation
@@ -244,6 +257,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Password hashing: [modules/auth/server/password.ts](/opt/uppoint-cloud/modules/auth/server/password.ts)
 - Password recovery challenge service: [modules/auth/server/password-reset-challenge.ts](/opt/uppoint-cloud/modules/auth/server/password-reset-challenge.ts)
 - Account deletion challenge service: [modules/auth/server/account-delete-challenge.ts](/opt/uppoint-cloud/modules/auth/server/account-delete-challenge.ts)
+- Account profile and contact-change service: [modules/auth/server/account-profile.ts](/opt/uppoint-cloud/modules/auth/server/account-profile.ts)
 - Notification outbox service: [modules/notifications/server/outbox.ts](/opt/uppoint-cloud/modules/notifications/server/outbox.ts)
 - User soft-delete lifecycle service: [modules/auth/server/user-lifecycle.ts](/opt/uppoint-cloud/modules/auth/server/user-lifecycle.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)

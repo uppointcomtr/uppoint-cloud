@@ -28,7 +28,13 @@ export interface DashboardPageData {
 
 export async function loadDashboardPageData(input: {
   locale: Locale;
-  callbackPath: "/dashboard" | "/dashboard/security" | "/dashboard/notifications" | "/dashboard/tenant" | "/dashboard/modules";
+  callbackPath:
+    | "/dashboard"
+    | "/dashboard/account"
+    | "/dashboard/security"
+    | "/dashboard/notifications"
+    | "/dashboard/tenant"
+    | "/dashboard/modules";
   rawSearchParams: Record<string, string | string[] | undefined>;
 }): Promise<DashboardPageData> {
   const dictionary = getDictionary(input.locale);

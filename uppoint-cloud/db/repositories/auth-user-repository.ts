@@ -40,6 +40,7 @@ async function softDeleteUserWithCleanupInTransaction(
   await client.loginChallenge.deleteMany({ where: { userId: input.userId } });
   await client.passwordResetChallenge.deleteMany({ where: { userId: input.userId } });
   await client.accountDeleteChallenge.deleteMany({ where: { userId: input.userId } });
+  await client.accountContactChangeChallenge.deleteMany({ where: { userId: input.userId } });
   await client.passwordResetToken.deleteMany({ where: { userId: input.userId } });
   await client.registrationVerificationChallenge.deleteMany({ where: { userId: input.userId } });
 

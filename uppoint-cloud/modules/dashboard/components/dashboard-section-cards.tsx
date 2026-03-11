@@ -16,7 +16,7 @@ import type { DashboardOverview } from "../server/get-dashboard-overview";
 
 const corporateCardClass = "border-border/70 bg-card/90 shadow-sm";
 
-export type DashboardActiveSection = "overview" | "security" | "notifications" | "tenant" | "modules";
+export type DashboardActiveSection = "overview" | "account" | "security" | "notifications" | "tenant" | "modules";
 
 interface DashboardSectionProps {
   locale: Locale;
@@ -72,6 +72,7 @@ function createTenantHref(
 ): string {
   const sectionPath: Record<DashboardActiveSection, string> = {
     overview: "/dashboard",
+    account: "/dashboard/account",
     security: "/dashboard/security",
     notifications: "/dashboard/notifications",
     tenant: "/dashboard/tenant",
