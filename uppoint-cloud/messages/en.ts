@@ -298,6 +298,7 @@ export const enMessages = {
         profileHeading: "Profile",
         personalInfoHeading: "Personal information",
         personalInfoDescription: "Manage identity and contact fields here with controlled verification steps.",
+        membershipDateLabel: "Member since",
         passwordHeading: "Password",
         maskedPassword: "********",
         editAction: "Edit",

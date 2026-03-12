@@ -178,4 +178,21 @@
     animation: corp-menu-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
     transform-origin: top right;
   }
+
+  /* Canonical dashboard spacing scale (tenant/account/security surfaces) */
+  .corp-surface-pad {
+    @apply px-5 py-6 md:px-6;
+  }
+
+  .corp-subsurface-pad {
+    @apply px-5 py-5 md:px-6;
+  }
+
+  .corp-row-pad {
+    @apply px-5 py-5 md:px-6;
+  }
+
+  .corp-profile-summary-pad {
+    @apply px-6 py-4;
+  }
 }

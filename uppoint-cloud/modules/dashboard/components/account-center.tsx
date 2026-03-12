@@ -35,6 +35,7 @@ interface AccountCenterProps {
     name: string | null;
     email: string;
     phone: string | null;
+    createdAt: string;
     emailVerified: string | null;
     phoneVerifiedAt: string | null;
   };
@@ -61,6 +62,14 @@ function getInitials(name: string): string {
   }
 
   return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
+}
+
+function formatMembershipDate(locale: Locale, value: string): string {
+  return new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function mapProfileUpdateError(
@@ -119,8 +128,8 @@ function InfoRow({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-center md:justify-between">
-      <div className="min-w-0 flex-1">
+    <div className="corp-row-pad grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6">
+      <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-base font-semibold tracking-tight text-foreground">
             {title}
@@ -138,7 +147,7 @@ function InfoRow({
       <Button
         type="button"
         variant="outline"
-        className="h-11 min-w-[132px] rounded-xl border-border/70 bg-background/80 px-5"
+        className="h-11 w-full rounded-xl border-border/70 bg-background/80 px-5 sm:w-auto sm:min-w-[144px] sm:justify-center"
         onClick={onAction}
         disabled={disabled}
       >
@@ -176,6 +185,10 @@ export function AccountCenter({
     [currentName, emailValue],
   );
   const initials = useMemo(() => getInitials(displayName), [displayName]);
+  const membershipDate = useMemo(
+    () => formatMembershipDate(locale, user.createdAt),
+    [locale, user.createdAt],
+  );
   const normalizedDraftName = draftName.trim().replace(/\s+/g, " ");
   const canSaveName =
     normalizedDraftName.length >= 3 &&
@@ -256,15 +269,42 @@ export function AccountCenter({
 
   return (
     <>
+      <Card className={cardClass}>
+        <CardContent className="corp-profile-summary-pad">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <span className="inline-flex size-14 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary shadow-sm">
+              {initials}
+            </span>
+
+            <div className="min-w-0 space-y-1">
+              <p className="truncate text-lg leading-6 font-semibold tracking-tight text-foreground">
+                {displayName}
+              </p>
+              <p className="truncate text-sm leading-6 text-muted-foreground">
+                {emailValue}
+              </p>
+              <p className="text-sm leading-6 text-muted-foreground">
+                <span className="font-medium text-foreground/80">
+                  {labels.layout.membershipDateLabel}
+                </span>{" "}
+                {membershipDate}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className={`${cardClass} overflow-hidden`}>
         <CardHeader className="border-b border-border/60 pb-6">
           <CardTitle className="corp-section-title">
-            {labels.layout.profileHeading}
+            {labels.layout.personalInfoHeading}
           </CardTitle>
-          <CardDescription className="corp-body-muted">{labels.description}</CardDescription>
+          <CardDescription className="corp-body-muted">
+            {labels.layout.personalInfoDescription}
+          </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-8 px-6 py-7 md:px-8">
+        <CardContent className="corp-surface-pad space-y-6">
           {nameError ? (
             <Alert variant="destructive">
               <AlertDescription>{nameError}</AlertDescription>
@@ -283,33 +323,11 @@ export function AccountCenter({
             </Alert>
           ) : null}
 
-          <section className="rounded-3xl border border-border/60 bg-background/65 px-5 py-6 md:px-7">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center">
-              <span className="inline-flex size-16 items-center justify-center rounded-full bg-primary/10 text-xl font-semibold text-primary">
-                {initials}
-              </span>
-
-              <div className="min-w-0">
-                <p className="truncate text-2xl font-semibold tracking-tight text-foreground">
-                  {displayName}
-                </p>
-                <p className="mt-1 truncate text-base text-muted-foreground">
-                  {emailValue}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <div className="space-y-1">
-              <h2 className="corp-section-title">{labels.layout.personalInfoHeading}</h2>
-              <p className="corp-body-muted">{labels.layout.personalInfoDescription}</p>
-            </div>
-
+          <section>
             <div className="overflow-hidden rounded-3xl border border-border/60 bg-background/65">
               <div className="border-b border-border/60">
                 {isEditingName ? (
-                  <div className="space-y-4 px-5 py-5">
+                  <div className="corp-row-pad space-y-5">
                     <div className="flex items-center gap-2">
                       <UserRound className="size-4 text-muted-foreground" />
                       <p className="text-base font-semibold tracking-tight text-foreground">
@@ -333,14 +351,14 @@ export function AccountCenter({
                       <Button
                         type="button"
                         variant="outline"
-                        className="rounded-xl"
+                        className="h-11 rounded-xl sm:min-w-[144px]"
                         onClick={cancelNameEdit}
                       >
                         {labels.layout.cancelEdit}
                       </Button>
                       <Button
                         type="button"
-                        className="rounded-xl"
+                        className="h-11 rounded-xl sm:min-w-[144px]"
                         onClick={() => void handleSaveName()}
                         disabled={!canSaveName || isSavingName}
                       >

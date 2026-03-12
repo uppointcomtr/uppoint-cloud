@@ -17,6 +17,7 @@ function createBaseDependencies(overrides?: Partial<DashboardOverviewDependencie
       name: "Test User",
       email: "user@example.com",
       phone: "+905551112233",
+      createdAt: new Date("2026-02-19T09:00:00.000Z"),
       emailVerified: new Date("2026-03-01T10:00:00.000Z"),
       phoneVerifiedAt: new Date("2026-03-01T10:05:00.000Z"),
       failedLoginAttempts: 1,

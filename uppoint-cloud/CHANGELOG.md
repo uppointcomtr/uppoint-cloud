@@ -7,6 +7,24 @@
   - section headings now use `corp-section-title`
   - section descriptions now use `corp-body-muted`
   - row labels use a single consistent title weight/size
+- Tightened account-center spacing and action alignment to match the dashboard/security rhythm:
+  - profile summary and details sections now use a more consistent vertical gap scale
+  - row actions share a fixed button footprint on desktop and full-width behavior on mobile
+  - editable name form now follows the same action sizing and padding contract as read-only rows
+- Moved the profile summary card to the top of the account surface and reduced oversized identity typography:
+  - display name now uses the standard dashboard heading scale instead of an oversized hero treatment
+  - membership date now appears directly under the email address using real account `createdAt` data
+- Added canonical dashboard spacing utilities in `app/globals.css` and applied them to account-center:
+  - `.corp-surface-pad`
+  - `.corp-subsurface-pad`
+  - `.corp-row-pad`
+  - account card paddings now follow the tenant/security rhythm without nested oversized spacing
+- Flattened the top profile summary card to a single layer:
+  - removed inner nested bordered box
+  - profile summary now renders directly on the outer card surface
+- Moved top profile-card spacing to a global utility:
+  - `app/globals.css` now defines `.corp-profile-summary-pad`
+  - account-center top profile card now consumes this shared spacing class
 - Redesigned `modules/dashboard/components/account-center.tsx` for cleaner visual hierarchy:
   - Main grid breakpoint lowered from `2xl` to `xl` so two-column layout activates on standard desktop screens
   - Profile card simplified: identity header and metrics row separated into distinct visual zones, removed redundant inline summary box

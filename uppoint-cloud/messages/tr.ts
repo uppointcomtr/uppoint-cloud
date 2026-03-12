@@ -298,6 +298,7 @@ export const trMessages = {
         profileHeading: "Profil",
         personalInfoHeading: "Kişisel bilgiler",
         personalInfoDescription: "Kimlik ve iletişim alanlarını bu bölümden güvenli doğrulama ile yönetin.",
+        membershipDateLabel: "Üyelik tarihi",
         passwordHeading: "Şifre",
         maskedPassword: "********",
         editAction: "Düzenle",

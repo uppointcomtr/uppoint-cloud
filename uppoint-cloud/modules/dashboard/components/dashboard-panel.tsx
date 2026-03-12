@@ -248,6 +248,7 @@ export function DashboardPanel({
                 name: overview.user.name,
                 email: overview.user.email,
                 phone: overview.user.phone,
+                createdAt: overview.user.createdAt.toISOString(),
                 emailVerified: overview.user.emailVerified?.toISOString() ?? null,
                 phoneVerifiedAt: overview.user.phoneVerifiedAt?.toISOString() ?? null,
               }}
