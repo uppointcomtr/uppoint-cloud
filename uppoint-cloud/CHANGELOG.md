@@ -25,6 +25,7 @@
 - Moved top profile-card spacing to a global utility:
   - `app/globals.css` now defines `.corp-profile-summary-pad`
   - account-center top profile card now consumes this shared spacing class
+  - profile summary utility keeps horizontal padding only (`px-6`) to preserve notifications-like vertical rhythm
 - Redesigned `modules/dashboard/components/account-center.tsx` for cleaner visual hierarchy:
   - Main grid breakpoint lowered from `2xl` to `xl` so two-column layout activates on standard desktop screens
   - Profile card simplified: identity header and metrics row separated into distinct visual zones, removed redundant inline summary box
