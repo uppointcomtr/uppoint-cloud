@@ -140,6 +140,7 @@ export function DashboardPanel({
                   width={416}
                   height={127}
                   priority
+                  unoptimized
                   className="absolute inset-0 h-full w-full object-contain dark:hidden"
                 />
                 <Image
@@ -148,6 +149,7 @@ export function DashboardPanel({
                   width={416}
                   height={127}
                   priority
+                  unoptimized
                   className="absolute inset-0 hidden h-full w-full object-contain dark:block"
                 />
               </div>

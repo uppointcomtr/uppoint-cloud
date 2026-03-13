@@ -13,8 +13,10 @@ describe("proxy internal audit ingress guardrail", () => {
     expect(proxySource).toContain('request.headers.get("x-internal-request-signature")');
     expect(proxySource).toContain('request.headers.get("x-internal-transport")');
     expect(proxySource).toContain('const trustedInternalAuditIngress = isTrustedInternalAuditIngress(request, pathname)');
-    expect(proxySource).toContain("!trustedInternalAuditIngress && !isAllowedHost");
-    expect(proxySource).toContain("!trustedInternalAuditIngress && isApiMutation");
+    expect(proxySource).toContain("!trustedInternalAuditIngress");
+    expect(proxySource).toContain("!trustedLoopbackStaticAssetRequest");
+    expect(proxySource).toContain("&& !isAllowedHost(requestHost, ALLOWED_HOSTS)");
+    expect(proxySource).toContain("&& isApiMutation(pathname, request.method)");
   });
 
   it("keeps edge audit emit failures observable", () => {

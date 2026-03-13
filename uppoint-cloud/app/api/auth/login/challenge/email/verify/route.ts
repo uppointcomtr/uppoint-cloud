@@ -9,6 +9,7 @@ import {
   LoginChallengeError,
   verifyLoginChallengeCode,
 } from "@/modules/auth/server/login-challenge";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 
 export async function POST(request: Request) {
   return withIdempotency("auth:login-email-verify", async () => {
@@ -29,6 +30,11 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
+    await logAuthInvalidBody({
+      action: "login_otp_failed",
+      ip,
+      metadata: { mode: "email" },
+    });
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 

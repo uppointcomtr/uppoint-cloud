@@ -19,6 +19,24 @@ function normalizeHost(input: string): string {
   return input.trim().toLowerCase();
 }
 
+function extractHostname(input: string): string | null {
+  const normalized = normalizeHost(input);
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.startsWith("[")) {
+    const closingBracketIndex = normalized.indexOf("]");
+    if (closingBracketIndex <= 1) {
+      return null;
+    }
+
+    return normalized.slice(1, closingBracketIndex);
+  }
+
+  return normalized.replace(/:\d+$/, "");
+}
+
 function normalizeOrigin(input: string): string | null {
   try {
     return new URL(input).origin.toLowerCase();
@@ -83,6 +101,15 @@ export function resolveAllowedOrigins(config: AllowedSourceConfig): Set<string> 
 export function getRequestHost(request: Request): string | null {
   // Security-sensitive: Host is authoritative at app boundary; do not trust forwarded-host as source of truth.
   return parseHostFromHeader(request.headers.get("host"));
+}
+
+export function isLoopbackHost(host: string | null): boolean {
+  if (!host) {
+    return false;
+  }
+
+  const hostname = extractHostname(host);
+  return hostname === "127.0.0.1" || hostname === "::1" || hostname === "localhost";
 }
 
 export function hasConflictingForwardedHost(request: Request): boolean {

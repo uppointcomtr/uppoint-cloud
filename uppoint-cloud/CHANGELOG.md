@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-03-12 (account center: locked email + verified full-name change)
+
+### Changed
+- Hardened `/dashboard/account` identity controls:
+  - email address remains visible but is now read-only in the account center UI,
+  - email-change action entry was removed from the account-center surface.
+- Enforced the same email-change policy server-side:
+  - `POST /api/auth/account/contact/change/start` now rejects `type: "EMAIL"` with `EMAIL_CHANGE_DISABLED`.
+- Converted full-name update to a two-step authenticated flow:
+  - step 1: send verification code to the account email,
+  - step 2: verify code and apply the name update.
+- Updated `PATCH /api/auth/account/profile` contract for name updates:
+  - supports `verificationStep: "start"` to issue name-change challenge metadata,
+  - supports `verificationStep: "verify"` to validate code and persist the name change.
+- Added audited verification-start event for profile name updates:
+  - new audit action: `profile_update_verification_sent`.
+- Updated TR/EN account-center dictionary content for:
+  - read-only email labels,
+  - full-name email verification copy and button states.
+- Expanded unit tests for profile-name challenge start/verify paths:
+  - `tests/auth/account-profile.test.ts`.
+- Updated README account-center milestone notes to reflect:
+  - read-only email policy in account center,
+  - email-verified full-name update behavior.
+
 ## 2026-03-11 (account center UI redesign)
 
 ### Changed

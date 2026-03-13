@@ -15,7 +15,9 @@
 
 # next.js
 /.next/
+/.next.failed-*/
 /.next_*/
+/.hotfix-build-*/
 /out/
 
 # production

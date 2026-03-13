@@ -1,2 +1,4 @@
 backups/
 actions-runner/
+.hotfix-build-*/
+.uppoint-hotfix-build-*/

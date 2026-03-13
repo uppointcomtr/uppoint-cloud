@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CheckCircle, Clock, Mail, Phone, ShieldCheck } from "lucide-react";
 
 import { AppModal } from "@/components/shared/app-modal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/modules/auth/components/phone-input";
 import { VerificationCodeInput } from "@/modules/auth/components/verification-code-input";
 import { type ApiResponse, fetchWithTimeout, formatCountdown } from "@/modules/auth/components/shared/request-utils";
@@ -48,6 +50,8 @@ function mapContactChangeError(
     case "EMAIL_UNCHANGED":
     case "PHONE_UNCHANGED":
       return labels.errors.unchanged;
+    case "EMAIL_CHANGE_DISABLED":
+      return labels.errors.emailChangeDisabled;
     case "EMAIL_TAKEN":
       return labels.errors.emailTaken;
     case "PHONE_TAKEN":
@@ -174,6 +178,9 @@ export function AccountContactChangeModal({
   const canStart = changeType === "EMAIL"
     ? isValidEmail(nextEmail) && nextEmail.trim().toLowerCase() !== currentEmail.trim().toLowerCase()
     : isValidPhone(nextPhone) && nextPhone.trim() !== (currentPhone ?? "").trim();
+  const stepOrder: ContactChangeStep[] = ["intro", "emailCode", "smsCode", "confirm"];
+  const currentStepIndex = Math.max(stepOrder.indexOf(step), 0);
+  const progressPercent = (currentStepIndex / (stepOrder.length - 1)) * 100;
 
   async function startFlow() {
     if (isSubmitting || !canStart) {
@@ -403,9 +410,40 @@ export function AccountContactChangeModal({
       onOpenChange={handleModalOpenChange}
       title={modalTitle}
       description={modalDescription}
-      className="max-w-2xl"
+      className="max-w-xl"
     >
       <div className="space-y-5">
+        <div className="space-y-3">
+          <div className="h-1 w-full overflow-hidden rounded-full bg-border/60">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            {stepOrder.map((stepKey, index) => {
+              const completed = index < currentStepIndex;
+              const active = index === currentStepIndex;
+
+              return (
+                <div
+                  key={stepKey}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
+                    completed
+                      ? "bg-primary text-primary-foreground"
+                      : active
+                        ? "border border-primary text-primary"
+                        : "border border-border/70 text-muted-foreground",
+                  )}
+                >
+                  {index + 1}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -419,27 +457,24 @@ export function AccountContactChangeModal({
         ) : null}
 
         {step === "intro" ? (
-          <div className="space-y-5">
-            <div className="rounded-xl border border-border/60 bg-background/60 p-4">
-              <p className="text-sm font-semibold text-foreground">{introTitle}</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{startHint}</p>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{introTitle}</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{startHint}</p>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-border/60 bg-background/60 p-4">
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 dark:bg-input/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {currentValueLabel}
                 </p>
                 <p className="mt-2 text-sm font-medium text-foreground">
                   {changeType === "EMAIL" ? currentEmail : (currentPhone ?? labels.noPhoneAvailable)}
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-background/60 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  {labels.securityStepLabel}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-foreground">
-                  {changeType === "EMAIL" ? labels.email.securitySummary : labels.phone.securitySummary}
                 </p>
               </div>
             </div>
@@ -466,7 +501,7 @@ export function AccountContactChangeModal({
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               <Button type="button" variant="outline" onClick={() => handleModalOpenChange(false)}>
                 {labels.buttons.cancel}
               </Button>
@@ -478,15 +513,28 @@ export function AccountContactChangeModal({
         ) : null}
 
         {step === "emailCode" ? (
-          <div className="space-y-5">
-            <div className="rounded-xl border border-border/60 bg-background/60 p-4">
-              <p className="text-sm font-semibold text-foreground">{emailDestinationHint}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{maskedEmail ?? "—"}</p>
-              {countdownSeconds !== null && countdownSeconds > 0 ? (
-                <p className="mt-2 text-xs font-medium text-primary">
-                  {labels.countdownPrefix} {formatCountdown(countdownSeconds)}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Mail className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {emailDestinationHint}
                 </p>
-              ) : null}
+                <p className="truncate text-sm text-muted-foreground">{maskedEmail ?? "—"}</p>
+                {countdownSeconds !== null ? (
+                  <p
+                    className={cn(
+                      "mt-0.5 flex items-center gap-1 text-xs",
+                      isCodeExpired ? "font-medium text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    <Clock className="h-3 w-3 shrink-0" />
+                    {labels.countdownPrefix} {formatCountdown(Math.max(0, countdownSeconds))}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <VerificationCodeInput
@@ -497,27 +545,46 @@ export function AccountContactChangeModal({
               autoFocus
             />
 
-            <div className="flex items-center justify-between gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               <Button type="button" variant="outline" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>
-              <Button type="button" onClick={() => void verifyEmailStep()} disabled={isSubmitting}>
+              <Button type="button" onClick={() => void verifyEmailStep()} disabled={isSubmitting || isCodeExpired}>
                 {isSubmitting ? labels.buttons.processing : labels.buttons.verifyEmail}
               </Button>
             </div>
+
+            {isCodeExpired ? (
+              <Button type="button" variant="ghost" className="w-full" onClick={resetFlow}>
+                {labels.buttons.restart}
+              </Button>
+            ) : null}
           </div>
         ) : null}
 
         {step === "smsCode" ? (
-          <div className="space-y-5">
-            <div className="rounded-xl border border-border/60 bg-background/60 p-4">
-              <p className="text-sm font-semibold text-foreground">{smsDestinationHint}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{maskedPhone ?? "—"}</p>
-              {countdownSeconds !== null && countdownSeconds > 0 ? (
-                <p className="mt-2 text-xs font-medium text-primary">
-                  {labels.countdownPrefix} {formatCountdown(countdownSeconds)}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <Phone className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {smsDestinationHint}
                 </p>
-              ) : null}
+                <p className="truncate text-sm text-muted-foreground">{maskedPhone ?? "—"}</p>
+                {countdownSeconds !== null ? (
+                  <p
+                    className={cn(
+                      "mt-0.5 flex items-center gap-1 text-xs",
+                      isCodeExpired ? "font-medium text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    <Clock className="h-3 w-3 shrink-0" />
+                    {labels.countdownPrefix} {formatCountdown(Math.max(0, countdownSeconds))}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <VerificationCodeInput
@@ -528,26 +595,37 @@ export function AccountContactChangeModal({
               autoFocus
             />
 
-            <div className="flex items-center justify-between gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               <Button type="button" variant="outline" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>
-              <Button type="button" onClick={() => void verifySmsStep()} disabled={isSubmitting}>
+              <Button type="button" onClick={() => void verifySmsStep()} disabled={isSubmitting || isCodeExpired}>
                 {isSubmitting ? labels.buttons.processing : labels.buttons.verifySms}
               </Button>
             </div>
+
+            {isCodeExpired ? (
+              <Button type="button" variant="ghost" className="w-full" onClick={resetFlow}>
+                {labels.buttons.restart}
+              </Button>
+            ) : null}
           </div>
         ) : null}
 
         {step === "confirm" ? (
-          <div className="space-y-5">
-            <div className="rounded-xl border border-border/60 bg-background/60 p-4">
-              <p className="text-sm font-semibold text-foreground">{labels.confirmTitle}</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{labels.confirmDescription}</p>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <CheckCircle className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{labels.confirmTitle}</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{labels.confirmDescription}</p>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-border/60 bg-background/60 p-4">
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 dark:bg-input/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {currentValueLabel}
                 </p>
@@ -555,7 +633,7 @@ export function AccountContactChangeModal({
                   {changeType === "EMAIL" ? currentEmail : (currentPhone ?? labels.noPhoneAvailable)}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-background/60 p-4">
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 dark:bg-input/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {nextValueLabel}
                 </p>
@@ -565,7 +643,7 @@ export function AccountContactChangeModal({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               <Button type="button" variant="outline" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>

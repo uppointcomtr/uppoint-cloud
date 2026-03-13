@@ -9,6 +9,7 @@ import {
   PasswordResetChallengeError,
   verifyPasswordResetSmsCode,
 } from "@/modules/auth/server/password-reset-challenge";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 
 export async function POST(request: Request) {
   return withIdempotency("auth:forgot-password-verify-sms", async () => {
@@ -29,6 +30,11 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
+    await logAuthInvalidBody({
+      action: "password_reset_failed",
+      ip,
+      metadata: { step: "verify_sms" },
+    });
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 

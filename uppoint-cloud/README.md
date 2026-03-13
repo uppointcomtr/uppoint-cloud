@@ -26,12 +26,9 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - notification and security signal overview
   - Account center (`/:locale/dashboard/account`)
     - dedicated profile-management surface linked from the profile dropdown and dashboard navigation
-    - full-name update with authenticated, audited server-side persistence
+    - full-name update now requires in-flow email verification code confirmation before persistence
     - integrated password-renewal entry point with in-page secure reset modal
-    - email change flow:
-      - new email verification code (3 min countdown)
-      - current verified phone SMS code (3 min countdown)
-      - final confirmed apply step
+    - email address is visible but read-only in account-center profile controls
     - phone change flow:
       - current verified email verification code (3 min countdown)
       - new phone SMS code (3 min countdown)
@@ -128,7 +125,7 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `INTERNAL_AUDIT_SIGNING_SECRET` (required in production; HMAC signing key for internal audit ingest requests)
 - `INTERNAL_DISPATCH_SIGNING_SECRET` (required in production; HMAC signing key for notification dispatch requests)
 - `INTERNAL_AUTH_TRANSPORT_MODE` (optional, default `loopback-hmac-v1`; set `mtls-hmac-v1` only after trusted mTLS headers are configured at reverse proxy)
-- `INTERNAL_AUDIT_ENDPOINT_URL` (optional override; defaults to loopback `http://127.0.0.1:3000/api/internal/audit/security-event`)
+- `INTERNAL_AUDIT_ENDPOINT_URL` (optional override; defaults to loopback `http://127.0.0.1:3000/api/internal/audit/security-event`; when `UPPOINT_CLOSED_SYSTEM_MODE=true` it must remain loopback-only)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)
@@ -138,7 +135,7 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `UPPOINT_ALLOWED_HOSTS` (optional, comma-separated host allowlist for production request host validation)
 - `UPPOINT_ALLOWED_ORIGINS` (optional, comma-separated origin allowlist for production API mutation origin validation)
 - `RATE_LIMIT_REDIS_URL` (optional, preferred local Redis backend for auth rate limiting)
-- `UPSTASH_REDIS_REST_URL` (optional, enables Redis-backed IP rate limiting)
+- `UPSTASH_REDIS_REST_URL` (optional external exception, enables Redis-backed IP rate limiting only when `UPPOINT_CLOSED_SYSTEM_MODE=false`)
 - `UPSTASH_REDIS_REST_TOKEN` (optional, required with `UPSTASH_REDIS_REST_URL`)
 - `AUTH_ADAPTIVE_RATE_LIMIT_ENABLED` (optional, default `true`)
 - `AUTH_DEVICE_FINGERPRINT_HEADER` (optional, default `x-device-fingerprint`)
@@ -216,6 +213,8 @@ Closed-system deployment policy:
 - Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.
 - Do not enable off-host replication/third-party alert sinks unless explicitly approved.
 - Treat WORM/object-storage replication variables as exception-only; do not configure them in baseline closed-system deployments.
+- If `INTERNAL_AUDIT_ENDPOINT_URL` is set while closed-system mode is enabled, it must still target `127.0.0.1`, `::1`, or `localhost`.
+- Keep `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` unset while closed-system mode is enabled; use `RATE_LIMIT_REDIS_URL` for production auth rate limiting.
 - `npm run audit:anchor:replicate` skips unless both conditions are true:
   - `UPPOINT_CLOSED_SYSTEM_MODE=false`
   - `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`
@@ -231,6 +230,7 @@ Rate-limit backend priority:
 3. Prisma fallback
 
 When `RATE_LIMIT_REDIS_URL` is set, auth rate limiting uses local Redis sliding window.
+When `UPPOINT_CLOSED_SYSTEM_MODE=true`, production deployments must keep auth rate limiting on local Redis and leave Upstash credentials unset.
 If local Redis is not configured/reachable, system tries Upstash; if that is unavailable too, it falls back to Prisma-backed limiting with fail-closed behavior for auth routes.
 Note: Redis `maxmemory` is a Redis-specific data-store cap and does not conflict with `uppoint-cloud.service` / `tune-system.sh` memory tuning for Node.js and kernel layers.
 

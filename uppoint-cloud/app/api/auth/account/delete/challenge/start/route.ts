@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 import {
   AccountDeleteChallengeError,
   startAccountDeleteChallenge,
@@ -48,6 +49,12 @@ export async function POST(request: Request) {
     try {
       payload = await request.json();
     } catch {
+      await logAuthInvalidBody({
+        action: "account_delete_challenge_failed",
+        ip,
+        userId: session.user.id,
+        metadata: { step: "start" },
+      });
       return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
     }
 

@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 import { startPasswordResetChallenge } from "@/modules/auth/server/password-reset-challenge";
 
 export async function POST(request: Request) {
@@ -26,6 +27,11 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
+    await logAuthInvalidBody({
+      action: "password_reset_failed",
+      ip,
+      metadata: { step: "start" },
+    });
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 

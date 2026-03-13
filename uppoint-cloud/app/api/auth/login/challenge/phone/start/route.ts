@@ -9,6 +9,7 @@ import {
   LoginChallengeError,
   startPhoneLoginChallenge,
 } from "@/modules/auth/server/login-challenge";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 
 function buildNeutralStartResponse() {
   return NextResponse.json(
@@ -41,6 +42,11 @@ export async function POST(request: Request) {
   try {
     payload = await request.json();
   } catch {
+    await logAuthInvalidBody({
+      action: "login_challenge_start_failed",
+      ip,
+      metadata: { mode: "phone" },
+    });
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 
@@ -89,6 +95,10 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
+      await logAudit("login_challenge_start_failed", ip, undefined, {
+        mode: "phone",
+        reason: "VALIDATION_FAILED",
+      });
       return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
     }
 

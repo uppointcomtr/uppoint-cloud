@@ -8,6 +8,7 @@ import {
   hasConflictingForwardedHost,
   isAllowedHost,
   isAllowedOrigin,
+  isLoopbackHost,
   resolveAllowedHosts,
   resolveAllowedOrigins,
 } from "@/lib/security/request-guards";
@@ -120,6 +121,30 @@ function shouldBypassProxy(pathname: string): boolean {
     || pathname.startsWith("/_next")
     || pathname === "/favicon.ico"
     || PUBLIC_FILE_PATTERN.test(pathname)
+  );
+}
+
+function isTrustedLoopbackStaticAssetRequest(input: {
+  pathname: string;
+  method: string;
+  requestHost: string | null;
+}): boolean {
+  if (!IS_PRODUCTION) {
+    return false;
+  }
+
+  if (input.method !== "GET" && input.method !== "HEAD") {
+    return false;
+  }
+
+  if (!isLoopbackHost(input.requestHost)) {
+    return false;
+  }
+
+  return (
+    input.pathname.startsWith("/_next/")
+    || input.pathname === "/favicon.ico"
+    || PUBLIC_FILE_PATTERN.test(input.pathname)
   );
 }
 
@@ -277,8 +302,18 @@ export async function proxy(request: NextRequest) {
   const forwardHeaders = buildForwardHeaders(request, requestId);
   const requestHost = getRequestHost(request);
   const trustedInternalAuditIngress = isTrustedInternalAuditIngress(request, pathname);
+  const trustedLoopbackStaticAssetRequest = isTrustedLoopbackStaticAssetRequest({
+    pathname,
+    method: request.method,
+    requestHost,
+  });
 
-  if (IS_PRODUCTION && !trustedInternalAuditIngress && hasConflictingForwardedHost(request)) {
+  if (
+    IS_PRODUCTION
+    && !trustedInternalAuditIngress
+    && !trustedLoopbackStaticAssetRequest
+    && hasConflictingForwardedHost(request)
+  ) {
     emitEdgeSecurityAudit({
       action: "edge_host_rejected",
       requestId,
@@ -297,7 +332,12 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (IS_PRODUCTION && !trustedInternalAuditIngress && !isAllowedHost(requestHost, ALLOWED_HOSTS)) {
+  if (
+    IS_PRODUCTION
+    && !trustedInternalAuditIngress
+    && !trustedLoopbackStaticAssetRequest
+    && !isAllowedHost(requestHost, ALLOWED_HOSTS)
+  ) {
     emitEdgeSecurityAudit({
       action: "edge_host_rejected",
       requestId,

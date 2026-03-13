@@ -6,11 +6,18 @@ import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
-import { AccountProfileError, updateAccountProfileName } from "@/modules/auth/server/account-profile";
+import {
+  AccountProfileError,
+  startAccountProfileNameUpdateChallenge,
+  verifyAccountProfileNameUpdateChallenge,
+} from "@/modules/auth/server/account-profile";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 
 function resolveProfileUpdateStatus(code: AccountProfileError["code"]): number {
   switch (code) {
     case "NAME_UNCHANGED":
+    case "INVALID_OR_EXPIRED_CHALLENGE":
+    case "INVALID_EMAIL_CODE":
       return 400;
     case "PROFILE_NOT_FOUND":
       return 404;
@@ -56,12 +63,41 @@ export async function PATCH(request: Request) {
     try {
       payload = await request.json();
     } catch {
+      await logAuthInvalidBody({
+        action: "profile_update_failed",
+        ip,
+        userId: session.user.id,
+        metadata: { step: "unknown" },
+      });
       return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
     }
 
+    const rawPayload = payload as Record<string, unknown>;
+    const verificationStep = rawPayload.verificationStep === "verify" ? "verify" : "start";
+
     try {
-      const result = await updateAccountProfileName({
-        ...(payload as Record<string, unknown>),
+      if (verificationStep === "start") {
+        const challenge = await startAccountProfileNameUpdateChallenge({
+          ...rawPayload,
+          userId: session.user.id,
+        });
+
+        await logAudit("profile_update_verification_sent", ip, session.user.id, {
+          result: "SUCCESS",
+          scope: "name",
+          destination: challenge.maskedEmail,
+        });
+
+        return NextResponse.json(ok({
+          verificationRequired: true,
+          draftToken: challenge.draftToken,
+          maskedEmail: challenge.maskedEmail,
+          emailCodeExpiresAt: challenge.emailCodeExpiresAt.toISOString(),
+        }), { status: 200 });
+      }
+
+      const result = await verifyAccountProfileNameUpdateChallenge({
+        ...rawPayload,
         userId: session.user.id,
       });
 
@@ -71,6 +107,7 @@ export async function PATCH(request: Request) {
       });
 
       return NextResponse.json(ok({
+        verificationRequired: false,
         name: result.name,
         email: result.email,
       }), { status: 200 });
@@ -79,6 +116,7 @@ export async function PATCH(request: Request) {
         await logAudit("profile_update_failed", ip, session.user.id, {
           reason: "VALIDATION_FAILED",
           result: "FAILURE",
+          step: verificationStep,
         });
         return NextResponse.json(fail("VALIDATION_FAILED"), { status: 400 });
       }
@@ -87,18 +125,31 @@ export async function PATCH(request: Request) {
         await logAudit("profile_update_failed", ip, session.user.id, {
           reason: error.code,
           result: "FAILURE",
+          step: verificationStep,
         });
-        return NextResponse.json(fail(error.code), {
+        const isNeutralizedChallengeError = error.code === "INVALID_EMAIL_CODE";
+        return NextResponse.json(fail(isNeutralizedChallengeError ? "INVALID_OR_EXPIRED_CHALLENGE" : error.code), {
           status: resolveProfileUpdateStatus(error.code),
         });
       }
 
       await logAudit("profile_update_failed", ip, session.user.id, {
-        reason: "PROFILE_UPDATE_FAILED",
+        reason:
+          verificationStep === "start"
+            ? "PROFILE_UPDATE_VERIFICATION_SEND_FAILED"
+            : "PROFILE_UPDATE_FAILED",
         result: "FAILURE",
+        step: verificationStep,
       });
       console.error("Failed to update account profile name", error);
-      return NextResponse.json(fail("PROFILE_UPDATE_FAILED"), { status: 500 });
+      return NextResponse.json(
+        fail(
+          verificationStep === "start"
+            ? "PROFILE_UPDATE_VERIFICATION_SEND_FAILED"
+            : "PROFILE_UPDATE_FAILED",
+        ),
+        { status: 500 },
+      );
     }
   });
 }

@@ -31,6 +31,7 @@ export type AuditAction =
   | "account_delete_sms_verified"
   | "account_delete_success"
   | "account_delete_challenge_failed"
+  | "profile_update_verification_sent"
   | "profile_updated"
   | "profile_update_failed"
   | "account_contact_change_started"

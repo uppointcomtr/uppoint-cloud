@@ -7,6 +7,7 @@ import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { AccountProfileError, completeAccountContactChangeChallenge } from "@/modules/auth/server/account-profile";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 
 function resolveCompleteStatus(code: AccountProfileError["code"]): number {
   switch (code) {
@@ -44,6 +45,12 @@ export async function POST(request: Request) {
     try {
       payload = await request.json();
     } catch {
+      await logAuthInvalidBody({
+        action: "account_contact_change_failed",
+        ip,
+        userId: session.user.id,
+        metadata: { step: "complete" },
+      });
       return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
     }
 

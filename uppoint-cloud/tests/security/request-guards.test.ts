@@ -5,6 +5,7 @@ import {
   hasConflictingForwardedHost,
   isAllowedHost,
   isAllowedOrigin,
+  isLoopbackHost,
   resolveAllowedHosts,
   resolveAllowedOrigins,
 } from "@/lib/security/request-guards";
@@ -80,5 +81,13 @@ describe("request guards", () => {
     expect(isAllowedOrigin("https://cloud.uppoint.com.tr", allowedOrigins)).toBe(true);
     expect(isAllowedOrigin("https://evil.example.com", allowedOrigins)).toBe(false);
     expect(isAllowedOrigin(null, allowedOrigins)).toBe(false);
+  });
+
+  it("recognizes loopback hosts with or without ports", () => {
+    expect(isLoopbackHost("127.0.0.1:3000")).toBe(true);
+    expect(isLoopbackHost("localhost:3000")).toBe(true);
+    expect(isLoopbackHost("[::1]:3000")).toBe(true);
+    expect(isLoopbackHost("cloud.uppoint.com.tr")).toBe(false);
+    expect(isLoopbackHost(null)).toBe(false);
   });
 });

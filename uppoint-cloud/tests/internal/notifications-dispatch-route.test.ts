@@ -75,4 +75,36 @@ describe("internal notifications dispatch route", () => {
       }),
     );
   });
+
+  it("audits invalid body payloads from authorized internal requests", async () => {
+    withRateLimitMock.mockResolvedValueOnce(null);
+    verifyInternalRequestAuthMock.mockResolvedValueOnce({
+      requestId: "req_invalid_dispatch_body_1",
+      rawBody: "{\"unexpected\":true}",
+    });
+    logAuditMock.mockResolvedValueOnce(undefined);
+
+    const response = await dispatchRoute.POST(
+      new Request("https://cloud.uppoint.com.tr/api/internal/notifications/dispatch", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: "INVALID_BODY",
+      code: "INVALID_BODY",
+    });
+    expect(logAuditMock).toHaveBeenCalledWith(
+      "internal_dispatch_failed",
+      "unknown",
+      undefined,
+      expect.objectContaining({
+        requestId: "req_invalid_dispatch_body_1",
+        reason: "INVALID_BODY",
+        result: "FAILURE",
+      }),
+    );
+  });
 });

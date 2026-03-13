@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 import {
   AccountDeleteChallengeError,
   completeAccountDeleteChallenge,
@@ -65,6 +66,12 @@ export async function POST(request: Request) {
     try {
       payload = await request.json();
     } catch {
+      await logAuthInvalidBody({
+        action: "account_delete_challenge_failed",
+        ip,
+        userId: session.user.id,
+        metadata: { step: "complete" },
+      });
       return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
     }
 
@@ -100,10 +107,6 @@ export async function POST(request: Request) {
 
       await logAudit("account_delete_success", ip, completion.userId, {
         step: "complete",
-        result: "SUCCESS",
-      });
-      await logAudit("user_soft_deleted", ip, completion.userId, {
-        reason: "USER_SOFT_DELETED",
         result: "SUCCESS",
       });
     } catch (error) {

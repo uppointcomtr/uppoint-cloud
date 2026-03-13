@@ -30,10 +30,35 @@ import { hashOtpCode } from "./otp-hash";
 const CONTACT_CHANGE_CODE_TTL_MINUTES = 3;
 const CONTACT_CHANGE_TOKEN_TTL_MINUTES = 5;
 const CONTACT_CHANGE_MAX_ATTEMPTS = 5;
+const PROFILE_NAME_CHANGE_CODE_TTL_MINUTES = 3;
+const PROFILE_NAME_CHANGE_TOKEN_VERSION = 1;
 
 const updateProfileNameSchema = z.object({
   userId: z.string().trim().min(1).max(191),
   name: z.string().trim().min(3).max(120),
+});
+
+const startProfileNameUpdateChallengeSchema = z.object({
+  userId: z.string().trim().min(1).max(191),
+  name: z.string().trim().min(3).max(120),
+  locale: z.string().optional(),
+});
+
+const verifyProfileNameUpdateChallengeSchema = z.object({
+  userId: z.string().trim().min(1).max(191),
+  name: z.string().trim().min(3).max(120),
+  locale: z.string().optional(),
+  draftToken: z.string().trim().min(32).max(2048),
+  emailCode: z.string().trim().regex(/^\d{6}$/),
+});
+
+const profileNameChangeChallengePayloadSchema = z.object({
+  version: z.literal(PROFILE_NAME_CHANGE_TOKEN_VERSION),
+  userId: z.string().trim().min(1).max(191),
+  name: z.string().trim().min(3).max(120),
+  emailCodeHash: z.string().trim().regex(/^[a-f0-9]{64}$/i),
+  expiresAt: z.number().int().positive(),
+  nonce: z.string().trim().regex(/^[a-f0-9]{16,128}$/i),
 });
 
 const startContactChangeSchema = z.discriminatedUnion("type", [
@@ -94,6 +119,10 @@ function generateChangeToken(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function generateNonce(): string {
+  return crypto.randomBytes(16).toString("hex");
+}
+
 function toExpiresAt(now: Date, ttlMinutes: number): Date {
   return new Date(now.getTime() + ttlMinutes * 60 * 1000);
 }
@@ -120,6 +149,55 @@ function maskEmail(email: string): string {
   const maskedLocal = `${visiblePrefix}${"*".repeat(Math.max(1, localPart.length - visiblePrefix.length - visibleSuffix.length))}${visibleSuffix}`;
 
   return `${maskedLocal}@${domainPart}`;
+}
+
+type ProfileNameChangeChallengePayload = z.infer<typeof profileNameChangeChallengePayloadSchema>;
+
+function signProfileNameChangeChallengeToken(payload: ProfileNameChangeChallengePayload): string {
+  const serializedPayload = JSON.stringify(payload);
+  const encodedPayload = Buffer.from(serializedPayload, "utf8").toString("base64url");
+  const signature = crypto.createHmac("sha256", env.AUTH_SECRET).update(encodedPayload).digest("hex");
+  return `${encodedPayload}.${signature}`;
+}
+
+function verifyProfileNameChangeChallengeToken(
+  draftToken: string,
+): ProfileNameChangeChallengePayload | null {
+  const tokenParts = draftToken.split(".");
+  if (tokenParts.length !== 2) {
+    return null;
+  }
+
+  const [encodedPayload, providedSignatureRaw] = tokenParts;
+  if (!encodedPayload || !providedSignatureRaw) {
+    return null;
+  }
+
+  const providedSignature = providedSignatureRaw.trim().toLowerCase();
+  const expectedSignature = crypto
+    .createHmac("sha256", env.AUTH_SECRET)
+    .update(encodedPayload)
+    .digest("hex");
+
+  if (!timingSafeEqualHex(providedSignature, expectedSignature)) {
+    return null;
+  }
+
+  let parsedPayload: unknown;
+  try {
+    parsedPayload = JSON.parse(
+      Buffer.from(encodedPayload, "base64url").toString("utf8"),
+    ) as unknown;
+  } catch {
+    return null;
+  }
+
+  const payloadResult = profileNameChangeChallengePayloadSchema.safeParse(parsedPayload);
+  if (!payloadResult.success) {
+    return null;
+  }
+
+  return payloadResult.data;
 }
 
 function buildInitialEmailMessage(options: {
@@ -158,6 +236,36 @@ function buildInitialEmailMessage(options: {
   };
 }
 
+function buildProfileNameChangeEmailMessage(options: {
+  locale: Locale;
+  currentName: string | null;
+  targetName: string;
+  code: string;
+  ttlMinutes: number;
+}) {
+  const displayName = options.currentName?.trim() || "User";
+
+  if (options.locale === "tr") {
+    return {
+      subject: "Uppoint Cloud ad soyad değişikliği doğrulama kodu",
+      text:
+        `Merhaba ${displayName},\n\n` +
+        `Ad soyad bilgisini "${options.targetName}" olarak güncellemek için doğrulama kodunuz: ${options.code}\n` +
+        `Kod ${options.ttlMinutes} dakika geçerlidir.\n\n` +
+        "Bu işlemi siz başlatmadıysanız hesap güvenliğiniz için hemen destek ekibiyle iletişime geçin.",
+    };
+  }
+
+  return {
+    subject: "Uppoint Cloud profile name change verification code",
+    text:
+      `Hello ${displayName},\n\n` +
+      `Your verification code to update your full name to "${options.targetName}" is: ${options.code}\n` +
+      `The code expires in ${options.ttlMinutes} minutes.\n\n` +
+      "If you did not start this request, contact support immediately.",
+  };
+}
+
 function buildSmsVerificationMessage(options: {
   locale: Locale;
   code: string;
@@ -180,6 +288,7 @@ export class AccountProfileError extends Error {
     public readonly code:
       | "PROFILE_NOT_FOUND"
       | "NAME_UNCHANGED"
+      | "EMAIL_CHANGE_DISABLED"
       | "EMAIL_UNCHANGED"
       | "PHONE_UNCHANGED"
       | "EMAIL_TAKEN"
@@ -226,6 +335,145 @@ export async function updateAccountProfileName(
 
   if ((user.name?.trim() ?? "") === normalizedName) {
     throw new AccountProfileError("NAME_UNCHANGED", "Name is unchanged");
+  }
+
+  const updated = await dependencies.updateName({
+    userId: input.userId,
+    name: normalizedName,
+  });
+
+  if (!updated) {
+    throw new AccountProfileError("PROFILE_NOT_FOUND", "Profile not found");
+  }
+
+  return updated;
+}
+
+interface StartProfileNameUpdateChallengeDependencies {
+  findUserById: (userId: string) => Promise<{ id: string; name: string | null; email: string } | null>;
+  sendEmailCode: (input: { userId: string; to: string; subject: string; text: string }) => Promise<void>;
+  now: () => Date;
+  generateCode: () => string;
+  hashValue: (value: string) => string;
+  generateNonce: () => string;
+  signChallengeToken: (payload: ProfileNameChangeChallengePayload) => string;
+}
+
+const defaultStartProfileNameUpdateChallengeDependencies: StartProfileNameUpdateChallengeDependencies = {
+  findUserById: async (userId) => findActiveUserForAccountProfile(userId),
+  sendEmailCode: async (input) => {
+    await enqueueEmailNotification({
+      userId: input.userId,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      metadata: {
+        scope: "auth-profile-name-change",
+        channel: "email",
+      },
+    });
+  },
+  now: () => new Date(),
+  generateCode: generateNumericCode,
+  hashValue,
+  generateNonce,
+  signChallengeToken: signProfileNameChangeChallengeToken,
+};
+
+export async function startAccountProfileNameUpdateChallenge(
+  rawInput: unknown,
+  dependencies: StartProfileNameUpdateChallengeDependencies = defaultStartProfileNameUpdateChallengeDependencies,
+): Promise<{
+  draftToken: string;
+  emailCodeExpiresAt: Date;
+  maskedEmail: string;
+}> {
+  const input = startProfileNameUpdateChallengeSchema.parse(rawInput);
+  const locale = resolveLocale(input.locale);
+  const normalizedName = normalizeName(input.name);
+  const user = await dependencies.findUserById(input.userId);
+
+  if (!user) {
+    throw new AccountProfileError("PROFILE_NOT_FOUND", "Profile not found");
+  }
+
+  if ((user.name?.trim() ?? "") === normalizedName) {
+    throw new AccountProfileError("NAME_UNCHANGED", "Name is unchanged");
+  }
+
+  const now = dependencies.now();
+  const emailCodeExpiresAt = toExpiresAt(now, PROFILE_NAME_CHANGE_CODE_TTL_MINUTES);
+  const emailCode = dependencies.generateCode();
+  const emailCodeHash = dependencies.hashValue(emailCode);
+
+  const draftToken = dependencies.signChallengeToken({
+    version: PROFILE_NAME_CHANGE_TOKEN_VERSION,
+    userId: user.id,
+    name: normalizedName,
+    emailCodeHash,
+    expiresAt: emailCodeExpiresAt.getTime(),
+    nonce: dependencies.generateNonce(),
+  });
+
+  const message = buildProfileNameChangeEmailMessage({
+    locale,
+    currentName: user.name,
+    targetName: normalizedName,
+    code: emailCode,
+    ttlMinutes: PROFILE_NAME_CHANGE_CODE_TTL_MINUTES,
+  });
+
+  await dependencies.sendEmailCode({
+    userId: user.id,
+    to: user.email,
+    subject: message.subject,
+    text: message.text,
+  });
+
+  return {
+    draftToken,
+    emailCodeExpiresAt,
+    maskedEmail: maskEmail(user.email),
+  };
+}
+
+interface VerifyProfileNameUpdateChallengeDependencies {
+  updateName: (input: { userId: string; name: string }) => Promise<{ id: string; name: string; email: string } | null>;
+  now: () => Date;
+  hashValue: (value: string) => string;
+  verifyChallengeToken: (draftToken: string) => ProfileNameChangeChallengePayload | null;
+}
+
+const defaultVerifyProfileNameUpdateChallengeDependencies: VerifyProfileNameUpdateChallengeDependencies = {
+  updateName: async (input) => updateActiveUserName(input),
+  now: () => new Date(),
+  hashValue,
+  verifyChallengeToken: verifyProfileNameChangeChallengeToken,
+};
+
+export async function verifyAccountProfileNameUpdateChallenge(
+  rawInput: unknown,
+  dependencies: VerifyProfileNameUpdateChallengeDependencies = defaultVerifyProfileNameUpdateChallengeDependencies,
+): Promise<{ id: string; name: string; email: string }> {
+  const input = verifyProfileNameUpdateChallengeSchema.parse(rawInput);
+  const normalizedName = normalizeName(input.name);
+  const challengePayload = dependencies.verifyChallengeToken(input.draftToken);
+
+  if (!challengePayload) {
+    throw new AccountProfileError("INVALID_OR_EXPIRED_CHALLENGE", "Profile update challenge is invalid");
+  }
+
+  if (challengePayload.userId !== input.userId || challengePayload.name !== normalizedName) {
+    throw new AccountProfileError("INVALID_OR_EXPIRED_CHALLENGE", "Profile update challenge does not match");
+  }
+
+  if (challengePayload.expiresAt <= dependencies.now().getTime()) {
+    throw new AccountProfileError("INVALID_OR_EXPIRED_CHALLENGE", "Profile update challenge is expired");
+  }
+
+  const providedEmailCodeHash = dependencies.hashValue(input.emailCode);
+  if (!timingSafeEqualHex(providedEmailCodeHash, challengePayload.emailCodeHash)) {
+    throw new AccountProfileError("INVALID_EMAIL_CODE", "Profile update verification code is invalid");
   }
 
   const updated = await dependencies.updateName({
@@ -316,57 +564,7 @@ export async function startAccountContactChangeChallenge(
   const emailCodeHash = dependencies.hashValue(emailCode);
 
   if (input.type === "EMAIL") {
-    if (input.nextEmail === user.email) {
-      throw new AccountProfileError("EMAIL_UNCHANGED", "Email is unchanged");
-    }
-
-    if (!user.phone) {
-      throw new AccountProfileError("PHONE_NOT_AVAILABLE", "Phone number is required");
-    }
-
-    if (!user.phoneVerifiedAt) {
-      throw new AccountProfileError("PHONE_VERIFICATION_REQUIRED", "Phone must be verified before email change");
-    }
-
-    const existingUser = await dependencies.findOtherUserByEmail(input.nextEmail, user.id);
-    if (existingUser) {
-      throw new AccountProfileError("EMAIL_TAKEN", "Email is already in use");
-    }
-
-    await dependencies.deleteChallengesForUserAndType({
-      userId: user.id,
-      type: AccountContactChangeType.EMAIL,
-    });
-
-    const challenge = await dependencies.createChallenge({
-      userId: user.id,
-      type: AccountContactChangeType.EMAIL,
-      nextEmail: input.nextEmail,
-      emailCodeHash,
-      emailCodeExpiresAt: expiresAt,
-    });
-
-    const message = buildInitialEmailMessage({
-      locale,
-      name: user.name,
-      code: emailCode,
-      ttlMinutes: CONTACT_CHANGE_CODE_TTL_MINUTES,
-      type: "EMAIL",
-    });
-
-    await dependencies.sendEmailCode({
-      userId: user.id,
-      to: input.nextEmail,
-      subject: message.subject,
-      text: message.text,
-    });
-
-    return {
-      challengeId: challenge.id,
-      emailCodeExpiresAt: expiresAt,
-      type: "EMAIL",
-      maskedEmail: maskEmail(input.nextEmail),
-    };
+    throw new AccountProfileError("EMAIL_CHANGE_DISABLED", "Email change is disabled");
   }
 
   if (!user.emailVerified) {

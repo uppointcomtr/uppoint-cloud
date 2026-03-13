@@ -2,6 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+import { isLoopbackHost } from "@/lib/security/request-guards";
+
 const booleanFromString = z.preprocess((value) => {
   if (typeof value === "string") {
     return value === "true";
@@ -22,6 +24,14 @@ function parseCsv(value: string | undefined): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter((entry) => entry.length > 0);
+}
+
+function isLoopbackUrl(value: string): boolean {
+  try {
+    return isLoopbackHost(new URL(value).host);
+  } catch {
+    return false;
+  }
 }
 
 const serverEnvSchema = z.object({
@@ -258,7 +268,33 @@ const serverEnvSchema = z.object({
   const hasLocalRateLimitRedis = Boolean(input.RATE_LIMIT_REDIS_URL);
   const hasUpstashRateLimitRedis = Boolean(input.UPSTASH_REDIS_REST_URL && input.UPSTASH_REDIS_REST_TOKEN);
 
-  if (input.NODE_ENV === "production" && !hasLocalRateLimitRedis && !hasUpstashRateLimitRedis) {
+  if (
+    input.UPPOINT_CLOSED_SYSTEM_MODE
+    && input.INTERNAL_AUDIT_ENDPOINT_URL
+    && !isLoopbackUrl(input.INTERNAL_AUDIT_ENDPOINT_URL)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["INTERNAL_AUDIT_ENDPOINT_URL"],
+      message: "Closed-system mode requires INTERNAL_AUDIT_ENDPOINT_URL to stay on loopback",
+    });
+  }
+
+  if (input.UPPOINT_CLOSED_SYSTEM_MODE && hasUpstashRateLimitRedis) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["UPSTASH_REDIS_REST_URL"],
+      message: "Closed-system mode forbids Upstash rate limiting; use RATE_LIMIT_REDIS_URL",
+    });
+  }
+
+  if (input.NODE_ENV === "production" && input.UPPOINT_CLOSED_SYSTEM_MODE && !hasLocalRateLimitRedis) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["RATE_LIMIT_REDIS_URL"],
+      message: "Closed-system production requires local Redis-backed auth rate limiting (RATE_LIMIT_REDIS_URL)",
+    });
+  } else if (input.NODE_ENV === "production" && !hasLocalRateLimitRedis && !hasUpstashRateLimitRedis) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["RATE_LIMIT_REDIS_URL"],

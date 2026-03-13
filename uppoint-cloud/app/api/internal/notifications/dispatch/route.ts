@@ -30,6 +30,11 @@ export async function POST(request: Request) {
   const ip = internalGuard.ip;
 
   if (verifiedRequest.rawBody.trim().length > 0) {
+    await logAudit("internal_dispatch_failed", ip, undefined, {
+      requestId: verifiedRequest.requestId,
+      result: "FAILURE",
+      reason: "INVALID_BODY",
+    });
     return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
   }
 

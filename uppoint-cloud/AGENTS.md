@@ -464,6 +464,8 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Default deployment mode is **closed system** (`UPPOINT_CLOSED_SYSTEM_MODE=true`): no off-host replication, no third-party alert sinks, and no external data export jobs
 * In closed-system mode, keep `uppoint-audit-anchor-replication` disabled and avoid configuring off-host WORM targets
 * In closed-system mode, disable optional external alert channels (`UPPOINT_ALERT_SLACK_WEBHOOK`, external webhook destinations) unless explicit owner approval is documented
+* In closed-system mode, `INTERNAL_AUDIT_ENDPOINT_URL` may only point to loopback (`127.0.0.1`, `::1`, or `localhost`)
+* In closed-system mode, keep `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` unset and use local Redis via `RATE_LIMIT_REDIS_URL`
 * Any approved exception must include:
   - data classification and scope,
   - transport/authentication method,

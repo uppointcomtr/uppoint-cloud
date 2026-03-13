@@ -71,6 +71,7 @@ AUTH_BCRYPT_ROUNDS=12
 HEALTHCHECK_TOKEN=replace-with-strong-random-token
 UPPOINT_ALLOWED_HOSTS=cloud.uppoint.com.tr
 UPPOINT_ALLOWED_ORIGINS=https://cloud.uppoint.com.tr
+RATE_LIMIT_REDIS_URL=redis://127.0.0.1:6379
 AUDIT_FALLBACK_LOG_PATH=/var/log/uppoint-cloud/audit-fallback.log
 AUDIT_FALLBACK_CHAIN_STATE_PATH=/var/lib/uppoint-cloud/audit-fallback-chain.state
 AUDIT_LOG_SIGNING_SECRET=replace-with-strong-random-secret
@@ -100,6 +101,8 @@ Owner-approved external exception example (off-host replication explicitly enabl
 ```bash
 UPPOINT_CLOSED_SYSTEM_MODE=false
 UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true
+UPSTASH_REDIS_REST_URL=https://tenant.upstash.io
+UPSTASH_REDIS_REST_TOKEN=replace-with-upstash-token
 WORM_S3_BUCKET=uppoint-audit-immutable
 WORM_S3_REGION=eu-central-1
 WORM_S3_PREFIX=cloud.uppoint.com.tr/audit-anchor
@@ -381,6 +384,8 @@ PostgreSQL restore drill:
 Closed-system default:
 - Keep `UPPOINT_CLOSED_SYSTEM_MODE=true`.
 - Do not install `uppoint-audit-anchor-replication` cron.
+- If `INTERNAL_AUDIT_ENDPOINT_URL` is configured, keep it on loopback only (`127.0.0.1`, `::1`, or `localhost`).
+- Keep `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` unset and use `RATE_LIMIT_REDIS_URL` for production auth rate limiting.
 - `replicate-audit-anchor.sh` exits with skip unless both are explicitly set:
   - `UPPOINT_CLOSED_SYSTEM_MODE=false`
   - `UPPOINT_ENABLE_AUDIT_ANCHOR_REPLICATION=true`

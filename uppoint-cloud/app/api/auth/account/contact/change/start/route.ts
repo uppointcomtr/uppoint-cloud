@@ -7,9 +7,12 @@ import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { AccountProfileError, startAccountContactChangeChallenge } from "@/modules/auth/server/account-profile";
+import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 
 function resolveStartStatus(code: AccountProfileError["code"]): number {
   switch (code) {
+    case "EMAIL_CHANGE_DISABLED":
+      return 403;
     case "EMAIL_UNCHANGED":
     case "PHONE_UNCHANGED":
     case "EMAIL_TAKEN":
@@ -49,6 +52,12 @@ export async function POST(request: Request) {
     try {
       payload = await request.json();
     } catch {
+      await logAuthInvalidBody({
+        action: "account_contact_change_failed",
+        ip,
+        userId: session.user.id,
+        metadata: { step: "start" },
+      });
       return NextResponse.json(fail("INVALID_BODY"), { status: 400 });
     }
 
