@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-03-15 (account phone-change flow: verify current phone)
+
+### Changed
+- Corrected the account phone-change verification flow so the SMS approval code is sent to the currently registered phone number instead of the proposed new phone number:
+  - `modules/auth/server/account-profile.ts`
+- Updated TR/EN account-center copy to match the corrected security model for phone changes:
+  - current email is verified first,
+  - current phone line approves the change in the second step.
+- Added regression coverage for phone-change SMS destination behavior:
+  - `tests/auth/account-profile.test.ts`
+
 ## 2026-03-12 (account center: locked email + verified full-name change)
 
 ### Changed

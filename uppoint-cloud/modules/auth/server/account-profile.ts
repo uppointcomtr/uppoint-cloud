@@ -720,9 +720,7 @@ export async function verifyAccountContactChangeEmailCode(
   const smsCodeHash = dependencies.hashValue(smsCode);
   const smsCodeExpiresAt = toExpiresAt(now, CONTACT_CHANGE_CODE_TTL_MINUTES);
 
-  const smsTarget = challenge.type === AccountContactChangeType.EMAIL
-    ? challenge.user.phone
-    : challenge.nextPhone;
+  const smsTarget = challenge.user.phone;
 
   if (!smsTarget) {
     throw new AccountProfileError("PHONE_NOT_AVAILABLE", "Phone number is required");

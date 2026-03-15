@@ -227,6 +227,56 @@ describe("verifyAccountContactChangeEmailCode", () => {
       code: "INVALID_EMAIL_CODE",
     });
   });
+
+  it("sends the SMS code to the current phone for phone-change requests", async () => {
+    const sendSmsCode = vi.fn().mockResolvedValue(undefined);
+
+    const result = await verifyAccountContactChangeEmailCode(
+      {
+        challengeId: "challenge-1",
+        userId: "user_1",
+        emailCode: "123456",
+        locale: "tr",
+      },
+      {
+        findChallengeById: vi.fn().mockResolvedValue({
+          id: "challenge-1",
+          userId: "user_1",
+          type: "PHONE",
+          nextEmail: null,
+          nextPhone: "+905551119999",
+          emailCodeHash: "a".repeat(64),
+          emailCodeExpiresAt: new Date("2026-03-11T10:03:00.000Z"),
+          emailCodeAttempts: 0,
+          emailCodeVerifiedAt: null,
+          user: {
+            email: "old@example.com",
+            phone: "+905551112233",
+            emailVerified: new Date("2026-03-01T10:00:00.000Z"),
+            phoneVerifiedAt: new Date("2026-03-01T10:05:00.000Z"),
+          },
+        }),
+        incrementEmailAttempts: vi.fn().mockResolvedValue(1),
+        markEmailVerifiedAndStoreSmsCode: vi.fn().mockResolvedValue(true),
+        sendSmsCode,
+        now: vi.fn(() => new Date("2026-03-11T10:00:00.000Z")),
+        generateCode: vi.fn(() => "654321"),
+        hashValue: vi.fn((value: string) => (value === "123456" ? "a".repeat(64) : "b".repeat(64))),
+        isSmsEnabled: vi.fn(() => true),
+      },
+    );
+
+    expect(result).toEqual({
+      smsCodeExpiresAt: new Date("2026-03-11T10:03:00.000Z"),
+      maskedPhone: "+********2233",
+      type: "PHONE",
+    });
+    expect(sendSmsCode).toHaveBeenCalledWith({
+      userId: "user_1",
+      to: "+905551112233",
+      text: expect.stringContaining("654321"),
+    });
+  });
 });
 
 describe("verifyAccountContactChangeSmsCode", () => {
