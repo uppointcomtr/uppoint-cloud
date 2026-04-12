@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { AccountProfileError, completeAccountContactChangeChallenge } from "@/modules/auth/server/account-profile";
 import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
@@ -130,7 +131,11 @@ export async function POST(request: Request) {
         result: "FAILURE",
         step: "complete",
       });
-      console.error("Failed to complete account contact change", error);
+      logServerError("account_contact_change_complete_failed", error, {
+        route: "/api/auth/account/contact/change/complete",
+        challengeId,
+        userId: session.user.id,
+      });
       return NextResponse.json(fail("ACCOUNT_CONTACT_CHANGE_COMPLETE_FAILED"), { status: 500 });
     }
   });

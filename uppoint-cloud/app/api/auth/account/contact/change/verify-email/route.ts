@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { AccountProfileError, verifyAccountContactChangeEmailCode } from "@/modules/auth/server/account-profile";
 import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
@@ -136,7 +137,11 @@ export async function POST(request: Request) {
         result: "FAILURE",
         step: "verify_email",
       });
-      console.error("Failed to verify account contact change email code", error);
+      logServerError("account_contact_change_verify_email_failed", error, {
+        route: "/api/auth/account/contact/change/verify-email",
+        challengeId,
+        userId: session.user.id,
+      });
       return NextResponse.json(fail("ACCOUNT_CONTACT_CHANGE_VERIFY_EMAIL_FAILED"), { status: 500 });
     }
   });

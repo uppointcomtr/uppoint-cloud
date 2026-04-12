@@ -399,16 +399,18 @@ Security SLO report:
   - `SECURITY_SLO_MAX_PASSWORD_RESET_FAILED` (default `60`)
   - `SECURITY_SLO_MAX_RATE_LIMIT_EXCEEDED` (default `300`)
   - `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE` (default `5`; absolute terminal FAILED count threshold)
+  - `SECURITY_SLO_MAX_LOW_SAMPLE_NOTIFICATION_FAILED_ABSOLUTE` (default `0`; hard-fail threshold for failed terminal notifications during low-sample windows)
   - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (default `0.25`)
   - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (default `20`; minimum terminal delivery sample before ratio alerting)
   - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (default `true`; advisory when terminal sample is below ratio activation window)
   - `SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS` (default `20`; auth OTP notification delivery p95 threshold)
+  - `SECURITY_SLO_MAX_AUTH_NOTIFICATION_FAILED_ABSOLUTE` (default `0`; hard-fail threshold for auth-scope terminal delivery failures)
   - `SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE` (default `10`; minimum auth notification sample before p95 is enforced)
   - `SECURITY_SLO_WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE` (default `true`; advisory when auth sample is low)
   - `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_BATCH_SIZE` (default `10`; inline auth dispatch batch size)
   - `NOTIFICATION_OUTBOX_IMMEDIATE_DISPATCH_THROTTLE_MS` (default `5000`; inline auth dispatch cooldown in ms)
 - Exit code `1` indicates threshold breach and should be treated as an alert signal.
-- When low-sample advisory is active, the report prints `WARN` but keeps exit code `0` (informational signal, not a hard breach).
+- Low-sample windows stay advisory-only only when there are no terminal failures. Any terminal failures during a low-sample window now trigger the absolute-failure guard and return exit code `1`.
 
 Notification canary:
 - `run-notification-canary.sh` runs every 30 minutes via cron with `scope=ops-notification-canary`.

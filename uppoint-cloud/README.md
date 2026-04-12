@@ -39,6 +39,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - terminate-all-sessions now requires explicit popup confirmation
     - danger-zone account deletion now requires email OTP + SMS OTP verification before final deletion
     - active session summary with latest device/IP visibility
+    - session counts are intentionally presented as a minimum verified active-session footprint under JWT strategy
     - searchable, paginated security event table (date/event/IP/device)
   - Route protection via proxy + server-side checks
   - JWT session revocation via `User.tokenVersion` checks
@@ -199,10 +200,12 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `SECURITY_SLO_MAX_PASSWORD_RESET_FAILED` (optional, default `60`)
 - `SECURITY_SLO_MAX_RATE_LIMIT_EXCEEDED` (optional, default `300`)
 - `SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE` (optional, default `5`; alerts on absolute terminal failure count)
+- `SECURITY_SLO_MAX_LOW_SAMPLE_NOTIFICATION_FAILED_ABSOLUTE` (optional, default `0`; hard-fails when terminal notification failures occur during low-sample windows)
 - `SECURITY_SLO_MAX_NOTIFICATION_DELIVERY_FAILURE_RATIO` (optional, default `0.25`)
 - `SECURITY_SLO_MIN_NOTIFICATION_TERMINAL` (optional, default `20`; minimum terminal delivery sample before failure-ratio alerts are enforced)
 - `SECURITY_SLO_WARN_ON_LOW_NOTIFICATION_SAMPLE` (optional, default `true`; emits advisory when terminal sample is below ratio-threshold activation window)
 - `SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS` (optional, default `20`; auth notification p95 delivery latency threshold in seconds)
+- `SECURITY_SLO_MAX_AUTH_NOTIFICATION_FAILED_ABSOLUTE` (optional, default `0`; hard-fails on auth-scope terminal delivery failures in the lookback window)
 - `SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE` (optional, default `10`; minimum auth notification sample before latency threshold is enforced)
 - `SECURITY_SLO_WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE` (optional, default `true`; emits advisory when auth latency sample is below activation window)
 - `UPPOINT_NOTIFICATION_CANARY_ENABLED` (optional, default `true`; enables notification canary cron logic)

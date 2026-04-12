@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   AccountProfileError,
@@ -141,7 +142,11 @@ export async function PATCH(request: Request) {
         result: "FAILURE",
         step: verificationStep,
       });
-      console.error("Failed to update account profile name", error);
+      logServerError("account_profile_name_update_failed", error, {
+        route: "/api/auth/account/profile",
+        verificationStep,
+        userId: session.user.id,
+      });
       return NextResponse.json(
         fail(
           verificationStep === "start"

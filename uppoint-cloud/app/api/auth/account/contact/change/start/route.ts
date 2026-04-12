@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { AccountProfileError, startAccountContactChangeChallenge } from "@/modules/auth/server/account-profile";
 import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
@@ -143,7 +144,11 @@ export async function POST(request: Request) {
         result: "FAILURE",
         step: "start",
       });
-      console.error("Failed to start account contact change", error);
+      logServerError("account_contact_change_start_failed", error, {
+        route: "/api/auth/account/contact/change/start",
+        targetIdentifier,
+        userId: session.user.id,
+      });
       return NextResponse.json(fail("ACCOUNT_CONTACT_CHANGE_START_FAILED"), { status: 500 });
     }
   });

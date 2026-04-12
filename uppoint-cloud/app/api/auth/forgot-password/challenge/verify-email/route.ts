@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   PasswordResetChallengeError,
@@ -106,7 +107,10 @@ export async function POST(request: Request) {
         step: "verify_email",
         reason: "FORGOT_PASSWORD_VERIFY_EMAIL_FAILED",
       });
-      console.error("Failed to verify forgot-password email code", error);
+      logServerError("forgot_password_verify_email_failed", error, {
+        route: "/api/auth/forgot-password/challenge/verify-email",
+        challengeId,
+      });
       return NextResponse.json(fail("FORGOT_PASSWORD_VERIFY_EMAIL_FAILED"), {
         status: 500,
       });

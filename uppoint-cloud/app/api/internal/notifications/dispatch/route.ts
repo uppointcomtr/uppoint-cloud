@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { withRateLimitByIdentifier } from "@/lib/rate-limit";
 import { enforceInternalRouteGuard } from "@/lib/security/internal-route-guard";
 import { dispatchNotificationOutboxBatch } from "@/modules/notifications/server/outbox";
@@ -73,7 +74,10 @@ export async function POST(request: Request) {
       result: "FAILURE",
       reason: "DISPATCH_FAILED",
     });
-    console.error("Failed to dispatch notification outbox batch", error);
+    logServerError("internal_notification_dispatch_failed", error, {
+      route: "/api/internal/notifications/dispatch",
+      requestId: verifiedRequest.requestId,
+    });
     return NextResponse.json(fail("DISPATCH_FAILED"), { status: 500 });
   }
 }

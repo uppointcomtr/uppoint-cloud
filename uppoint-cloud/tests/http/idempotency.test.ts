@@ -204,8 +204,8 @@ describe("withIdempotency", () => {
     expect(response.headers.get("X-Idempotency-Persisted")).toBe("false");
     await expect(response.json()).resolves.toEqual({ ok: true });
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "[idempotency] Failed to persist response cache entry",
-      expect.any(Error),
+      "[server-error] idempotency_persist_response_failed",
+      expect.stringContaining("\"message\":\"persist failed\""),
     );
     consoleErrorSpy.mockRestore();
   });

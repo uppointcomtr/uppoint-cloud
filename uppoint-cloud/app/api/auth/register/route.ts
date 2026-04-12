@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 import {
@@ -149,7 +150,9 @@ export async function POST(request: Request) {
       step: "start",
       reason: "REGISTER_VERIFICATION_START_FAILED",
     });
-    console.error("Failed to register user", error);
+    logServerError("register_verification_start_failed", error, {
+      route: "/api/auth/register",
+    });
     return NextResponse.json(fail("REGISTER_VERIFICATION_START_FAILED"), {
       status: 500,
     });

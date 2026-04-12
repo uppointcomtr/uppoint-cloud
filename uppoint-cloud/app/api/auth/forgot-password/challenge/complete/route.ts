@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   completePasswordResetChallenge,
@@ -90,7 +91,10 @@ export async function POST(request: Request) {
       step: "complete",
       reason: "FORGOT_PASSWORD_COMPLETE_FAILED",
     });
-    console.error("Failed to complete forgot-password challenge", error);
+    logServerError("forgot_password_complete_failed", error, {
+      route: "/api/auth/forgot-password/challenge/complete",
+      challengeId,
+    });
     return NextResponse.json(fail("FORGOT_PASSWORD_COMPLETE_FAILED"), {
       status: 500,
     });

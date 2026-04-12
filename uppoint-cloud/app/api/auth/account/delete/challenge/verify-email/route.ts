@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 import {
@@ -132,7 +133,11 @@ export async function POST(request: Request) {
         step: "verify_email",
         reason: "ACCOUNT_DELETE_VERIFY_EMAIL_FAILED",
       });
-      console.error("Failed to verify account-delete email code", error);
+      logServerError("account_delete_verify_email_failed", error, {
+        route: "/api/auth/account/delete/challenge/verify-email",
+        challengeId,
+        userId: session.user.id,
+      });
       return NextResponse.json(fail("ACCOUNT_DELETE_VERIFY_EMAIL_FAILED"), { status: 500 });
     }
   });

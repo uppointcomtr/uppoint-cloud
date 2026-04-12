@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/http/response";
 import { withIdempotency } from "@/lib/http/idempotency";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 import {
@@ -130,7 +131,11 @@ export async function POST(request: Request) {
         step: "complete",
         reason: "ACCOUNT_DELETE_COMPLETE_FAILED",
       });
-      console.error("Failed to complete account-delete challenge", error);
+      logServerError("account_delete_complete_failed", error, {
+        route: "/api/auth/account/delete",
+        challengeId: parsed.data.challengeId,
+        userId: session.user.id,
+      });
       return NextResponse.json(fail("ACCOUNT_DELETE_COMPLETE_FAILED"), { status: 500 });
     }
 

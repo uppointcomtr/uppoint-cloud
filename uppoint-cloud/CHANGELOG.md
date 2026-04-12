@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-12 (safe logging + session semantics + low-sample SLO hardening)
+
+### Changed
+- Replaced raw server-side error-object logging with a structured safe logger across auth routes, internal dispatch, audit fallback, idempotency, outbox, and rate-limit paths.
+- Added a security guardrail test to block reintroduction of raw `console.error(..., error)` patterns in server-side auth/internal route surfaces.
+- Corrected dashboard session wording so JWT-backed session counts are presented as a minimum verified active-session footprint instead of an exact count.
+- Hardened security SLO behavior for low-volume windows:
+  - terminal notification failures during low-sample windows now hard-fail,
+  - auth-scope terminal delivery failures now hard-fail even when auth sample size is low.
+- Updated README and ops documentation with the new SLO environment knobs and session-count semantics.
+
 ## 2026-04-12 (audit semantics + gate freshness revalidation)
 
 ### Changed

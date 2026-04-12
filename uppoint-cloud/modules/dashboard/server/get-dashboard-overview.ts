@@ -234,8 +234,8 @@ export async function getDashboardOverview(
     isSelected: tenantContext?.tenantId === option.tenantId,
   }));
 
-  // JWT strategy may not persist rows in Session table for every active browser tab/device.
-  // Since this function runs only for an authenticated user context, active session count must be at least 1.
+  // JWT strategy does not persist every browser/device session row.
+  // Treat the count as a lower-bound signal and never present "0" for an authenticated request.
   const normalizedActiveSessions = Math.max(activeSessions, 1);
 
   return {

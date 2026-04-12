@@ -9,6 +9,7 @@ import { createClient, type RedisClientType } from "redis";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { resolveTrustedClientIp } from "@/lib/security/client-ip";
 
 const upstashConfig = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN
@@ -68,7 +69,9 @@ async function getLocalRedisClient(): Promise<RedisClientType | null> {
       if (!localRedisClient) {
         localRedisClient = createClient({ url: localRedisUrl });
         localRedisClient.on("error", (error) => {
-          console.error("[rate-limit] Local Redis client error:", error);
+          logServerError("rate_limit_local_redis_client_error", error, {
+            backend: "redis-local",
+          });
         });
       }
 
@@ -78,7 +81,9 @@ async function getLocalRedisClient(): Promise<RedisClientType | null> {
 
       return localRedisClient;
     } catch (error) {
-      console.error("[rate-limit] Unable to connect local Redis, falling back:", error);
+      logServerError("rate_limit_local_redis_connect_failed", error, {
+        backend: "redis-local",
+      });
       return null;
     } finally {
       localRedisConnectPromise = null;
@@ -129,7 +134,10 @@ async function checkLocalRedisRateLimit(
       retryAfterSeconds,
     };
   } catch (error) {
-    console.error("[rate-limit] Local Redis eval error, falling back:", action, error);
+    logServerError("rate_limit_local_redis_eval_failed", error, {
+      backend: "redis-local",
+      action,
+    });
     return null;
   }
 }
@@ -296,7 +304,10 @@ async function checkPrismaFallbackRateLimit(
       }
 
       // Security-sensitive: auth endpoints must not fail open under limiter backend failures.
-      console.error("[rate-limit] Database error — failing closed for action:", action, error);
+      logServerError("rate_limit_database_failed_closed", error, {
+        backend: "prisma-fallback",
+        action,
+      });
       return {
         allowed: false,
         retryAfterSeconds: Math.max(1, windowSeconds),
@@ -474,7 +485,10 @@ export async function checkRateLimit(
         retryAfterSeconds,
       };
     } catch (error) {
-      console.error("[rate-limit] Upstash error, falling back to Prisma:", action, error);
+      logServerError("rate_limit_upstash_fallback", error, {
+        backend: "redis-upstash",
+        action,
+      });
     }
   }
 

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/db/client";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { sendAuthEmail } from "@/modules/auth/server/email-service";
 import { sendAuthSms } from "@/modules/auth/server/sms-service";
 import { openNotificationPayload, sealNotificationPayload } from "@/modules/notifications/server/payload-crypto";
@@ -276,7 +277,9 @@ function triggerImmediateDispatchBestEffort(): void {
     .then(() => undefined)
     .catch((error) => {
       // Best-effort optimization: cron dispatcher remains the canonical fallback.
-      console.error("Immediate notification dispatch attempt failed", error);
+      logServerError("notification_inline_dispatch_failed", error, {
+        mode: "best-effort-inline",
+      });
     })
     .finally(() => {
       immediateDispatchInFlight = null;

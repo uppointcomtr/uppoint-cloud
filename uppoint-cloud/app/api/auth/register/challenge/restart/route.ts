@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   RegisterVerificationChallengeError,
@@ -99,7 +100,10 @@ export async function POST(request: Request) {
       step: "restart",
       reason: "REGISTER_VERIFY_RESTART_FAILED",
     });
-    console.error("Failed to restart register verification challenge", error);
+    logServerError("register_verification_restart_failed", error, {
+      route: "/api/auth/register/challenge/restart",
+      challengeId,
+    });
     return NextResponse.json(fail("REGISTER_VERIFY_RESTART_FAILED"), { status: 500 });
   }
   });

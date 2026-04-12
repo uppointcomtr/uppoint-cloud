@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   RegisterVerificationChallengeError,
@@ -93,7 +94,10 @@ export async function POST(request: Request) {
       step: "verify_sms",
       reason: "REGISTER_VERIFY_SMS_FAILED",
     });
-    console.error("Failed to verify register SMS code", error);
+    logServerError("register_verify_sms_failed", error, {
+      route: "/api/auth/register/challenge/verify-sms",
+      challengeId,
+    });
     return NextResponse.json(fail("REGISTER_VERIFY_SMS_FAILED"), { status: 500 });
   }
   });

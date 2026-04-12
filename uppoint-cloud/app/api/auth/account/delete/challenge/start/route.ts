@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { logAuthInvalidBody } from "@/modules/auth/server/route-audit";
 import {
@@ -103,7 +104,10 @@ export async function POST(request: Request) {
         step: "start",
         reason: "ACCOUNT_DELETE_CHALLENGE_START_FAILED",
       });
-      console.error("Failed to start account-delete challenge", error);
+      logServerError("account_delete_challenge_start_failed", error, {
+        route: "/api/auth/account/delete/challenge/start",
+        userId: session.user.id,
+      });
       return NextResponse.json(fail("ACCOUNT_DELETE_CHALLENGE_START_FAILED"), { status: 500 });
     }
   });

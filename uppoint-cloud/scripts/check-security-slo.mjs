@@ -17,6 +17,10 @@ const MAX_NOTIFICATION_FAILED_ABSOLUTE = Number.parseInt(
   process.env.SECURITY_SLO_MAX_NOTIFICATION_FAILED_ABSOLUTE || "3",
   10,
 );
+const MAX_LOW_SAMPLE_NOTIFICATION_FAILED_ABSOLUTE = Number.parseInt(
+  process.env.SECURITY_SLO_MAX_LOW_SAMPLE_NOTIFICATION_FAILED_ABSOLUTE || "0",
+  10,
+);
 const MIN_NOTIFICATION_TERMINAL_SAMPLE = Number.parseInt(
   process.env.SECURITY_SLO_MIN_NOTIFICATION_TERMINAL || "20",
   10,
@@ -35,6 +39,10 @@ const MAX_NOTIFICATION_STALE_LOCKS = Number.parseInt(
 );
 const MAX_AUTH_NOTIFICATION_P95_SECONDS = Number.parseFloat(
   process.env.SECURITY_SLO_MAX_AUTH_NOTIFICATION_P95_SECONDS || "20",
+);
+const MAX_AUTH_NOTIFICATION_FAILED_ABSOLUTE = Number.parseInt(
+  process.env.SECURITY_SLO_MAX_AUTH_NOTIFICATION_FAILED_ABSOLUTE || "0",
+  10,
 );
 const MIN_AUTH_NOTIFICATION_SAMPLE = Number.parseInt(
   process.env.SECURITY_SLO_MIN_AUTH_NOTIFICATION_SAMPLE || "10",
@@ -154,9 +162,20 @@ async function main() {
       AND COALESCE("metadata"->>'scope', '') LIKE 'auth-%'
       AND EXTRACT(EPOCH FROM ("sentAt" - "createdAt")) >= 0
   `;
+  const [authNotificationCountRow] = await prisma.$queryRaw`
+    SELECT
+      COUNT(*) FILTER (WHERE "status" = 'SENT'::"NotificationOutboxStatus")::bigint AS sent_count,
+      COUNT(*) FILTER (WHERE "status" = 'FAILED'::"NotificationOutboxStatus")::bigint AS failed_count
+    FROM "NotificationOutbox"
+    WHERE "updatedAt" >= ${since}
+      AND COALESCE("metadata"->>'scope', '') LIKE 'auth-%'
+  `;
   const authNotificationSampleSize = Number(authLatencyRow?.sample_size ?? 0);
   const authNotificationAvgSeconds = Number(authLatencyRow?.avg_seconds ?? 0);
   const authNotificationP95Seconds = Number(authLatencyRow?.p95_seconds ?? 0);
+  const authNotificationSentCount = Number(authNotificationCountRow?.sent_count ?? 0);
+  const authNotificationFailedCount = Number(authNotificationCountRow?.failed_count ?? 0);
+  const authNotificationTerminalCount = authNotificationSentCount + authNotificationFailedCount;
   const notificationStaleLockThreshold = safeInt(MAX_NOTIFICATION_STALE_LOCKS, 25, 0);
   const staleLockCutoff = new Date(Date.now() - safeInt(NOTIFICATION_LOCK_STALE_SECONDS, 120) * 1000);
   const notificationStaleLockCount = await prisma.notificationOutbox.count({
@@ -185,6 +204,7 @@ async function main() {
 
   const maxFailureRatio = safeRatio(MAX_NOTIFICATION_FAILURE_RATIO, 0.25);
   const maxNotificationFailedAbsolute = safeInt(MAX_NOTIFICATION_FAILED_ABSOLUTE, 3);
+  const maxLowSampleNotificationFailedAbsolute = safeInt(MAX_LOW_SAMPLE_NOTIFICATION_FAILED_ABSOLUTE, 0, 0);
   const minNotificationTerminalSample = safeInt(MIN_NOTIFICATION_TERMINAL_SAMPLE, 20);
   if (notificationFailedCount > maxNotificationFailedAbsolute) {
     violations.push({
@@ -216,6 +236,18 @@ async function main() {
       note: "Failure-ratio alerting is not active until minimum terminal sample is reached and no canary terminal sample was observed.",
     });
   }
+  if (
+    terminalDeliveryCount < minNotificationTerminalSample
+    && notificationFailedCount > maxLowSampleNotificationFailedAbsolute
+  ) {
+    violations.push({
+      type: "notification_delivery_failed_low_sample_absolute",
+      failed: notificationFailedCount,
+      threshold: maxLowSampleNotificationFailedAbsolute,
+      terminal: terminalDeliveryCount,
+      minTerminalSample: minNotificationTerminalSample,
+    });
+  }
   if (notificationStaleLockCount > notificationStaleLockThreshold) {
     violations.push({
       type: "notification_stale_lock_threshold",
@@ -226,7 +258,17 @@ async function main() {
   }
 
   const maxAuthNotificationP95Seconds = safePositiveNumber(MAX_AUTH_NOTIFICATION_P95_SECONDS, 20, 1);
+  const maxAuthNotificationFailedAbsolute = safeInt(MAX_AUTH_NOTIFICATION_FAILED_ABSOLUTE, 0, 0);
   const minAuthNotificationSample = safeInt(MIN_AUTH_NOTIFICATION_SAMPLE, 10);
+  if (authNotificationFailedCount > maxAuthNotificationFailedAbsolute) {
+    violations.push({
+      type: "auth_notification_failed_absolute",
+      failed: authNotificationFailedCount,
+      threshold: maxAuthNotificationFailedAbsolute,
+      terminal: authNotificationTerminalCount,
+      sent: authNotificationSentCount,
+    });
+  }
   if (authNotificationSampleSize >= minAuthNotificationSample && authNotificationP95Seconds > maxAuthNotificationP95Seconds) {
     violations.push({
       type: "auth_notification_latency_p95",
@@ -270,6 +312,9 @@ async function main() {
         p95Seconds: Number(authNotificationP95Seconds.toFixed(2)),
         maxP95Seconds: maxAuthNotificationP95Seconds,
         sample: authNotificationSampleSize,
+        sent: authNotificationSentCount,
+        failed: authNotificationFailedCount,
+        terminal: authNotificationTerminalCount,
         minSample: minAuthNotificationSample,
         warnOnLowSample: isTruthy(WARN_ON_LOW_AUTH_NOTIFICATION_SAMPLE),
       },

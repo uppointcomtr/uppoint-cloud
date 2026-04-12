@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   LoginChallengeError,
@@ -98,7 +99,10 @@ export async function POST(request: Request) {
       mode: "phone",
       reason: "LOGIN_CHALLENGE_VERIFY_FAILED",
     });
-    console.error("Failed to verify phone login challenge", error);
+    logServerError("login_phone_challenge_verify_failed", error, {
+      route: "/api/auth/login/challenge/phone/verify",
+      challengeId,
+    });
     return NextResponse.json(fail("LOGIN_CHALLENGE_VERIFY_FAILED"), {
       status: 500,
     });

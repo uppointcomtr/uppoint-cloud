@@ -4,6 +4,7 @@ import { z } from "zod";
 import { logAudit } from "@/lib/audit-log";
 import { withIdempotency } from "@/lib/http/idempotency";
 import { fail, ok } from "@/lib/http/response";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import {
   PasswordResetChallengeError,
@@ -103,7 +104,10 @@ export async function POST(request: Request) {
       step: "verify_sms",
       reason: "FORGOT_PASSWORD_VERIFY_SMS_FAILED",
     });
-    console.error("Failed to verify forgot-password SMS code", error);
+    logServerError("forgot_password_verify_sms_failed", error, {
+      route: "/api/auth/forgot-password/challenge/verify-sms",
+      challengeId,
+    });
     return NextResponse.json(fail("FORGOT_PASSWORD_VERIFY_SMS_FAILED"), {
       status: 500,
     });

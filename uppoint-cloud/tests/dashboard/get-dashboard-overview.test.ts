@@ -187,7 +187,7 @@ describe("getDashboardOverview", () => {
     );
   });
 
-  it("reports at least one active session for authenticated JWT session context", async () => {
+  it("reports a lower-bound minimum of one active session for authenticated JWT context", async () => {
     const dependencies = createBaseDependencies({
       countUserActiveSessions: vi.fn(async () => 0),
     });

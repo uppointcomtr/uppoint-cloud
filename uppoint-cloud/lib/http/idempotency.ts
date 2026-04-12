@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
 
 import { prisma } from "@/db/client";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 
 const DEFAULT_TTL_SECONDS = 10 * 60;
 const DEFAULT_SUBJECT_HASH = "global";
@@ -456,7 +457,9 @@ export async function withIdempotency(
   } catch (error) {
     // Security-sensitive: do not silently swallow persistence failures; keep reservation active longer.
     await extendPendingReservationOnPersistFailure(action, key, subjectHash).catch(() => undefined);
-    console.error("[idempotency] Failed to persist response cache entry", error);
+    logServerError("idempotency_persist_response_failed", error, {
+      action,
+    });
 
     try {
       response.headers.set("X-Idempotency-Persisted", "false");

@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 
 import { prisma } from "@/db/client";
 import { env } from "@/lib/env";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { resolveTrustedClientIp } from "@/lib/security/client-ip";
 
 export type AuditAction =
@@ -606,6 +607,8 @@ export async function logAudit(
     };
     await writeAuditFallbackLine(fallbackPayload);
     console.error("[audit-fallback]", JSON.stringify(fallbackPayload));
-    console.error("[audit] Failed to write audit log:", action, error);
+    logServerError("audit_log_write_failed", error, {
+      action,
+    });
   }
 }
