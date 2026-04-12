@@ -156,6 +156,7 @@ describe("getDashboardOverview", () => {
       countUserNotificationByStatus,
       countUserAuditFailuresSince,
       listRecentUserAuditEvents,
+      logAudit: vi.fn(async () => {}),
     });
 
     const result = await getDashboardOverview({
@@ -175,6 +176,15 @@ describe("getDashboardOverview", () => {
     expect(countUserNotificationByStatus).not.toHaveBeenCalled();
     expect(countUserAuditFailuresSince).not.toHaveBeenCalled();
     expect(listRecentUserAuditEvents).not.toHaveBeenCalled();
+    expect(dependencies.logAudit).toHaveBeenCalledWith(
+      "tenant_selection_required",
+      "unknown",
+      "user_1",
+      expect.objectContaining({
+        reason: "TENANT_SELECTION_REQUIRED",
+        result: "FAILURE",
+      }),
+    );
   });
 
   it("reports at least one active session for authenticated JWT session context", async () => {

@@ -489,6 +489,12 @@ Run this checklist after deployment or UI-affecting changes:
 - Auth OTP verify endpoints include both IP and challenge-id based limiter layers.
 - `logAudit()` emits structured `[security-signal]` log lines for high-risk auth/tenant failures (`rate_limit_exceeded`, OTP failures, tenant access denials) to support alert pipelines.
 - Production edge guard rejects invalid host/origin requests (`INVALID_HOST_HEADER`, `ORIGIN_NOT_ALLOWED`) and emits edge rejection events into audit storage via internal ingest route.
+- Edge security telemetry treats non-2xx internal audit ingest responses as delivery failures and emits structured local error logs instead of silently succeeding.
+- Dashboard tenant resolution audit semantics distinguish:
+  - missing tenant context,
+  - explicit tenant selection required,
+  - invalid tenant selection input,
+  - verified tenant access denial.
 - CSP is nonce-based at Nginx layer: per-request `$request_id` is used as script/style nonce and injected into HTML tags via `sub_filter`.
 - Both `script-src` and `style-src` avoid `unsafe-inline`; nonce is enforced for inline script/style tags.
 - Health endpoint exposure is minimized:

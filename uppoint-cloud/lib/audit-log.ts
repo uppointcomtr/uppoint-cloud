@@ -56,6 +56,8 @@ export type AuditAction =
   | "tenant_access_denied"
   | "tenant_role_insufficient"
   | "tenant_context_missing"
+  | "tenant_selection_required"
+  | "tenant_selection_invalid"
   | "user_soft_deleted";
 
 const SENSITIVE_KEY_PATTERN = /(password|secret|token|authorization|cookie|email|phone|name|fullName|firstName|lastName|address)/i;

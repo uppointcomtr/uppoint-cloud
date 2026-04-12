@@ -62,6 +62,13 @@ export interface DashboardOverview {
   runtime: DashboardRuntimeSummary;
 }
 
+interface DashboardAuditContext {
+  ip: string | null;
+  requestId: string | null;
+  userAgent: string | null;
+  forwardedFor: string | null;
+}
+
 export interface DashboardOverviewDependencies {
   resolveTenantContext: (input: {
     userId: string;
@@ -108,6 +115,20 @@ function resolveRateLimitBackend(): DashboardRuntimeSummary["rateLimitBackend"] 
   return "prisma-fallback";
 }
 
+function resolveTenantContextAuditAction(
+  code: UserTenantContextError["code"],
+): "tenant_context_missing" | "tenant_access_denied" | "tenant_selection_required" {
+  switch (code) {
+    case "TENANT_NOT_FOUND":
+      return "tenant_context_missing";
+    case "TENANT_SELECTION_REQUIRED":
+      return "tenant_selection_required";
+    case "TENANT_ACCESS_DENIED":
+    default:
+      return "tenant_access_denied";
+  }
+}
+
 export async function getDashboardOverview(
   input: {
     userId: string;
@@ -115,6 +136,8 @@ export async function getDashboardOverview(
     tenantId?: string;
     currentRequestIp?: string | null;
     currentRequestUserAgent?: string | null;
+    currentRequestId?: string | null;
+    currentForwardedFor?: string | null;
   },
   dependencies: DashboardOverviewDependencies = defaultDependencies,
 ): Promise<DashboardOverview> {
@@ -122,6 +145,12 @@ export async function getDashboardOverview(
   const since24h = new Date(now.getTime() - (24 * 60 * 60 * 1000));
   let tenantContext: DashboardTenantContext | null = null;
   let tenantErrorCode: UserTenantContextError["code"] | null = null;
+  const auditContext: DashboardAuditContext = {
+    ip: input.currentRequestIp?.trim() || null,
+    requestId: input.currentRequestId?.trim() || null,
+    userAgent: input.currentRequestUserAgent?.trim() || null,
+    forwardedFor: input.currentForwardedFor?.trim() || null,
+  };
 
   try {
     tenantContext = await dependencies.resolveTenantContext({
@@ -133,13 +162,16 @@ export async function getDashboardOverview(
     if (error instanceof UserTenantContextError) {
       tenantErrorCode = error.code;
       await dependencies.logAudit(
-        error.code === "TENANT_NOT_FOUND" ? "tenant_context_missing" : "tenant_access_denied",
-        "unknown",
+        resolveTenantContextAuditAction(error.code),
+        auditContext.ip ?? "unknown",
         input.userId,
         {
           reason: error.code,
           tenantId: input.tenantId ?? null,
           result: "FAILURE",
+          requestId: auditContext.requestId,
+          userAgent: auditContext.userAgent,
+          forwardedFor: auditContext.forwardedFor,
         },
       );
     } else {

@@ -155,7 +155,7 @@ export function DashboardPanel({
               </div>
             </Link>
             <div className="h-4 w-px shrink-0 bg-border/60" />
-            <span className="corp-kicker leading-none">Control Plane</span>
+            <span className="corp-kicker leading-none">CLOUD PANEL</span>
           </div>
 
           {/* Nav */}

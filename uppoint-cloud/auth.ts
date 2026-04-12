@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 import { prisma } from "@/db/client";
+import { findActiveUserSessionSnapshot } from "@/db/repositories/auth-login-repository";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { generateSessionJti, isSessionJtiRevoked } from "@/lib/session-revocation";
@@ -213,14 +214,7 @@ export const authOptions: NextAuthOptions = {
         return token;
       }
 
-      const currentUser = await prisma.user.findFirst({
-        where: { id: token.sub, deletedAt: null },
-        select: {
-          tokenVersion: true,
-          email: true,
-          name: true,
-        },
-      });
+      const currentUser = await findActiveUserSessionSnapshot(token.sub);
 
       const tokenVersion = typeof token.tokenVersion === "number" ? token.tokenVersion : 0;
 

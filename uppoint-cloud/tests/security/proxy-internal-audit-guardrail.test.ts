@@ -24,6 +24,7 @@ describe("proxy internal audit ingress guardrail", () => {
 
     expect(proxySource).toContain('"x-real-ip": "127.0.0.1"');
     expect(proxySource).toContain('"x-internal-transport": INTERNAL_AUTH_TRANSPORT_MODE');
+    expect(proxySource).toContain("if (!response.ok)");
     expect(proxySource).toContain("[edge-audit-emit] failed");
   });
 });

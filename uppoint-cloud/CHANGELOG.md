@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-04-12 (audit semantics + gate freshness revalidation)
+
+### Changed
+- Hardened edge security telemetry delivery semantics:
+  - `proxy.ts` now treats non-2xx responses from `/api/internal/audit/security-event` as explicit delivery failures instead of silent success.
+- Corrected dashboard tenant-resolution audit semantics:
+  - `TENANT_SELECTION_REQUIRED` now records a dedicated `tenant_selection_required` audit action,
+  - invalid tenant query input now records `tenant_selection_invalid`,
+  - dashboard tenant-resolution audit writes now carry request context (`ip`, `requestId`, `userAgent`, `forwardedFor`) when available.
+- Reduced sampled boundary drift:
+  - `modules/dashboard/server/page-loader.ts` now uses validated env access instead of direct `process.env.NODE_ENV`,
+  - `auth.ts` session revalidation path now uses repository-backed user lookup instead of direct inline Prisma model access.
+- Refreshed stale closure evidence in `FINDINGS_REGISTER.md` so `verify:findings-freshness` and the canonical security gate remain actionable.
+- Updated README security notes to reflect:
+  - edge audit non-2xx failure handling,
+  - distinct tenant audit semantics for missing/required/invalid tenant context.
+
 ## 2026-03-15 (account phone-change flow: verify current phone)
 
 ### Changed

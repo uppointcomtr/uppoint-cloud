@@ -87,6 +87,27 @@ export async function findActiveUserByPhoneForLogin(
   };
 }
 
+export async function findActiveUserSessionSnapshot(
+  userId: string,
+  client: AuthLoginRepositoryClient = prisma,
+): Promise<{
+  tokenVersion: number;
+  email: string;
+  name: string | null;
+} | null> {
+  return client.user.findFirst({
+    where: {
+      id: userId,
+      deletedAt: null,
+    },
+    select: {
+      tokenVersion: true,
+      email: true,
+      name: true,
+    },
+  });
+}
+
 export async function clearFailedLoginAttempts(
   userId: string,
   client: AuthLoginRepositoryClient = prisma,

@@ -230,7 +230,7 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
     const canonical = `POST\n/api/internal/audit/security-event\n${internalRequestId}\n${timestamp}\n${bodySha}`;
     const signature = await hmacSha256Hex(INTERNAL_AUDIT_SIGNING_SECRET, canonical);
 
-    await fetch(INTERNAL_AUDIT_URL, {
+    const response = await fetch(INTERNAL_AUDIT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -245,6 +245,10 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
       },
       body,
     });
+
+    if (!response.ok) {
+      throw new Error(`INTERNAL_AUDIT_HTTP_${response.status}`);
+    }
   })().catch(() => {
     // Security telemetry must never block user-facing responses, but failures must be visible.
     console.error(
@@ -254,6 +258,7 @@ function emitEdgeSecurityAudit(event: EdgeSecurityAuditEvent): void {
         requestId: event.requestId,
         path: event.path,
         method: event.method,
+        status: "non-ok-or-network-failure",
       }),
     );
   });
