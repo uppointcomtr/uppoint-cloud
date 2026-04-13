@@ -162,34 +162,6 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
   );
 }
 
-export function QuickActionsCard({ locale, overview, labels }: DashboardSectionProps) {
-  return (
-    <Card className={corporateCardClass}>
-      <CardHeader>
-        <CardTitle className="corp-section-title">{labels.quickActions.title}</CardTitle>
-        <CardDescription>{labels.quickActions.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-wrap gap-3">
-        <Button asChild variant="outline">
-          <Link prefetch={false} href={withLocale("/forgot-password", locale)}>
-            {labels.quickActions.resetPassword}
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link prefetch={false} href={withLocale("/login", locale)}>
-            {labels.quickActions.openLogin}
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href={overview.runtime.appUrl} target="_blank" rel="noreferrer">
-            {labels.quickActions.openPublicApp}
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function NotificationsCard({ overview, labels }: Pick<DashboardSectionProps, "overview" | "labels">) {
   const hasNotificationIssues = overview.notifications.failed24h > 0;
 

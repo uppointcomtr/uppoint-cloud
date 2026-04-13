@@ -621,13 +621,6 @@ export const trMessages = {
       billing: "Faturalama",
       comingSoon: "Yakında",
     },
-    quickActions: {
-      title: "Hızlı işlemler",
-      description: "Hesap güvenliği ve erişim için sık kullanılan adımlar.",
-      resetPassword: "Şifreyi yenile",
-      openLogin: "Yeni oturum başlat",
-      openPublicApp: "Genel giriş sayfasını aç",
-    },
     tenant: {
       title: "Tenant bağlamı",
       description: "Aktif üyelik ve rol durumunun doğrulanmış özeti.",

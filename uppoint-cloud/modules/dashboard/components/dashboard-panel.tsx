@@ -17,7 +17,6 @@ import {
   ModulesCard,
   NotificationsCard,
   OverviewCards,
-  QuickActionsCard,
   TenantCard,
   type DashboardActiveSection,
 } from "./dashboard-section-cards";
@@ -236,7 +235,6 @@ export function DashboardPanel({
           {activeSection === "overview" ? (
             <>
               <OverviewCards locale={locale} overview={overview} labels={dashboard} />
-              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
 
@@ -285,21 +283,18 @@ export function DashboardPanel({
           {activeSection === "notifications" ? (
             <>
               <NotificationsCard overview={overview} labels={dashboard} />
-              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
 
           {activeSection === "tenant" ? (
             <>
               <TenantCard locale={locale} activeSection={activeSection} overview={overview} labels={dashboard} />
-              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
 
           {activeSection === "modules" ? (
             <>
               <ModulesCard labels={dashboard} />
-              <QuickActionsCard locale={locale} overview={overview} labels={dashboard} />
             </>
           ) : null}
         </section>

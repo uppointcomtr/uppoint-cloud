@@ -52,6 +52,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Notification outbox + async dispatcher for SMTP email + Verimor SMS
     - auth flows enqueue notifications and trigger a best-effort immediate dispatch
     - minute-based cron dispatcher remains the reliability fallback
+    - all outbox-delivered emails now render through one shared corporate HTML template with plain-text fallback and light/dark mail-client support
   - Token-based password reset completion after dual verification
   - Identifier + IP based auth rate-limiting (email/phone/user + IP)
 - Root entry (`/` and `/:locale`) redirects directly to localized login page
@@ -263,6 +264,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Account deletion challenge service: [modules/auth/server/account-delete-challenge.ts](/opt/uppoint-cloud/modules/auth/server/account-delete-challenge.ts)
 - Account profile and contact-change service: [modules/auth/server/account-profile.ts](/opt/uppoint-cloud/modules/auth/server/account-profile.ts)
 - Notification outbox service: [modules/notifications/server/outbox.ts](/opt/uppoint-cloud/modules/notifications/server/outbox.ts)
+- Shared system email template: [modules/notifications/server/email-template.ts](/opt/uppoint-cloud/modules/notifications/server/email-template.ts)
 - User soft-delete lifecycle service: [modules/auth/server/user-lifecycle.ts](/opt/uppoint-cloud/modules/auth/server/user-lifecycle.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)

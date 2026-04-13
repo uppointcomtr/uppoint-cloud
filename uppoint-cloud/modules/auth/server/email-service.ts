@@ -3,6 +3,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 
 import { env } from "@/lib/env";
+import { renderSharedEmailTemplate } from "@/modules/notifications/server/email-template";
 
 let transporter: nodemailer.Transporter | null = null;
 
@@ -66,11 +67,17 @@ export async function sendAuthEmail(options: {
 
   const smtpConfig = getRequiredSmtpConfig();
   const smtpTransporter = getTransporter();
+  const html = renderSharedEmailTemplate({
+    appUrl: env.NEXT_PUBLIC_APP_URL,
+    subject: options.subject,
+    text: options.text,
+  });
 
   await smtpTransporter.sendMail({
     from: smtpConfig.fromEmail,
     to: options.to,
     subject: options.subject,
     text: options.text,
+    html,
   });
 }

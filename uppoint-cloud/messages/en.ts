@@ -621,13 +621,6 @@ export const enMessages = {
       billing: "Billing",
       comingSoon: "Coming soon",
     },
-    quickActions: {
-      title: "Quick actions",
-      description: "Common account security and access actions.",
-      resetPassword: "Reset password",
-      openLogin: "Open new sign-in",
-      openPublicApp: "Open public sign-in page",
-    },
     tenant: {
       title: "Tenant context",
       description: "Verified summary of active membership and role context.",

@@ -336,6 +336,14 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Prefer a maintainable token/theme-based approach so theme behavior remains predictable as the product grows
 * If a theme-specific limitation exists, explicitly identify it instead of silently degrading the UI
 
+## System email template rules
+
+* All system-generated emails must render through the canonical shared HTML email template; do not introduce one-off inline markup per flow unless explicit owner approval is documented
+* Keep a plaintext body alongside the shared HTML template for deliverability, accessibility, and client fallback behavior
+* The canonical system email template must remain localization-friendly, brand-consistent, and visually correct in both light-mode and dark-mode email clients
+* Changes to the canonical system email template or its delivery contract must update `AGENTS.md` and `README.md` in the same change set
+* The current canonical renderer lives in `modules/notifications/server/email-template.ts`; route all new application or ops emails through that shared surface instead of duplicating markup
+
 ## API and server rules
 
 * For JSON-based Route Handlers, standardize responses around a consistent envelope where appropriate, such as:

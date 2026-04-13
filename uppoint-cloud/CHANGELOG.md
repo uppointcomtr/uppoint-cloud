@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-04-13 (shared email template + dashboard quick-actions removal)
+
+### Added
+- Added a canonical shared system email renderer:
+  - `modules/notifications/server/email-template.ts`
+- Added regression coverage for shared HTML email delivery:
+  - `tests/auth/email-service.test.ts`
+
+### Changed
+- Routed all SMTP/outbox-delivered system emails through one shared corporate HTML wrapper while preserving plaintext fallback:
+  - `modules/auth/server/email-service.ts`
+- Refined OTP email presentation so the verification code is rendered once in the dedicated code block (removed duplicate code exposure from hero summary/body lines):
+  - `modules/notifications/server/email-template.ts`
+  - `tests/auth/email-service.test.ts`
+- Updated maintainer guidance and architecture docs for the canonical email-template rule:
+  - `AGENTS.md`
+  - `README.md`
+- Removed the dashboard `Quick actions / Hızlı işlemler` card from dashboard panel surfaces and deleted the now-unused TR/EN dictionary entries:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+
 ## 2026-04-12 (safe logging + session semantics + low-sample SLO hardening)
 
 ### Changed
