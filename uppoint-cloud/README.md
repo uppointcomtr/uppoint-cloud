@@ -484,6 +484,10 @@ GitHub Actions release gate:
 - Mandatory checks:
   - `Verify security gate`
   - `Remote auth smoke (release gate)` on `push main`
+- Edge-audit emit behavior in release gate:
+  - default security-gate behavior remains fail-closed (`SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT=1`)
+  - pull request runs set `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT=0` so PR validation is not blocked by unrelated host runtime log events
+  - push-to-main runs keep edge-audit emit enforcement active
 - Recommended branch protection:
   - require both checks before merge/deploy approval.
 

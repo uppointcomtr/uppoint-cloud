@@ -114,6 +114,7 @@ Do not jump straight into changes without first confirming the local context and
 * Remote smoke must run nightly and remain runnable on-demand via `workflow_dispatch`
 * Use `https://cloud.uppoint.com.tr` as the default remote smoke target unless explicitly changed
 * If the production health endpoint is token-gated, repository secret `E2E_HEALTHCHECK_TOKEN` must be configured in GitHub Actions
+* Keep `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT` default fail-closed (`1`); CI may set it to `0` only for `pull_request` release-gate runs to decouple PR checks from host-runtime log noise
 * Do not silently disable, bypass, or remove remote smoke CI without explicit owner approval and a changelog entry
 
 ## Core engineering rules

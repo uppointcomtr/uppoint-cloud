@@ -84,6 +84,7 @@ jobs:
       - name: Run canonical security gate
         env:
           SECURITY_GATE_BUILD_ENV_FILE: .security-gate-build.env
+          SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT: ${{ github.event_name == 'pull_request' && '0' || '1' }}
         run: npm run verify:security-gate
 
   remote-smoke:

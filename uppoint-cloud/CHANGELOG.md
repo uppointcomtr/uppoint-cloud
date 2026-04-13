@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-13 (security gate CI stability: edge-audit emit PR decoupling)
+
+### Changed
+- Added explicit edge-audit enforcement toggle in canonical security gate script:
+  - `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT` (`1` by default, fail-closed)
+  - file: `scripts/verify-security-gate.sh`
+- Updated release-gate workflow so pull-request runs set `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT=0`, while push-to-main keeps enforcement enabled:
+  - file: `.github/workflows/security-release-gate.yml`
+- Added guardrail coverage and documentation for the new CI behavior:
+  - `tests/security/verify-security-gate-script-guardrail.test.ts`
+  - `tests/security/security-release-gate-workflow-guardrail.test.ts`
+  - `AGENTS.md`
+  - `README.md`
+
 ## 2026-04-13 (release versioning policy: semver contract)
 
 ### Changed
