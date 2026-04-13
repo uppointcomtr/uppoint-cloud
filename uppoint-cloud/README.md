@@ -288,6 +288,32 @@ npm run prisma:generate
 npm run dev
 ```
 
+## Run from tag (portable restore baseline)
+
+Use this flow to run an immutable tagged version (for example `v1.0.0`) on a fresh host.
+
+```bash
+cd /opt
+git clone git@github.com:uppointcomtr/uppoint-cloud.git
+cd uppoint-cloud/uppoint-cloud
+git checkout v1.0.0
+```
+
+Schema-only restore standard (no production data dump in release bundle):
+
+```bash
+cp /opt/uppoint-cloud/.env .env
+npm ci
+npm run prisma:generate
+npm run prisma:migrate:deploy
+npm run build
+npm run build:deploy
+```
+
+Portable release assets for `v1.0.0`:
+- `releases/v1.0.0/RELEASE_MANIFEST_v1.0.0.md`
+- `releases/v1.0.0/checksums.txt`
+
 ## Verification
 
 ```bash

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-13 (`v1.0.0` freeze release + portable restore bundle)
+
+### Added
+- Added tagged-release manifest bundle for V1 portability:
+  - `releases/v1.0.0/RELEASE_MANIFEST_v1.0.0.md`
+  - `releases/v1.0.0/checksums.txt`
+
+### Changed
+- Documented immutable tag restore flow (`v1.0.0`, schema-only DB bootstrap) in:
+  - `README.md`
+  - `ops/README.md`
+- Prepared repository for annotated `v1.0.0` freeze tag + GitHub Release workflow:
+  - release process now explicitly captures runtime requirements, required env keys, and reproducibility checksums.
+
 ## 2026-04-13 (shared email template + dashboard quick-actions removal)
 
 ### Added

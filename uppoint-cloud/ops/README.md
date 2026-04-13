@@ -22,6 +22,27 @@ npm run build
 sudo systemctl restart uppoint-cloud.service
 ```
 
+### 1.1 Fresh host restore from `v1.0.0` tag (schema-only)
+
+Use this when you need to recreate the V1 baseline on a different host without carrying production data.
+
+```bash
+cd /opt
+git clone git@github.com:uppointcomtr/uppoint-cloud.git
+cd uppoint-cloud/uppoint-cloud
+git checkout v1.0.0
+cp /opt/uppoint-cloud/.env .env
+npm ci
+npm run prisma:generate
+npm run prisma:migrate:deploy
+npm run build
+npm run build:deploy
+```
+
+Release bundle assets for verification:
+- `releases/v1.0.0/RELEASE_MANIFEST_v1.0.0.md`
+- `releases/v1.0.0/checksums.txt`
+
 `npm run build` only builds the app.
 Use `npm run build:deploy` if you want build + service restart in one command.
 
