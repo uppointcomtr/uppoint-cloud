@@ -356,6 +356,7 @@ Auth abuse alert channels:
 
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE=true` (default) exports old audit rows to JSONL archive before deletion.
 - archive target defaults to `/opt/backups/audit` and can be overridden with `AUDIT_LOG_ARCHIVE_DIR`.
+- append-only `InstanceProvisioningEvent` rows are cleaned by retention window (`INSTANCE_PROVISIONING_EVENT_RETENTION_DAYS`, default `90`).
 
 `dispatch-notifications.sh` reads `INTERNAL_DISPATCH_TOKEN` and
 `INTERNAL_DISPATCH_SIGNING_SECRET` from `/opt/uppoint-cloud/.env` and sends:

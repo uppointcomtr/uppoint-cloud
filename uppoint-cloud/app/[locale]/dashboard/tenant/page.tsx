@@ -5,6 +5,8 @@ import { loadDashboardPageData } from "@/modules/dashboard/server/page-loader";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { getLocaleFromParams } from "@/modules/i18n/server";
 
+import { createTenantDashboardAction } from "./actions";
+
 export const dynamic = "force-dynamic";
 
 interface DashboardTenantPageProps {
@@ -41,6 +43,7 @@ export default async function DashboardTenantPage({
       dictionary={dictionary}
       overview={overview}
       activeSection="tenant"
+      createTenantAction={createTenantDashboardAction}
     />
   );
 }

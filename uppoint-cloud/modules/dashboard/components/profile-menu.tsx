@@ -21,6 +21,7 @@ interface ProfileMenuProps {
   dictionary: Dictionary["dashboard"]["profileMenu"];
   displayName: string;
   email: string;
+  activeTenantId?: string | null;
 }
 
 function getInitials(name: string): string {
@@ -32,7 +33,15 @@ function getInitials(name: string): string {
 const menuItemClass =
   "flex w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-foreground/80 transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border/60 hover:bg-accent/70 hover:text-foreground";
 
-export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileMenuProps) {
+function appendTenantQuery(path: string, tenantId: string | null | undefined): string {
+  if (!tenantId) {
+    return path;
+  }
+
+  return `${path}?tenantId=${encodeURIComponent(tenantId)}`;
+}
+
+export function ProfileMenu({ locale, dictionary, displayName, email, activeTenantId }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -59,10 +68,10 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
     };
   }, [isOpen]);
 
-  const dashboardPath = withLocale("/dashboard/account", locale);
-  const securityPath = withLocale("/dashboard/security", locale);
-  const notificationsPath = withLocale("/dashboard/notifications", locale);
-  const tenantPath = withLocale("/dashboard/tenant", locale);
+  const dashboardPath = appendTenantQuery(withLocale("/dashboard/account", locale), activeTenantId);
+  const securityPath = appendTenantQuery(withLocale("/dashboard/security", locale), activeTenantId);
+  const notificationsPath = appendTenantQuery(withLocale("/dashboard/notifications", locale), activeTenantId);
+  const tenantPath = appendTenantQuery(withLocale("/dashboard/tenant", locale), activeTenantId);
   const forgotPasswordPath = withLocale("/forgot-password", locale);
   const loginPath = withLocale("/login", locale);
 

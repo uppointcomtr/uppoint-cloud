@@ -11,6 +11,7 @@ import {
 import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
+import { TenantCreateForm, type TenantCreateAction } from "@/modules/tenant/components/tenant-create-form";
 
 import type { DashboardOverview } from "../server/get-dashboard-overview";
 
@@ -199,11 +200,13 @@ export function TenantCard({
   activeSection,
   overview,
   labels,
+  createTenantAction,
 }: {
   locale: Locale;
   activeSection: DashboardActiveSection;
   overview: DashboardOverview;
   labels: Dictionary["dashboard"];
+  createTenantAction?: TenantCreateAction;
 }) {
   return (
     <Card className={corporateCardClass}>
@@ -257,12 +260,36 @@ export function TenantCard({
             </div>
           </div>
         ) : null}
+
+        {createTenantAction ? (
+          <TenantCreateForm
+            locale={locale}
+            createTenantAction={createTenantAction}
+            labels={{
+              title: labels.tenant.create.title,
+              description: labels.tenant.create.description,
+              fieldName: labels.tenant.create.fieldName,
+              submitIdle: labels.tenant.create.submitIdle,
+              submitLoading: labels.tenant.create.submitLoading,
+              success: labels.tenant.create.success,
+              errors: labels.tenant.create.errors,
+            }}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );
 }
 
-export function ModulesCard({ labels }: Pick<DashboardSectionProps, "labels">) {
+export function ModulesCard({
+  locale,
+  labels,
+  activeTenantId,
+}: Pick<DashboardSectionProps, "locale" | "labels"> & { activeTenantId?: string | null }) {
+  const instancesWizardHref = activeTenantId
+    ? `${withLocale("/dashboard/modules/instances/new", locale)}?tenantId=${encodeURIComponent(activeTenantId)}`
+    : withLocale("/dashboard/modules/instances/new", locale);
+
   return (
     <Card className="border-border/60">
       <CardHeader>
@@ -272,7 +299,12 @@ export function ModulesCard({ labels }: Pick<DashboardSectionProps, "labels">) {
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-border/50 bg-background/60 p-3">
           <p className="font-medium">{labels.modules.instances}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.comingSoon}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.instancesDescription}</p>
+          <Button asChild size="sm" variant="outline" className="mt-3">
+            <Link href={instancesWizardHref}>
+              {labels.modules.instancesWizardCta}
+            </Link>
+          </Button>
         </div>
         <div className="rounded-lg border border-border/50 bg-background/60 p-3">
           <p className="font-medium">{labels.modules.network}</p>

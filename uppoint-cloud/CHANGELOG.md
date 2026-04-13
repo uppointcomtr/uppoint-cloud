@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-04-13 (tenant self-service creation + tenant-context continuity)
+
+### Added
+- Added tenant self-service creation flow on `/dashboard/tenant`:
+  - server action: `app/[locale]/dashboard/tenant/actions.ts`
+  - tenant create service: `modules/tenant/server/tenant-management.ts`
+  - tenant create UI: `modules/tenant/components/tenant-create-form.tsx`
+- Added tenant creation repository primitive for transactional `tenant + owner membership` creation:
+  - `db/repositories/tenant-repository.ts`
+- Added test coverage for tenant creation slug/retry/fail-closed behavior:
+  - `tests/tenant/tenant-management.test.ts`
+
+### Changed
+- Updated dashboard tenant surface to include tenant create controls and immediate context transition.
+- Preserved selected tenant context across dashboard navigation/profile/menu/module links so multi-tenant users do not lose active tenant context between sections:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `modules/dashboard/components/profile-menu.tsx`
+  - `modules/instances/components/instance-provisioning-wizard.tsx`
+- Extended audit catalog and TR/EN localization for `tenant_created` / `tenant_create_failed` actions and tenant-create form messaging:
+  - `lib/audit-log.ts`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Synced documentation for tenant self-service capabilities:
+  - `README.md`
+
+## 2026-04-13 (instances control-plane module + tenant-scoped provisioning wizard foundation)
+
+### Added
+- Added tenant-isolated control-plane persistence foundation for instance management:
+  - `ResourceGroup`, `VirtualNetwork`, `FirewallPolicy`, `FirewallRule`, `CloudInstance`, `InstanceProvisioningJob`, `InstanceProvisioningEvent`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260413191000_add_instances_control_plane_foundation/migration.sql`
+- Added dedicated provider boundary module for future hypervisor adapters without coupling dashboard/app routes to provider runtime:
+  - `modules/kvm/domain/provider-contract.ts`
+  - `modules/kvm/server/provider.ts`
+  - `modules/kvm/README.md`
+- Added tenant-scoped instance setup wizard route and component:
+  - `app/[locale]/dashboard/modules/instances/new/page.tsx`
+  - `modules/instances/components/instance-provisioning-wizard.tsx`
+  - `app/[locale]/dashboard/modules/instances/new/actions.ts`
+
+### Changed
+- Expanded instances orchestration and repository layer for:
+  - resource-group bootstrap (default network + default firewall policy/rules)
+  - idempotent provisioning request creation
+  - tenant/region/network/firewall consistency checks
+  - audit events for resource-group/provisioning flows
+  - `modules/instances/server/wizard-service.ts`
+  - `db/repositories/instance-control-plane-repository.ts`
+  - `modules/instances/domain/contracts.ts`
+  - `lib/audit-log.ts`
+- Updated dashboard modules surface to expose instance wizard entry point:
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `modules/dashboard/components/dashboard-panel.tsx`
+- Extended route protection and callback-path coverage for the new protected wizard route:
+  - `modules/auth/server/route-access.ts`
+  - `modules/dashboard/server/page-loader.ts`
+  - `tests/auth/route-access.test.ts`
+- Added TR/EN localization and metadata coverage for the new wizard flow and related audit action labels:
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Extended DB cleanup retention to include append-only provisioning events:
+  - `scripts/cleanup-db.sh`
+- Synced operational and architecture docs:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `modules/instances/README.md`
+
 ## 2026-04-13 (security gate CI stability: edge-audit emit PR decoupling)
 
 ### Changed

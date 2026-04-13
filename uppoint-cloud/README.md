@@ -23,8 +23,13 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Protected dashboard V1 workspace (`/:locale/dashboard`)
     - control-plane style layout (navigation + operational sections)
     - account/session/verification/risk summary cards
-    - tenant context visibility, explicit tenant selection, and quick actions
+    - tenant context visibility and explicit tenant selection
+    - self-service tenant creation from `/dashboard/tenant` with automatic context switch to the newly created tenant
     - notification and security signal overview
+  - Instance control-plane wizard (`/:locale/dashboard/modules/instances/new`)
+    - tenant-scoped resource group creation with default network + firewall policy
+    - idempotent instance provisioning request submission (`tenant -> resource group -> network/firewall`)
+    - internal module boundary for future provider adapters (`modules/kvm/*`)
   - Account center (`/:locale/dashboard/account`)
     - dedicated profile-management surface linked from the profile dropdown and dashboard navigation
     - full-name update now requires in-flow email verification code confirmation before persistence
@@ -181,6 +186,7 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `UPPOINT_EMAIL_POOL_MAX_MESSAGES` (optional, default `100`; SMTP max messages per pooled connection)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 - `AUTH_E2E_USER_RETENTION_DAYS` (optional, default `1`; cleanup window for legacy `e2e-unverified-*` synthetic users)
+- `INSTANCE_PROVISIONING_EVENT_RETENTION_DAYS` (optional, default `90`; cleanup retention for append-only instance provisioning events)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
 - `AUDIT_LOG_ARCHIVE_DIR` (optional, default `/opt/backups/audit`; archive path used by `cleanup-db.sh`)
 - `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE` (optional, default `false`; required `true` for `restore-drill-db.sh --execute --confirm`)
@@ -269,7 +275,13 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
 - Tenant context resolver: [modules/tenant/server/user-tenant.ts](/opt/uppoint-cloud/modules/tenant/server/user-tenant.ts)
-- Instance domain boundary (no runtime provisioning yet): [modules/instances/domain/contracts.ts](/opt/uppoint-cloud/modules/instances/domain/contracts.ts), [modules/instances/server/security-boundary.ts](/opt/uppoint-cloud/modules/instances/server/security-boundary.ts)
+- Tenant self-service management service: [modules/tenant/server/tenant-management.ts](/opt/uppoint-cloud/modules/tenant/server/tenant-management.ts)
+- Instance control-plane contracts and wizard services:
+  [modules/instances/domain/contracts.ts](/opt/uppoint-cloud/modules/instances/domain/contracts.ts),
+  [modules/instances/server/security-boundary.ts](/opt/uppoint-cloud/modules/instances/server/security-boundary.ts),
+  [modules/instances/server/wizard-service.ts](/opt/uppoint-cloud/modules/instances/server/wizard-service.ts),
+  [db/repositories/instance-control-plane-repository.ts](/opt/uppoint-cloud/db/repositories/instance-control-plane-repository.ts)
+- Provider boundary for future hypervisor adapters: [modules/kvm/domain/provider-contract.ts](/opt/uppoint-cloud/modules/kvm/domain/provider-contract.ts), [modules/kvm/server/provider.ts](/opt/uppoint-cloud/modules/kvm/server/provider.ts)
 - Idempotent API helper: [lib/http/idempotency.ts](/opt/uppoint-cloud/lib/http/idempotency.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
 - Fail-closed logout revocation endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)

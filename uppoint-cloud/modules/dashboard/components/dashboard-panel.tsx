@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
@@ -11,6 +12,7 @@ import type { Locale } from "@/modules/i18n/config";
 import type { Dictionary } from "@/modules/i18n/dictionaries";
 import { withLocale } from "@/modules/i18n/paths";
 import { cn } from "@/lib/utils";
+import type { TenantCreateAction } from "@/modules/tenant/components/tenant-create-form";
 
 import type { DashboardOverview } from "../server/get-dashboard-overview";
 import {
@@ -31,6 +33,8 @@ interface DashboardPanelProps {
   dictionary: Dictionary;
   overview: DashboardOverview;
   activeSection: DashboardSection;
+  modulesContent?: ReactNode;
+  createTenantAction?: TenantCreateAction;
 }
 
 interface NavItem {
@@ -53,20 +57,28 @@ function resolveDisplayName(name: string | null, email: string): string {
   return localPart.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function getSectionPath(locale: Locale, section: DashboardSection): string {
+function appendTenantContext(path: string, tenantId: string | null | undefined): string {
+  if (!tenantId) {
+    return path;
+  }
+
+  return `${path}?tenantId=${encodeURIComponent(tenantId)}`;
+}
+
+function getSectionPath(locale: Locale, section: DashboardSection, tenantId?: string | null): string {
   switch (section) {
     case "overview":
-      return withLocale("/dashboard", locale);
+      return appendTenantContext(withLocale("/dashboard", locale), tenantId);
     case "account":
-      return withLocale("/dashboard/account", locale);
+      return appendTenantContext(withLocale("/dashboard/account", locale), tenantId);
     case "security":
-      return withLocale("/dashboard/security", locale);
+      return appendTenantContext(withLocale("/dashboard/security", locale), tenantId);
     case "notifications":
-      return withLocale("/dashboard/notifications", locale);
+      return appendTenantContext(withLocale("/dashboard/notifications", locale), tenantId);
     case "tenant":
-      return withLocale("/dashboard/tenant", locale);
+      return appendTenantContext(withLocale("/dashboard/tenant", locale), tenantId);
     case "modules":
-      return withLocale("/dashboard/modules", locale);
+      return appendTenantContext(withLocale("/dashboard/modules", locale), tenantId);
   }
 }
 
@@ -105,9 +117,13 @@ export function DashboardPanel({
   dictionary,
   overview,
   activeSection,
+  modulesContent,
+  createTenantAction,
 }: DashboardPanelProps) {
   const dashboard = dictionary.dashboard;
   const displayName = resolveDisplayName(overview.user.name, overview.user.email);
+  const activeTenantId = overview.tenant?.tenantId ?? null;
+  const dashboardHomePath = getSectionPath(locale, "overview", activeTenantId);
 
   const navItems: NavItem[] = [
     { section: "overview", label: dashboard.nav.overview, icon: LayoutDashboard },
@@ -131,7 +147,7 @@ export function DashboardPanel({
         <aside className="flex flex-col overflow-hidden rounded-xl border border-border/60 bg-sidebar shadow-sm shadow-black/5 xl:sticky xl:top-6 xl:h-[fit-content]">
           {/* Logo + brand */}
           <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3.5">
-            <Link href={withLocale("/dashboard", locale)} aria-label="Uppoint Cloud" className="shrink-0">
+            <Link href={dashboardHomePath} aria-label="Uppoint Cloud" className="shrink-0">
               <div className="relative h-8 w-[108px]">
                 <Image
                   src="/logo/uppoint-logo-black.webp"
@@ -160,7 +176,7 @@ export function DashboardPanel({
           {/* Nav */}
           <nav className="px-2 py-3 space-y-0.5">
             {navItems.map((item) => (
-              <Link key={item.section} href={getSectionPath(locale, item.section)} className={navButtonClass(item.section === activeSection)}>
+              <Link key={item.section} href={getSectionPath(locale, item.section, activeTenantId)} className={navButtonClass(item.section === activeSection)}>
                 <span
                   className={cn(
                     "flex size-7 shrink-0 items-center justify-center rounded-md transition-[background-color,color] duration-150 ease-out",
@@ -198,7 +214,7 @@ export function DashboardPanel({
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-5 w-0.5 shrink-0 rounded-full bg-primary" />
                 <Link
-                  href={withLocale("/dashboard", locale)}
+                  href={dashboardHomePath}
                   aria-label={dashboard.title}
                   className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
                 >
@@ -227,6 +243,7 @@ export function DashboardPanel({
                   dictionary={dashboard.profileMenu}
                   displayName={displayName}
                   email={overview.user.email}
+                  activeTenantId={activeTenantId}
                 />
               </div>
             </div>
@@ -288,13 +305,19 @@ export function DashboardPanel({
 
           {activeSection === "tenant" ? (
             <>
-              <TenantCard locale={locale} activeSection={activeSection} overview={overview} labels={dashboard} />
+              <TenantCard
+                locale={locale}
+                activeSection={activeSection}
+                overview={overview}
+                labels={dashboard}
+                createTenantAction={createTenantAction}
+              />
             </>
           ) : null}
 
           {activeSection === "modules" ? (
             <>
-              <ModulesCard labels={dashboard} />
+              {modulesContent ?? <ModulesCard locale={locale} labels={dashboard} activeTenantId={activeTenantId} />}
             </>
           ) : null}
         </section>

@@ -35,7 +35,8 @@ export async function loadDashboardPageData(input: {
     | "/dashboard/security"
     | "/dashboard/notifications"
     | "/dashboard/tenant"
-    | "/dashboard/modules";
+    | "/dashboard/modules"
+    | "/dashboard/modules/instances/new";
   rawSearchParams: Record<string, string | string[] | undefined>;
 }): Promise<DashboardPageData> {
   const dictionary = getDictionary(input.locale);

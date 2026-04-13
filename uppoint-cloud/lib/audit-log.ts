@@ -60,6 +60,13 @@ export type AuditAction =
   | "tenant_context_missing"
   | "tenant_selection_required"
   | "tenant_selection_invalid"
+  | "tenant_created"
+  | "tenant_create_failed"
+  | "resource_group_created"
+  | "resource_group_create_failed"
+  | "instance_wizard_draft_saved"
+  | "instance_provisioning_requested"
+  | "instance_provisioning_request_failed"
   | "user_soft_deleted";
 
 const SENSITIVE_KEY_PATTERN = /(password|secret|token|authorization|cookie|email|phone|name|fullName|firstName|lastName|address)/i;
@@ -86,6 +93,8 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "deprecated_endpoint_access",
   "tenant_access_denied",
   "tenant_role_insufficient",
+  "resource_group_create_failed",
+  "instance_provisioning_request_failed",
 ]);
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
 const AUDIT_FALLBACK_CHAIN_STATE_PATH =
