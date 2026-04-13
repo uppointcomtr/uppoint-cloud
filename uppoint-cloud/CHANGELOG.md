@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-04-13 (release versioning policy: semver contract)
+
+### Changed
+- Added explicit SemVer release policy (`vMAJOR.MINOR.PATCH`) for future tags in:
+  - `AGENTS.md`
+  - `README.md`
+- Standardized release prerequisites for each new version tag:
+  - `npm run verify:security-gate`
+  - matching `CHANGELOG.md` version entry
+  - release bundle files under `releases/<tag>/` (`RELEASE_MANIFEST_<tag>.md` + `checksums.txt`)
+
 ## 2026-04-13 (`v1.0.0` freeze release + portable restore bundle)
 
 ### Added

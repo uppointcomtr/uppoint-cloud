@@ -314,6 +314,16 @@ Portable release assets for `v1.0.0`:
 - `releases/v1.0.0/RELEASE_MANIFEST_v1.0.0.md`
 - `releases/v1.0.0/checksums.txt`
 
+Release versioning policy (SemVer):
+- use immutable tags in `vMAJOR.MINOR.PATCH` format (`v1.1.0`, `v1.1.1`, `v2.0.0`)
+- `PATCH`: backward-compatible bugfix/ops correction only
+- `MINOR`: backward-compatible feature expansion
+- `MAJOR`: backward-incompatible change
+- before creating a new release tag:
+  - run `npm run verify:security-gate`
+  - add a version entry to `CHANGELOG.md`
+  - add `releases/<tag>/RELEASE_MANIFEST_<tag>.md` and `releases/<tag>/checksums.txt`
+
 ## Verification
 
 ```bash

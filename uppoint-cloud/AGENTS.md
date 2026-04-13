@@ -592,6 +592,18 @@ Rules:
 * Do not restart the running service as part of ordinary local verification, code review, or pre-commit checks
 * If a task includes production deployment, explicitly state that deployment and restart are being performed
 
+### Release versioning policy (SemVer required)
+
+* All immutable release tags must follow `vMAJOR.MINOR.PATCH` format (example: `v1.1.0`)
+* Patch (`v1.0.1`): backward-compatible bugfix or operational correction only; no new feature surface
+* Minor (`v1.1.0`): backward-compatible feature or capability expansion
+* Major (`v2.0.0`): any intentional backward-incompatible contract or behavior change
+* Every new release tag must include:
+
+  * successful `npm run verify:security-gate` result before release recommendation
+  * `CHANGELOG.md` entry for that exact version
+  * release manifest/checksum bundle under `releases/<tag>/` (for example `RELEASE_MANIFEST_v1.1.0.md`, `checksums.txt`)
+
 ## When to ask vs when to proceed
 
 * Proceed when the change is local, reversible, low-risk, and clearly matches existing patterns
