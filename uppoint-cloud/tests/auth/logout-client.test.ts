@@ -26,16 +26,33 @@ describe("performLogout", () => {
     expect(signOutImpl).toHaveBeenCalledWith({ callbackUrl: "/tr/login" });
   });
 
-  it("still signs out when logout endpoint fails", async () => {
+  it("does not sign out when logout endpoint fails", async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error("network"));
     const signOutImpl = vi.fn().mockResolvedValue(undefined);
 
-    await performLogout({
-      callbackUrl: "/en/login",
-      fetchImpl,
-      signOutImpl,
-    });
+    await expect(
+      performLogout({
+        callbackUrl: "/en/login",
+        fetchImpl,
+        signOutImpl,
+      }),
+    ).rejects.toMatchObject({ code: "LOGOUT_REQUEST_FAILED" });
 
-    expect(signOutImpl).toHaveBeenCalledWith({ callbackUrl: "/en/login" });
+    expect(signOutImpl).not.toHaveBeenCalled();
+  });
+
+  it("does not sign out when logout endpoint rejects the request", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 409 }));
+    const signOutImpl = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      performLogout({
+        callbackUrl: "/en/login",
+        fetchImpl,
+        signOutImpl,
+      }),
+    ).rejects.toMatchObject({ code: "LOGOUT_REJECTED" });
+
+    expect(signOutImpl).not.toHaveBeenCalled();
   });
 });

@@ -19,6 +19,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - SMS verification code (3 min countdown)
     - new password + confirm password step
   - Logout (dashboard action)
+    - fail-closed: local sign-out completes only after server-side session revocation succeeds
   - Protected dashboard V1 workspace (`/:locale/dashboard`)
     - control-plane style layout (navigation + operational sections)
     - account/session/verification/risk summary cards
@@ -269,7 +270,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Instance domain boundary (no runtime provisioning yet): [modules/instances/domain/contracts.ts](/opt/uppoint-cloud/modules/instances/domain/contracts.ts), [modules/instances/server/security-boundary.ts](/opt/uppoint-cloud/modules/instances/server/security-boundary.ts)
 - Idempotent API helper: [lib/http/idempotency.ts](/opt/uppoint-cloud/lib/http/idempotency.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
-- Logout audit endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
+- Fail-closed logout revocation endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
 - Locale configuration: [modules/i18n/config.ts](/opt/uppoint-cloud/modules/i18n/config.ts)
 - Locale path helpers: [modules/i18n/paths.ts](/opt/uppoint-cloud/modules/i18n/paths.ts)
 - Dictionaries: [messages/tr.ts](/opt/uppoint-cloud/messages/tr.ts), [messages/en.ts](/opt/uppoint-cloud/messages/en.ts)

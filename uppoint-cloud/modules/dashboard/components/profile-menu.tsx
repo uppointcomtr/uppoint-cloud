@@ -35,6 +35,7 @@ const menuItemClass =
 export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -70,8 +71,14 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
   async function handleLogout() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
-    setIsOpen(false);
-    await performLogout({ callbackUrl: loginPath });
+    setLogoutError(null);
+
+    try {
+      await performLogout({ callbackUrl: loginPath });
+    } catch {
+      setLogoutError(dictionary.signOutFailed);
+      setIsLoggingOut(false);
+    }
   }
 
   return (
@@ -144,6 +151,11 @@ export function ProfileMenu({ locale, dictionary, displayName, email }: ProfileM
               <LogOut className="h-4 w-4 shrink-0" />
               {isLoggingOut ? dictionary.signOutLoading : dictionary.signOut}
             </button>
+            {logoutError ? (
+              <p role="alert" className="px-3 pt-2 text-xs text-destructive">
+                {logoutError}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

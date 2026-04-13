@@ -290,6 +290,7 @@ export const enMessages = {
       resetPassword: "Reset password",
       signOut: "Secure sign out",
       signOutLoading: "Signing out...",
+      signOutFailed: "Secure sign-out could not be verified. Please try again.",
     },
     account: {
       title: "Account center",
@@ -572,6 +573,7 @@ export const enMessages = {
       actionLabels: {
         login_success: "Login success",
         logout_success: "Logged out",
+        logout_failed: "Logout failed",
         account_delete_challenge_started: "Account deletion verification started",
         account_delete_email_verified: "Account deletion email verification completed",
         account_delete_sms_verified: "Account deletion SMS verification completed",
@@ -643,9 +645,12 @@ export const enMessages = {
     warning: "Your session is expiring soon.",
     minutesRemaining: "minutes remaining",
     signOut: "Sign out",
+    signOutLoading: "Signing out...",
+    signOutFailed: "Secure sign-out could not be verified. Please try again.",
   },
   logout: {
     button: "Sign out",
+    failed: "Secure sign-out could not be verified. Please try again.",
   },
   validation: {
     emailInvalid: "Enter a valid email address",

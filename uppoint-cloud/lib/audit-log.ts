@@ -22,6 +22,7 @@ export type AuditAction =
   | "login_otp_failed"
   | "login_challenge_start_failed"
   | "logout_success"
+  | "logout_failed"
   | "rate_limit_exceeded"
   | "password_reset_requested"
   | "password_reset_success"
@@ -68,6 +69,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "rate_limit_exceeded",
   "login_otp_failed",
   "login_challenge_start_failed",
+  "logout_failed",
   "password_reset_failed",
   "account_delete_challenge_failed",
   "account_contact_change_failed",

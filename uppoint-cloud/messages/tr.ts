@@ -290,6 +290,7 @@ export const trMessages = {
       resetPassword: "Şifreyi yenile",
       signOut: "Güvenli çıkış",
       signOutLoading: "Çıkış yapılıyor...",
+      signOutFailed: "Güvenli çıkış doğrulanamadı. Lütfen tekrar deneyin.",
     },
     account: {
       title: "Hesap merkezi",
@@ -572,6 +573,7 @@ export const trMessages = {
       actionLabels: {
         login_success: "Giriş başarılı",
         logout_success: "Çıkış yapıldı",
+        logout_failed: "Çıkış başarısız",
         account_delete_challenge_started: "Hesap silme doğrulaması başlatıldı",
         account_delete_email_verified: "Hesap silme e-posta doğrulaması tamamlandı",
         account_delete_sms_verified: "Hesap silme SMS doğrulaması tamamlandı",
@@ -643,9 +645,12 @@ export const trMessages = {
     warning: "Oturumunuz yakında sona eriyor.",
     minutesRemaining: "dakika kaldı",
     signOut: "Çıkış yap",
+    signOutLoading: "Çıkış yapılıyor...",
+    signOutFailed: "Güvenli çıkış doğrulanamadı. Lütfen tekrar deneyin.",
   },
   logout: {
     button: "Çıkış yap",
+    failed: "Güvenli çıkış doğrulanamadı. Lütfen tekrar deneyin.",
   },
   validation: {
     emailInvalid: "Geçerli bir e-posta adresi girin",

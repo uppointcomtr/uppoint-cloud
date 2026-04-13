@@ -187,7 +187,7 @@ export function DashboardPanel({
                 <p className="truncate text-sm font-medium leading-tight text-foreground">{displayName}</p>
                 <p className="truncate text-[11px] text-muted-foreground mt-0.5">{overview.user.email}</p>
               </div>
-              <LogoutButton locale={locale} label={dictionary.logout.button} iconOnly />
+              <LogoutButton locale={locale} labels={dictionary.logout} iconOnly />
             </div>
           </div>
         </aside>
