@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-13 (tenant create flow redirect reliability fix)
+
+### Changed
+- Stabilized tenant-create post-success navigation on `/dashboard/tenant`:
+  - moved redirect trigger from inline action callback to state-driven effect
+  - added guarded client fallback navigation when router transition does not complete in time
+  - file: `modules/tenant/components/tenant-create-form.tsx`
+- Applied production deployment restart after build (`npm run build:deploy`) to ensure runtime bundle/service consistency.
+
 ## 2026-04-13 (tenant self-service creation + tenant-context continuity)
 
 ### Added

@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -64,22 +64,39 @@ export function TenantCreateForm({
   createTenantAction,
 }: TenantCreateFormProps) {
   const router = useRouter();
+  const lastRedirectRef = useRef<string | null>(null);
   const [state, runCreateTenantAction, isPending] = useActionState(
-    async (previousState: TenantCreateActionState, formData: FormData) => {
-      const nextState = await createTenantAction(previousState, formData);
-
-      if (nextState.status === "success" && nextState.scopeId) {
-        const targetPath = `${withLocale("/dashboard/tenant", locale)}?tenantId=${encodeURIComponent(nextState.scopeId)}`;
-        startTransition(() => {
-          router.push(targetPath);
-          router.refresh();
-        });
-      }
-
-      return nextState;
-    },
+    async (previousState: TenantCreateActionState, formData: FormData) => createTenantAction(previousState, formData),
     INITIAL_STATE,
   );
+
+  useEffect(() => {
+    if (state.status !== "success" || !state.scopeId) {
+      return;
+    }
+
+    const targetPath = `${withLocale("/dashboard/tenant", locale)}?tenantId=${encodeURIComponent(state.scopeId)}`;
+    if (lastRedirectRef.current === targetPath) {
+      return;
+    }
+    lastRedirectRef.current = targetPath;
+
+    startTransition(() => {
+      router.replace(targetPath);
+      router.refresh();
+    });
+
+    const fallbackTimer = window.setTimeout(() => {
+      const currentPath = `${window.location.pathname}${window.location.search}`;
+      if (currentPath !== targetPath) {
+        window.location.assign(targetPath);
+      }
+    }, 900);
+
+    return () => {
+      window.clearTimeout(fallbackTimer);
+    };
+  }, [locale, router, state.scopeId, state.status]);
 
   const errorMessage = resolveErrorMessage(state, labels.errors);
 
