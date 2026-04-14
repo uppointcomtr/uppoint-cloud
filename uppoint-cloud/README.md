@@ -23,8 +23,11 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Protected dashboard V1 workspace (`/:locale/dashboard`)
     - control-plane style layout (navigation + operational sections)
     - account/session/verification/risk summary cards
-    - tenant context visibility and explicit tenant selection
-    - self-service tenant creation from `/dashboard/tenant` with automatic context switch to the newly created tenant
+    - tenant center on `/dashboard/tenant`
+      - clickable tenant list with modal-based detail surface
+      - tenant detail modal shows current role scope and attached resource groups
+      - self-service tenant creation with automatic context switch to the newly created tenant
+      - tenant deletion is policy-disabled from control-plane UI and server action paths
     - notification and security signal overview
   - Instance control-plane wizard (`/:locale/dashboard/modules/instances/new`)
     - tenant-scoped resource group creation with default network + firewall policy

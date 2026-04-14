@@ -384,7 +384,7 @@ export async function createResourceGroupWithDefaults(
           portRange: null,
           sourceCidr: null,
           destinationCidr: "0.0.0.0/0",
-          priority: 100,
+          priority: 200,
           createdByUserId: input.createdByUserId,
         },
       ],

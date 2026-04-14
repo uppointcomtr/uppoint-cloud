@@ -1,10 +1,17 @@
 import "server-only";
 
 import { randomBytes } from "crypto";
-import { Prisma } from "@prisma/client";
+import { Prisma, TenantRole } from "@prisma/client";
 import { z } from "zod";
 
-import { createTenantWithOwnerMembership } from "@/db/repositories/tenant-repository";
+import { listActiveResourceGroupsForTenant } from "@/db/repositories/instance-control-plane-repository";
+import {
+  createTenantWithOwnerMembership,
+  findUserTenantMembershipsForContext,
+  softDeleteTenantIfActive,
+} from "@/db/repositories/tenant-repository";
+import { type TenantPermission, hasTenantPermission } from "@/modules/tenant/server/permissions";
+import { assertTenantAccess } from "@/modules/tenant/server/scope";
 
 const createTenantInputSchema = z.object({
   userId: z.string().trim().min(1).max(191),
@@ -20,19 +27,88 @@ interface CreateTenantDependencies {
   createSlugSuffix: () => string;
 }
 
+interface TenantDetailDependencies {
+  assertAccess: (input: {
+    tenantId: string;
+    userId: string;
+    minimumRole: TenantRole;
+  }) => Promise<{ tenantId: string; role: TenantRole }>;
+  listResourceGroups: typeof listActiveResourceGroupsForTenant;
+}
+
+interface DeleteTenantDependencies extends TenantDetailDependencies {
+  softDeleteTenant: typeof softDeleteTenantIfActive;
+  listMemberships: typeof findUserTenantMembershipsForContext;
+  now: () => Date;
+}
+
 const defaultDependencies: CreateTenantDependencies = {
   createTenant: async (input) => createTenantWithOwnerMembership(input),
   createSlugSuffix: () => randomBytes(TENANT_SLUG_SUFFIX_LENGTH_BYTES).toString("hex"),
 };
 
+const defaultTenantDetailDependencies: TenantDetailDependencies = {
+  assertAccess: async ({ tenantId, userId, minimumRole }) =>
+    assertTenantAccess({ tenantId, userId, minimumRole }),
+  listResourceGroups: async ({ tenantId, take }) =>
+    listActiveResourceGroupsForTenant({ tenantId, take }),
+};
+
+const defaultDeleteTenantDependencies: DeleteTenantDependencies = {
+  ...defaultTenantDetailDependencies,
+  softDeleteTenant: async ({ tenantId, now }) =>
+    softDeleteTenantIfActive({ tenantId, now }),
+  listMemberships: async ({ userId, take }) =>
+    findUserTenantMembershipsForContext({ userId, take }),
+  now: () => new Date(),
+};
+
+const tenantManagementScopeSchema = z.object({
+  userId: z.string().trim().min(1).max(191),
+  tenantId: z.string().trim().min(1).max(191),
+});
+
+const TENANT_DETAIL_RESOURCE_GROUP_TAKE = 24;
+
+const TENANT_PERMISSION_ORDER: TenantPermission[] = [
+  "tenant:read",
+  "tenant:manage_members",
+  "tenant:manage_infrastructure",
+  "tenant:manage_billing",
+];
+
 export class TenantManagementError extends Error {
   constructor(
-    public readonly code: "TENANT_CREATE_FAILED" | "TENANT_SLUG_RETRY_EXHAUSTED",
+    public readonly code:
+      | "TENANT_CREATE_FAILED"
+      | "TENANT_SLUG_RETRY_EXHAUSTED"
+      | "TENANT_DETAIL_ACCESS_DENIED"
+      | "TENANT_DELETE_DISABLED"
+      | "TENANT_DELETE_FORBIDDEN_ROLE"
+      | "TENANT_DELETE_BLOCKED_RESOURCE_GROUPS"
+      | "TENANT_DELETE_FAILED",
     message: string,
   ) {
     super(message);
     this.name = "TenantManagementError";
   }
+}
+
+export interface TenantManagementDetail {
+  tenantId: string;
+  role: TenantRole;
+  permissions: TenantPermission[];
+  resourceGroups: Array<{
+    id: string;
+    tenantId: string;
+    name: string;
+    slug: string;
+    regionCode: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+  canDelete: boolean;
+  deleteBlockedReason: "RESOURCE_GROUPS_PRESENT" | "ROLE_INSUFFICIENT" | "DELETE_DISABLED" | null;
 }
 
 function normalizeSlugBase(name: string): string {
@@ -124,3 +200,46 @@ export async function createTenantForUser(
   throw new TenantManagementError("TENANT_SLUG_RETRY_EXHAUSTED", "Tenant slug generation retry exhausted");
 }
 
+export async function getTenantManagementDetailForUser(
+  rawInput: unknown,
+  dependencies: TenantDetailDependencies = defaultTenantDetailDependencies,
+): Promise<TenantManagementDetail> {
+  const input = tenantManagementScopeSchema.parse(rawInput);
+  let access: { tenantId: string; role: TenantRole };
+
+  try {
+    access = await dependencies.assertAccess({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      minimumRole: TenantRole.MEMBER,
+    });
+  } catch {
+    throw new TenantManagementError("TENANT_DETAIL_ACCESS_DENIED", "Tenant detail access denied");
+  }
+
+  const resourceGroups = await dependencies.listResourceGroups({
+    tenantId: input.tenantId,
+    take: TENANT_DETAIL_RESOURCE_GROUP_TAKE,
+  });
+
+  return {
+    tenantId: access.tenantId,
+    role: access.role,
+    permissions: TENANT_PERMISSION_ORDER.filter((permission) => hasTenantPermission(access.role, permission)),
+    resourceGroups,
+    canDelete: false,
+    deleteBlockedReason: "DELETE_DISABLED",
+  };
+}
+
+export async function deleteTenantForUser(
+  rawInput: unknown,
+  _dependencies: DeleteTenantDependencies = defaultDeleteTenantDependencies,
+): Promise<{ deletedTenantId: string; nextTenantId: string | null }> {
+  tenantManagementScopeSchema.parse(rawInput);
+  void _dependencies;
+  throw new TenantManagementError(
+    "TENANT_DELETE_DISABLED",
+    "Tenant deletion is disabled by policy",
+  );
+}

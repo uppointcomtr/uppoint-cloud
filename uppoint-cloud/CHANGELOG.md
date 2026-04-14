@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-04-14 (tenant center list + detail modal + delete disabled by policy)
+
+### Added
+- Added a modern tenant-management surface on `/dashboard/tenant`:
+  - tenants now render as a clickable list instead of button-based selection
+  - clicking a tenant row opens a detail modal with role scope and attached resource groups
+  - new component: `modules/tenant/components/tenant-center.tsx`
+- Added tenant delete policy guard in server action/service path:
+  - `app/[locale]/dashboard/tenant/actions.ts`
+  - `modules/tenant/server/tenant-management.ts`
+- Added regression coverage for tenant detail and delete fail-closed behavior:
+  - `tests/tenant/tenant-management.test.ts`
+
+### Changed
+- Extended audit catalog and security-event localization for tenant delete success/failure:
+  - `lib/audit-log.ts`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Updated dashboard tenant route to resolve modal detail state via search params and server-side tenant access checks.
+- Updated tenant delete UX text from destructive flow to policy-disabled "tenant cancel" wording.
+- Synced README with the new tenant-center capabilities and delete-disabled policy.
+
 ## 2026-04-13 (tenant create flow redirect reliability fix)
 
 ### Changed

@@ -34,6 +34,7 @@ interface DashboardPanelProps {
   overview: DashboardOverview;
   activeSection: DashboardSection;
   modulesContent?: ReactNode;
+  tenantContent?: ReactNode;
   createTenantAction?: TenantCreateAction;
 }
 
@@ -118,6 +119,7 @@ export function DashboardPanel({
   overview,
   activeSection,
   modulesContent,
+  tenantContent,
   createTenantAction,
 }: DashboardPanelProps) {
   const dashboard = dictionary.dashboard;
@@ -305,13 +307,15 @@ export function DashboardPanel({
 
           {activeSection === "tenant" ? (
             <>
-              <TenantCard
-                locale={locale}
-                activeSection={activeSection}
-                overview={overview}
-                labels={dashboard}
-                createTenantAction={createTenantAction}
-              />
+              {tenantContent ?? (
+                <TenantCard
+                  locale={locale}
+                  activeSection={activeSection}
+                  overview={overview}
+                  labels={dashboard}
+                  createTenantAction={createTenantAction}
+                />
+              )}
             </>
           ) : null}
 

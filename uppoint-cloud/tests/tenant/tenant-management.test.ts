@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { TenantRole } from "@prisma/client";
 
 import {
   createTenantForUser,
+  deleteTenantForUser,
+  getTenantManagementDetailForUser,
   TenantManagementError,
 } from "@/modules/tenant/server/tenant-management";
 
@@ -114,5 +117,80 @@ describe("tenant management service", () => {
       code: "TENANT_CREATE_FAILED",
     } satisfies Partial<TenantManagementError>);
   });
-});
 
+  it("returns tenant detail with permissions and delete eligibility", async () => {
+    const result = await getTenantManagementDetailForUser(
+      {
+        userId: "user_1",
+        tenantId: "tenant_1",
+      },
+      {
+        assertAccess: vi.fn().mockResolvedValue({
+          tenantId: "tenant_1",
+          role: TenantRole.OWNER,
+        }),
+        listResourceGroups: vi.fn().mockResolvedValue([]),
+      },
+    );
+
+    expect(result).toMatchObject({
+      tenantId: "tenant_1",
+      role: TenantRole.OWNER,
+      canDelete: false,
+      deleteBlockedReason: "DELETE_DISABLED",
+      permissions: [
+        "tenant:read",
+        "tenant:manage_members",
+        "tenant:manage_infrastructure",
+        "tenant:manage_billing",
+      ],
+    });
+  });
+
+  it("blocks tenant detail access when membership cannot be verified", async () => {
+    await expect(
+      getTenantManagementDetailForUser(
+        {
+          userId: "user_1",
+          tenantId: "tenant_1",
+        },
+        {
+          assertAccess: vi.fn().mockRejectedValue(new Error("TENANT_ACCESS_DENIED")),
+          listResourceGroups: vi.fn(),
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "TENANT_DETAIL_ACCESS_DENIED",
+    } satisfies Partial<TenantManagementError>);
+  });
+
+  it("always blocks tenant deletion by policy", async () => {
+    await expect(
+      deleteTenantForUser(
+        {
+          userId: "user_1",
+          tenantId: "tenant_1",
+        },
+        {
+          assertAccess: vi.fn(),
+          listResourceGroups: vi.fn().mockResolvedValue([
+            {
+              id: "rg_1",
+              tenantId: "tenant_1",
+              name: "Primary",
+              slug: "primary",
+              regionCode: "tr-ist-1",
+              createdAt: new Date("2026-04-14T12:00:00.000Z"),
+              updatedAt: new Date("2026-04-14T12:00:00.000Z"),
+            },
+          ]),
+          softDeleteTenant: vi.fn().mockResolvedValue(undefined),
+          listMemberships: vi.fn().mockResolvedValue([]),
+          now: () => new Date(),
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "TENANT_DELETE_DISABLED",
+    } satisfies Partial<TenantManagementError>);
+  });
+});

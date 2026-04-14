@@ -62,6 +62,8 @@ export type AuditAction =
   | "tenant_selection_invalid"
   | "tenant_created"
   | "tenant_create_failed"
+  | "tenant_deleted"
+  | "tenant_delete_failed"
   | "resource_group_created"
   | "resource_group_create_failed"
   | "instance_wizard_draft_saved"
@@ -93,6 +95,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "deprecated_endpoint_access",
   "tenant_access_denied",
   "tenant_role_insufficient",
+  "tenant_delete_failed",
   "resource_group_create_failed",
   "instance_provisioning_request_failed",
 ]);
