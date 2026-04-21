@@ -13,24 +13,44 @@ export type InstancePowerState =
   | "rebooting"
   | "error";
 
-export interface InstanceProvisioningJob {
+export interface ResourceGroupView {
   id: string;
   tenantId: string;
-  requestedByUserId: string;
-  planCode: string;
-  imageCode: string;
+  name: string;
+  slug: string;
   regionCode: string;
-  state: InstanceLifecycleState;
   createdAt: Date;
   updatedAt: Date;
-  lastErrorCode?: string | null;
+}
+
+export interface VirtualNetworkView {
+  id: string;
+  tenantId: string;
+  resourceGroupId: string;
+  name: string;
+  cidr: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FirewallPolicyView {
+  id: string;
+  tenantId: string;
+  resourceGroupId: string;
+  name: string;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface InstanceRuntimeView {
   instanceId: string;
   tenantId: string;
-  hypervisorRef: string;
+  resourceGroupId: string;
+  name: string;
   powerState: InstancePowerState;
+  lifecycleState: InstanceLifecycleState;
+  providerInstanceRef?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,11 +58,29 @@ export interface InstanceRuntimeView {
 export interface InstanceProvisioningRequest {
   tenantId: string;
   requestedByUserId: string;
+  resourceGroupId: string;
+  networkId: string;
+  firewallPolicyId: string;
+  idempotencyKey: string;
+  name: string;
   planCode: string;
   imageCode: string;
   regionCode: string;
+  cpuCores: number;
+  memoryMb: number;
+  diskGb: number;
+  adminUsername: string;
+  sshPublicKey?: string | null;
 }
 
-export interface InstanceProvider {
-  enqueueProvisioning(request: InstanceProvisioningRequest): Promise<InstanceProvisioningJob>;
+export interface InstanceProvisioningJob {
+  id: string;
+  tenantId: string;
+  resourceGroupId: string;
+  instanceId: string | null;
+  requestedByUserId: string;
+  state: InstanceLifecycleState;
+  createdAt: Date;
+  updatedAt: Date;
+  lastErrorCode?: string | null;
 }

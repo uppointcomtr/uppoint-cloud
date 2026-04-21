@@ -114,6 +114,7 @@ Do not jump straight into changes without first confirming the local context and
 * Remote smoke must run nightly and remain runnable on-demand via `workflow_dispatch`
 * Use `https://cloud.uppoint.com.tr` as the default remote smoke target unless explicitly changed
 * If the production health endpoint is token-gated, repository secret `E2E_HEALTHCHECK_TOKEN` must be configured in GitHub Actions
+* Keep `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT` default fail-closed (`1`); CI may set it to `0` only for `pull_request` release-gate runs to decouple PR checks from host-runtime log noise
 * Do not silently disable, bypass, or remove remote smoke CI without explicit owner approval and a changelog entry
 
 ## Core engineering rules
@@ -335,6 +336,14 @@ If a different structure is chosen, explain the reason and keep it equally disci
 * Do not hardcode colors in a way that breaks theme support
 * Prefer a maintainable token/theme-based approach so theme behavior remains predictable as the product grows
 * If a theme-specific limitation exists, explicitly identify it instead of silently degrading the UI
+
+## System email template rules
+
+* All system-generated emails must render through the canonical shared HTML email template; do not introduce one-off inline markup per flow unless explicit owner approval is documented
+* Keep a plaintext body alongside the shared HTML template for deliverability, accessibility, and client fallback behavior
+* The canonical system email template must remain localization-friendly, brand-consistent, and visually correct in both light-mode and dark-mode email clients
+* Changes to the canonical system email template or its delivery contract must update `AGENTS.md` and `README.md` in the same change set
+* The current canonical renderer lives in `modules/notifications/server/email-template.ts`; route all new application or ops emails through that shared surface instead of duplicating markup
 
 ## API and server rules
 
@@ -583,6 +592,18 @@ Rules:
 * `npm run build:deploy` is a deployment/restart step and must be used only when explicitly deploying or when the owner explicitly requests a service restart
 * Do not restart the running service as part of ordinary local verification, code review, or pre-commit checks
 * If a task includes production deployment, explicitly state that deployment and restart are being performed
+
+### Release versioning policy (SemVer required)
+
+* All immutable release tags must follow `vMAJOR.MINOR.PATCH` format (example: `v1.1.0`)
+* Patch (`v1.0.1`): backward-compatible bugfix or operational correction only; no new feature surface
+* Minor (`v1.1.0`): backward-compatible feature or capability expansion
+* Major (`v2.0.0`): any intentional backward-incompatible contract or behavior change
+* Every new release tag must include:
+
+  * successful `npm run verify:security-gate` result before release recommendation
+  * `CHANGELOG.md` entry for that exact version
+  * release manifest/checksum bundle under `releases/<tag>/` (for example `RELEASE_MANIFEST_v1.1.0.md`, `checksums.txt`)
 
 ## When to ask vs when to proceed
 

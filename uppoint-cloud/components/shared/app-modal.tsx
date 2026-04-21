@@ -63,18 +63,18 @@ export function AppModal({
         aria-modal="true"
         aria-labelledby="app-modal-title"
         className={cn(
-          "relative z-10 w-full max-w-xl overflow-hidden rounded-2xl border border-border/60 bg-card/98 shadow-2xl",
+          "corp-surface relative z-10 w-full max-w-xl overflow-hidden bg-card/98 shadow-2xl",
           "supports-[backdrop-filter]:bg-card/90 supports-[backdrop-filter]:backdrop-blur-xl",
           className,
         )}
       >
-        <div className="flex items-start justify-between border-b border-border/60 px-5 py-4 sm:px-6">
+        <div className="corp-surface-header flex items-start justify-between">
           <div className="space-y-1">
-            <h2 id="app-modal-title" className="text-xl font-semibold leading-7 text-foreground">
+            <h2 id="app-modal-title" className="corp-heading-3">
               {title}
             </h2>
             {description ? (
-              <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+              <p className="corp-body-muted">{description}</p>
             ) : null}
           </div>
 
@@ -90,7 +90,7 @@ export function AppModal({
           </Button>
         </div>
 
-        <div className="px-5 py-5 sm:px-6">{children}</div>
+        <div className="corp-surface-body">{children}</div>
       </section>
     </div>
   );

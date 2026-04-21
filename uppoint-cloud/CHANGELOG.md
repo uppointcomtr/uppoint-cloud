@@ -1,5 +1,230 @@
 # Changelog
 
+## 2026-04-21 (dashboard global token adoption pass)
+
+### Changed
+- Applied global corporate UI tokens to remaining dashboard-adjacent surfaces to reduce local class drift and keep non-auth pages visually consistent:
+  - `app/[locale]/dashboard/error.tsx`
+  - `app/[locale]/dashboard/modules/instances/new/page.tsx`
+  - `modules/dashboard/components/security-center.tsx`
+  - `modules/instances/components/instance-provisioning-wizard.tsx`
+  - `modules/tenant/components/tenant-create-form.tsx`
+  - `modules/tenant/components/tenant-center.tsx`
+- Extended `app/globals.css` with reusable semantic utilities for:
+  - danger/warning/success inline states
+  - destructive panel surfaces
+  - normalized tenant-role badge tones
+
+### Verification
+- `npm run lint`
+- `npx tsc --noEmit`
+- `npm test`
+- `npm run build:deploy`
+
+## 2026-04-21 (dashboard infra visibility + global corporate surface standardization)
+
+### Added
+- Added tenant-scoped infrastructure snapshot signals into dashboard overview/model:
+  - active resource-group totals + recent list
+  - active instance totals + recent list
+  - files:
+    - `modules/dashboard/server/get-dashboard-overview.ts`
+    - `db/repositories/instance-control-plane-repository.ts`
+    - `tests/dashboard/get-dashboard-overview.test.ts`
+- Added tenant selector to instance setup wizard so tenant context can be switched before resource-group selection:
+  - files:
+    - `modules/instances/components/instance-provisioning-wizard.tsx`
+    - `app/[locale]/dashboard/modules/instances/new/page.tsx`
+
+### Changed
+- Standardized dashboard visual system with shared corporate surface/nav/menu classes and reduced padding drift across non-auth pages:
+  - `app/globals.css`
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - `modules/dashboard/components/profile-menu.tsx`
+  - `components/shared/app-modal.tsx`
+  - `modules/dashboard/components/account-center.tsx`
+  - `modules/dashboard/components/security-center.tsx`
+  - `modules/dashboard/components/security-active-sessions-panel.tsx`
+  - `modules/dashboard/components/security-events-table.tsx`
+  - `modules/tenant/components/tenant-center.tsx`
+- Updated dashboard modules section to "Infrastructure" and surfaced active resource-group/instance summaries with localized lifecycle/power labels:
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Refined tenant-selection-required behavior in dashboard overview:
+  - security timeline remains visible without emitting noisy `tenant_selection_required` audit events
+  - notification/resource-group/instance aggregates remain fail-closed until tenant context is selected
+  - repository audit queries now support `excludeActions` filtering for scoped timeline composition.
+- Extended global dashboard design contracts for consistent control-plane UX across non-auth surfaces:
+  - standardized shell/layout utilities (`corp-dashboard-shell`, `corp-section-stack`)
+  - standardized form controls (`corp-field-label`, `corp-input`, `corp-select`, `corp-textarea`, `corp-floating-input`)
+  - standardized button sizing/tones (`corp-btn-*`) and semantic badges/dots (`corp-badge-*`, `corp-dot-*`)
+  - standardized table primitives (`corp-table`, `corp-table-row`, `corp-table-cell`)
+  - applied to dashboard/account/security/tenant/instances wizard components without changing login/register pages.
+
+## 2026-04-14 (tenant center list + detail modal + delete disabled by policy)
+
+### Added
+- Added a modern tenant-management surface on `/dashboard/tenant`:
+  - tenants now render as a clickable list instead of button-based selection
+  - clicking a tenant row opens a detail modal with role scope and attached resource groups
+  - new component: `modules/tenant/components/tenant-center.tsx`
+- Added tenant delete policy guard in server action/service path:
+  - `app/[locale]/dashboard/tenant/actions.ts`
+  - `modules/tenant/server/tenant-management.ts`
+- Added regression coverage for tenant detail and delete fail-closed behavior:
+  - `tests/tenant/tenant-management.test.ts`
+
+### Changed
+- Extended audit catalog and security-event localization for tenant delete success/failure:
+  - `lib/audit-log.ts`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Updated dashboard tenant route to resolve modal detail state via search params and server-side tenant access checks.
+- Updated tenant delete UX text from destructive flow to policy-disabled "tenant cancel" wording.
+- Synced README with the new tenant-center capabilities and delete-disabled policy.
+
+## 2026-04-13 (tenant create flow redirect reliability fix)
+
+### Changed
+- Stabilized tenant-create post-success navigation on `/dashboard/tenant`:
+  - moved redirect trigger from inline action callback to state-driven effect
+  - added guarded client fallback navigation when router transition does not complete in time
+  - file: `modules/tenant/components/tenant-create-form.tsx`
+- Applied production deployment restart after build (`npm run build:deploy`) to ensure runtime bundle/service consistency.
+
+## 2026-04-13 (tenant self-service creation + tenant-context continuity)
+
+### Added
+- Added tenant self-service creation flow on `/dashboard/tenant`:
+  - server action: `app/[locale]/dashboard/tenant/actions.ts`
+  - tenant create service: `modules/tenant/server/tenant-management.ts`
+  - tenant create UI: `modules/tenant/components/tenant-create-form.tsx`
+- Added tenant creation repository primitive for transactional `tenant + owner membership` creation:
+  - `db/repositories/tenant-repository.ts`
+- Added test coverage for tenant creation slug/retry/fail-closed behavior:
+  - `tests/tenant/tenant-management.test.ts`
+
+### Changed
+- Updated dashboard tenant surface to include tenant create controls and immediate context transition.
+- Preserved selected tenant context across dashboard navigation/profile/menu/module links so multi-tenant users do not lose active tenant context between sections:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `modules/dashboard/components/profile-menu.tsx`
+  - `modules/instances/components/instance-provisioning-wizard.tsx`
+- Extended audit catalog and TR/EN localization for `tenant_created` / `tenant_create_failed` actions and tenant-create form messaging:
+  - `lib/audit-log.ts`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Synced documentation for tenant self-service capabilities:
+  - `README.md`
+
+## 2026-04-13 (instances control-plane module + tenant-scoped provisioning wizard foundation)
+
+### Added
+- Added tenant-isolated control-plane persistence foundation for instance management:
+  - `ResourceGroup`, `VirtualNetwork`, `FirewallPolicy`, `FirewallRule`, `CloudInstance`, `InstanceProvisioningJob`, `InstanceProvisioningEvent`
+  - `prisma/schema.prisma`
+  - `prisma/migrations/20260413191000_add_instances_control_plane_foundation/migration.sql`
+- Added dedicated provider boundary module for future hypervisor adapters without coupling dashboard/app routes to provider runtime:
+  - `modules/kvm/domain/provider-contract.ts`
+  - `modules/kvm/server/provider.ts`
+  - `modules/kvm/README.md`
+- Added tenant-scoped instance setup wizard route and component:
+  - `app/[locale]/dashboard/modules/instances/new/page.tsx`
+  - `modules/instances/components/instance-provisioning-wizard.tsx`
+  - `app/[locale]/dashboard/modules/instances/new/actions.ts`
+
+### Changed
+- Expanded instances orchestration and repository layer for:
+  - resource-group bootstrap (default network + default firewall policy/rules)
+  - idempotent provisioning request creation
+  - tenant/region/network/firewall consistency checks
+  - audit events for resource-group/provisioning flows
+  - `modules/instances/server/wizard-service.ts`
+  - `db/repositories/instance-control-plane-repository.ts`
+  - `modules/instances/domain/contracts.ts`
+  - `lib/audit-log.ts`
+- Updated dashboard modules surface to expose instance wizard entry point:
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `modules/dashboard/components/dashboard-panel.tsx`
+- Extended route protection and callback-path coverage for the new protected wizard route:
+  - `modules/auth/server/route-access.ts`
+  - `modules/dashboard/server/page-loader.ts`
+  - `tests/auth/route-access.test.ts`
+- Added TR/EN localization and metadata coverage for the new wizard flow and related audit action labels:
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Extended DB cleanup retention to include append-only provisioning events:
+  - `scripts/cleanup-db.sh`
+- Synced operational and architecture docs:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+  - `modules/instances/README.md`
+
+## 2026-04-13 (security gate CI stability: edge-audit emit PR decoupling)
+
+### Changed
+- Added explicit edge-audit enforcement toggle in canonical security gate script:
+  - `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT` (`1` by default, fail-closed)
+  - file: `scripts/verify-security-gate.sh`
+- Updated release-gate workflow so pull-request runs set `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT=0`, while push-to-main keeps enforcement enabled:
+  - file: `.github/workflows/security-release-gate.yml`
+- Added guardrail coverage and documentation for the new CI behavior:
+  - `tests/security/verify-security-gate-script-guardrail.test.ts`
+  - `tests/security/security-release-gate-workflow-guardrail.test.ts`
+  - `AGENTS.md`
+  - `README.md`
+
+## 2026-04-13 (release versioning policy: semver contract)
+
+### Changed
+- Added explicit SemVer release policy (`vMAJOR.MINOR.PATCH`) for future tags in:
+  - `AGENTS.md`
+  - `README.md`
+- Standardized release prerequisites for each new version tag:
+  - `npm run verify:security-gate`
+  - matching `CHANGELOG.md` version entry
+  - release bundle files under `releases/<tag>/` (`RELEASE_MANIFEST_<tag>.md` + `checksums.txt`)
+
+## 2026-04-13 (`v1.0.0` freeze release + portable restore bundle)
+
+### Added
+- Added tagged-release manifest bundle for V1 portability:
+  - `releases/v1.0.0/RELEASE_MANIFEST_v1.0.0.md`
+  - `releases/v1.0.0/checksums.txt`
+
+### Changed
+- Documented immutable tag restore flow (`v1.0.0`, schema-only DB bootstrap) in:
+  - `README.md`
+  - `ops/README.md`
+- Prepared repository for annotated `v1.0.0` freeze tag + GitHub Release workflow:
+  - release process now explicitly captures runtime requirements, required env keys, and reproducibility checksums.
+
+## 2026-04-13 (shared email template + dashboard quick-actions removal)
+
+### Added
+- Added a canonical shared system email renderer:
+  - `modules/notifications/server/email-template.ts`
+- Added regression coverage for shared HTML email delivery:
+  - `tests/auth/email-service.test.ts`
+
+### Changed
+- Routed all SMTP/outbox-delivered system emails through one shared corporate HTML wrapper while preserving plaintext fallback:
+  - `modules/auth/server/email-service.ts`
+- Refined OTP email presentation so the verification code is rendered once in the dedicated code block (removed duplicate code exposure from hero summary/body lines):
+  - `modules/notifications/server/email-template.ts`
+  - `tests/auth/email-service.test.ts`
+- Updated maintainer guidance and architecture docs for the canonical email-template rule:
+  - `AGENTS.md`
+  - `README.md`
+- Removed the dashboard `Quick actions / Hızlı işlemler` card from dashboard panel surfaces and deleted the now-unused TR/EN dictionary entries:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+
 ## 2026-04-12 (safe logging + session semantics + low-sample SLO hardening)
 
 ### Changed

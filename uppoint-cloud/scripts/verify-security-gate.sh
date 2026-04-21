@@ -77,12 +77,24 @@ else
   echo "[security-gate] skip verify:nginx-drift (/etc/nginx/conf.d/uppoint-rate-limit.conf not found)"
 fi
 
-if command -v systemctl >/dev/null 2>&1 && systemctl cat uppoint-cloud.service >/dev/null 2>&1; then
-  echo "[security-gate] edge-audit emit verification"
-  npm run verify:edge-audit-emit
-else
-  echo "[security-gate] skip verify:edge-audit-emit (uppoint-cloud.service not available)"
-fi
+EDGE_AUDIT_REQUIRED="${SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT:-1}"
+case "${EDGE_AUDIT_REQUIRED}" in
+  1|true|TRUE|yes|YES)
+    if command -v systemctl >/dev/null 2>&1 && systemctl cat uppoint-cloud.service >/dev/null 2>&1; then
+      echo "[security-gate] edge-audit emit verification"
+      npm run verify:edge-audit-emit
+    else
+      echo "[security-gate] skip verify:edge-audit-emit (uppoint-cloud.service not available)"
+    fi
+    ;;
+  0|false|FALSE|no|NO)
+    echo "[security-gate] skip edge-audit emit verification (SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT=${EDGE_AUDIT_REQUIRED})"
+    ;;
+  *)
+    echo "[security-gate] invalid SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT value: ${EDGE_AUDIT_REQUIRED}" >&2
+    exit 1
+    ;;
+esac
 
 if ls /opt/backups/postgres/*.sql.gz >/dev/null 2>&1; then
   echo "[security-gate] restore drill artifact verification"

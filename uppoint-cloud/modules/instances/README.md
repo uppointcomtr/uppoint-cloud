@@ -6,12 +6,22 @@ Current scope in this repository state:
 
 - Defines domain contracts for instance provisioning/runtime state.
 - Defines tenant authorization boundary helper for instance-scoped server entry points.
+- Defines tenant-isolated control-plane persistence for:
+  - resource groups
+  - virtual networks
+  - firewall policies/rules
+  - cloud instances
+  - provisioning jobs/events
+- Exposes a protected dashboard wizard surface at:
+  - `/[locale]/dashboard/modules/instances/new`
+  - create resource group with default network/firewall
+  - submit idempotent instance provisioning requests
 
 Out of scope right now:
 
 - Hypervisor integration (`libvirt`, `qemu`, SSH, cloud-init).
-- Provisioning workflow implementation.
-- User-facing instance CRUD routes/pages.
+- Asynchronous provider worker that executes provisioning on host infrastructure.
+- Full instance runtime CRUD lifecycle (power, snapshot, console, resize, delete).
 
 Security requirement for future implementation:
 

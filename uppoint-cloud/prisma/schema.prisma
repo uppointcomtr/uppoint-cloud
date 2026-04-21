@@ -29,6 +29,48 @@ enum AccountContactChangeType {
   PHONE
 }
 
+enum ResourceGroupStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum NetworkStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum FirewallStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum FirewallRuleDirection {
+  INGRESS
+  EGRESS
+}
+
+enum FirewallRuleAction {
+  ALLOW
+  DENY
+}
+
+enum InstanceProvisioningStatus {
+  PENDING
+  RUNNING
+  FAILED
+  COMPLETED
+  CANCELLED
+}
+
+enum InstancePowerState {
+  STOPPED
+  STARTING
+  RUNNING
+  STOPPING
+  REBOOTING
+  ERROR
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -64,6 +106,13 @@ model Tenant {
   name        String
   deletedAt   DateTime?
   members     TenantMembership[]
+  resourceGroups ResourceGroup[]
+  virtualNetworks VirtualNetwork[]
+  firewallPolicies FirewallPolicy[]
+  firewallRules FirewallRule[]
+  cloudInstances CloudInstance[]
+  instanceProvisioningJobs InstanceProvisioningJob[]
+  instanceProvisioningEvents InstanceProvisioningEvent[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -351,4 +400,175 @@ model NotificationOutbox {
   @@index([sentAt])
   @@index([tenantId, status, nextAttemptAt])
   @@index([userId, status, nextAttemptAt])
+}
+
+model ResourceGroup {
+  id        String              @id @default(cuid())
+  tenantId  String
+  name      String
+  slug      String
+  regionCode String
+  status    ResourceGroupStatus @default(ACTIVE)
+  createdByUserId String
+  deletedAt DateTime?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  networks VirtualNetwork[]
+  firewallPolicies FirewallPolicy[]
+  cloudInstances CloudInstance[]
+  provisioningJobs InstanceProvisioningJob[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status, deletedAt])
+  @@index([createdByUserId, createdAt])
+}
+
+model VirtualNetwork {
+  id        String        @id @default(cuid())
+  tenantId  String
+  resourceGroupId String
+  name      String
+  cidr      String
+  status    NetworkStatus @default(ACTIVE)
+  createdByUserId String
+  deletedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resourceGroup ResourceGroup @relation(fields: [resourceGroupId], references: [id], onDelete: Cascade)
+  cloudInstances CloudInstance[]
+
+  @@unique([resourceGroupId, name])
+  @@index([tenantId, resourceGroupId, status, deletedAt])
+}
+
+model FirewallPolicy {
+  id        String         @id @default(cuid())
+  tenantId  String
+  resourceGroupId String
+  name      String
+  description String?
+  status    FirewallStatus @default(ACTIVE)
+  defaultInboundAction FirewallRuleAction @default(DENY)
+  defaultOutboundAction FirewallRuleAction @default(ALLOW)
+  createdByUserId String
+  deletedAt DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resourceGroup ResourceGroup @relation(fields: [resourceGroupId], references: [id], onDelete: Cascade)
+  rules FirewallRule[]
+  cloudInstances CloudInstance[]
+
+  @@unique([resourceGroupId, name])
+  @@index([tenantId, resourceGroupId, status, deletedAt])
+}
+
+model FirewallRule {
+  id        String                @id @default(cuid())
+  tenantId  String
+  firewallPolicyId String
+  name      String
+  direction FirewallRuleDirection
+  action    FirewallRuleAction
+  protocol  String
+  portRange String?
+  sourceCidr String?
+  destinationCidr String?
+  priority  Int
+  enabled   Boolean               @default(true)
+  createdByUserId String
+  deletedAt DateTime?
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  firewallPolicy FirewallPolicy @relation(fields: [firewallPolicyId], references: [id], onDelete: Cascade)
+
+  @@unique([firewallPolicyId, priority])
+  @@index([tenantId, firewallPolicyId, direction, deletedAt])
+}
+
+model CloudInstance {
+  id        String                    @id @default(cuid())
+  tenantId  String
+  resourceGroupId String
+  networkId String
+  firewallPolicyId String
+  name      String
+  providerInstanceRef String?
+  lifecycleStatus InstanceProvisioningStatus @default(PENDING)
+  powerState InstancePowerState       @default(STOPPED)
+  planCode  String
+  imageCode String
+  regionCode String
+  cpuCores  Int
+  memoryMb  Int
+  diskGb    Int
+  adminUsername String
+  sshPublicKey String?
+  createdByUserId String
+  deletedAt DateTime?
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resourceGroup ResourceGroup @relation(fields: [resourceGroupId], references: [id], onDelete: Restrict)
+  network VirtualNetwork @relation(fields: [networkId], references: [id], onDelete: Restrict)
+  firewallPolicy FirewallPolicy @relation(fields: [firewallPolicyId], references: [id], onDelete: Restrict)
+  provisioningJobs InstanceProvisioningJob[]
+  provisioningEvents InstanceProvisioningEvent[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, resourceGroupId, lifecycleStatus, deletedAt])
+  @@index([tenantId, powerState, deletedAt])
+}
+
+model InstanceProvisioningJob {
+  id        String                     @id @default(cuid())
+  tenantId  String
+  resourceGroupId String
+  instanceId String?
+  status    InstanceProvisioningStatus @default(PENDING)
+  requestedByUserId String
+  idempotencyKey String
+  requestPayload Json
+  lastErrorCode String?
+  lastErrorMessage String?
+  startedAt DateTime?
+  completedAt DateTime?
+  failedAt DateTime?
+  cancelledAt DateTime?
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resourceGroup ResourceGroup @relation(fields: [resourceGroupId], references: [id], onDelete: Restrict)
+  instance CloudInstance? @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  events InstanceProvisioningEvent[]
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, status, createdAt])
+  @@index([requestedByUserId, createdAt])
+}
+
+model InstanceProvisioningEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  jobId     String
+  instanceId String?
+  eventType String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  job InstanceProvisioningJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  instance CloudInstance? @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, jobId, createdAt])
+  @@index([tenantId, eventType, createdAt])
 }

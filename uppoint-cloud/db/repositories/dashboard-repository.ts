@@ -95,7 +95,7 @@ export async function countUserNotificationByStatus(
 }
 
 export async function countUserAuditFailuresSince(
-  input: { userId: string; since: Date; tenantId?: string },
+  input: { userId: string; since: Date; tenantId?: string; excludeActions?: string[] },
   client: DashboardRepositoryClient = prisma,
 ): Promise<number> {
   const tenantScopeFilter = input.tenantId
@@ -111,6 +111,15 @@ export async function countUserAuditFailuresSince(
     where: {
       userId: input.userId,
       ...tenantScopeFilter,
+      ...(input.excludeActions && input.excludeActions.length > 0
+        ? {
+            NOT: {
+              action: {
+                in: input.excludeActions,
+              },
+            },
+          }
+        : {}),
       result: "FAILURE",
       createdAt: {
         gte: input.since,
@@ -120,7 +129,7 @@ export async function countUserAuditFailuresSince(
 }
 
 export async function listRecentUserAuditEvents(
-  input: { userId: string; take?: number; tenantId?: string },
+  input: { userId: string; take?: number; tenantId?: string; excludeActions?: string[] },
   client: DashboardRepositoryClient = prisma,
 ): Promise<DashboardAuditEvent[]> {
   const tenantScopeFilter = input.tenantId
@@ -136,6 +145,15 @@ export async function listRecentUserAuditEvents(
     where: {
       userId: input.userId,
       ...tenantScopeFilter,
+      ...(input.excludeActions && input.excludeActions.length > 0
+        ? {
+            NOT: {
+              action: {
+                in: input.excludeActions,
+              },
+            },
+          }
+        : {}),
     },
     orderBy: {
       createdAt: "desc",

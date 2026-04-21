@@ -27,9 +27,9 @@ import type { Dictionary } from "@/modules/i18n/dictionaries";
 
 import { AccountContactChangeModal } from "./account-contact-change-modal";
 
-const cardClass = "border-border/70 bg-card/90 shadow-sm";
-const accountDetailsCardClass = `${cardClass} overflow-hidden gap-0 py-4`;
-const accountRowPadClass = "px-4 py-4 md:px-5 md:py-4";
+const summaryCardClass = "corp-surface gap-0 py-0";
+const accountDetailsCardClass = "corp-surface overflow-hidden gap-0 py-0";
+const accountRowPadClass = "corp-surface-row";
 
 interface AccountCenterProps {
   locale: Locale;
@@ -111,8 +111,8 @@ function VerificationBadge({
     <span
       className={
         verified
-          ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-          : "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+          ? "corp-badge corp-badge-success"
+          : "corp-badge corp-badge-warning"
       }
     >
       {verified ? labels.verified : labels.pending}
@@ -149,14 +149,14 @@ function InfoRow({
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-base font-semibold tracking-tight text-foreground">
+          <p className="corp-title-base">
             {title}
           </p>
           {badge}
         </div>
-        <p className="mt-1 break-all text-base text-muted-foreground">{value}</p>
+        <p className="mt-1 break-all text-sm leading-6 text-muted-foreground">{value}</p>
         {description ? (
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+          <p className="corp-body-muted mt-2 max-w-2xl">
             {description}
           </p>
         ) : null}
@@ -166,7 +166,7 @@ function InfoRow({
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-full rounded-xl border-border/70 bg-background/80 px-5 sm:w-auto sm:min-w-[144px] sm:justify-center"
+          className="corp-btn-md w-full border-border/70 bg-background/80 sm:w-auto sm:min-w-[144px] sm:justify-center"
           onClick={onAction}
           disabled={disabled}
         >
@@ -420,7 +420,7 @@ export function AccountCenter({
 
   return (
     <>
-      <Card className={cardClass}>
+      <Card className={summaryCardClass}>
         <CardContent className="corp-profile-summary-pad">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <span className="inline-flex size-14 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary shadow-sm">
@@ -428,13 +428,13 @@ export function AccountCenter({
             </span>
 
             <div className="min-w-0 space-y-1">
-              <p className="truncate text-lg leading-6 font-semibold tracking-tight text-foreground">
+              <p className="corp-heading-3 truncate">
                 {displayName}
               </p>
-              <p className="truncate text-sm leading-6 text-muted-foreground">
+              <p className="corp-body-muted truncate">
                 {emailValue}
               </p>
-              <p className="text-sm leading-6 text-muted-foreground">
+              <p className="corp-body-muted">
                 <span className="font-medium text-foreground/80">
                   {labels.layout.membershipDateLabel}
                 </span>{" "}
@@ -446,7 +446,7 @@ export function AccountCenter({
       </Card>
 
       <Card className={accountDetailsCardClass}>
-        <CardHeader className="border-b border-border/60 pb-4">
+        <CardHeader className="corp-surface-header">
           <CardTitle className="corp-section-title">
             {labels.layout.personalInfoHeading}
           </CardTitle>
@@ -455,7 +455,7 @@ export function AccountCenter({
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4 px-4 pb-2 pt-3 md:px-5 md:pb-3 md:pt-4">
+        <CardContent className="corp-surface-body space-y-4">
           {identityInfo ? (
             <Alert>
               <AlertDescription>{identityInfo}</AlertDescription>
@@ -529,6 +529,7 @@ export function AccountCenter({
           <FloatingInput
             id="account-full-name"
             label={labels.profile.fields.name}
+            className="corp-floating-input"
             value={draftName}
             onChange={(event) => {
               setDraftName(event.target.value);
@@ -542,14 +543,14 @@ export function AccountCenter({
 
           {isNameVerificationStep ? (
             <div className="space-y-4 rounded-2xl border border-border/60 bg-background/70 p-4">
-              <p className="text-sm font-medium text-foreground">
+              <p className="corp-title-base">
                 {labels.profile.verification.codeSentTo}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="corp-body-muted">
                 {nameVerificationMaskedEmail ?? "—"}
               </p>
               {nameCountdownSeconds !== null && nameCountdownSeconds > 0 ? (
-                <p className="text-xs font-medium text-primary">
+                <p className="corp-field-hint font-medium text-primary">
                   {labels.profile.verification.countdownPrefix} {formatCountdown(nameCountdownSeconds)}
                 </p>
               ) : null}
@@ -567,14 +568,14 @@ export function AccountCenter({
             <Button
               type="button"
               variant="outline"
-              className="h-11 rounded-xl sm:min-w-[144px]"
+              className="corp-btn-md sm:min-w-[144px]"
               onClick={() => handleNameModalOpenChange(false)}
             >
               {labels.layout.cancelEdit}
             </Button>
             <Button
               type="button"
-              className="h-11 rounded-xl sm:min-w-[144px]"
+              className="corp-btn-md sm:min-w-[144px]"
               onClick={() => {
                 if (isNameVerificationStep) {
                   void handleVerifyAndSaveName();

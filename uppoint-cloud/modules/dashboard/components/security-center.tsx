@@ -492,22 +492,22 @@ export function SecurityCenter({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
+      <section className="corp-surface corp-surface-pad">
         <div className="space-y-1">
           <h2 className="corp-section-title">{labels.accountTitle}</h2>
           <p className="corp-body-muted">{labels.accountDescription}</p>
         </div>
 
         <div className="mt-5 space-y-4">
-          <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="corp-subcard flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <p className="font-medium">{labels.endAllSessionsTitle}</p>
-              <p className="text-sm text-muted-foreground">{labels.endAllSessionsDescription}</p>
+              <p className="corp-title-base">{labels.endAllSessionsTitle}</p>
+              <p className="corp-body-muted">{labels.endAllSessionsDescription}</p>
             </div>
             <Button
               type="button"
               variant="outline"
-              className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+              className="corp-btn-md corp-btn-attention"
               onClick={() => {
                 setEndSessionsError(null);
                 setIsEndSessionsModalOpen(true);
@@ -517,16 +517,16 @@ export function SecurityCenter({
             </Button>
           </div>
 
-          <div className="rounded-xl border border-red-200 bg-red-50/70 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+          <div className="corp-panel-danger">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
-                <p className="font-medium text-red-700 dark:text-red-200">{labels.deleteAccountTitle}</p>
-                <p className="text-sm text-red-700/90 dark:text-red-300/90">{labels.deleteAccountDescription}</p>
+                <p className="corp-title-base text-red-700 dark:text-red-200">{labels.deleteAccountTitle}</p>
+                <p className="corp-body text-red-700/90 dark:text-red-300/90">{labels.deleteAccountDescription}</p>
               </div>
               <Button
                 type="button"
                 variant="outline"
-                className="border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
+                className="corp-btn-md corp-btn-danger-outline"
                 onClick={() => handleDeleteModalChange(true)}
               >
                 {labels.deleteAccountAction}
@@ -572,7 +572,7 @@ export function SecurityCenter({
         description={labels.endAllSessionsModal.description}
       >
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{labels.endAllSessionsConfirm}</p>
+          <p className="corp-body-muted">{labels.endAllSessionsConfirm}</p>
           {endSessionsError ? (
             <Alert variant="destructive">
               <AlertDescription>{endSessionsError}</AlertDescription>
@@ -582,6 +582,7 @@ export function SecurityCenter({
             <Button
               type="button"
               variant="ghost"
+              className="corp-btn-md"
               disabled={isEndingSessions}
               onClick={() => setIsEndSessionsModalOpen(false)}
             >
@@ -590,7 +591,7 @@ export function SecurityCenter({
             <Button
               type="button"
               variant="outline"
-              className="border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
+              className="corp-btn-md corp-btn-attention"
               disabled={isEndingSessions}
               onClick={() => void handleEndAllSessionsConfirm()}
             >
@@ -609,8 +610,8 @@ export function SecurityCenter({
         <div className="space-y-4">
           {deleteStep === "intro" ? (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">{labels.deleteFlow.introDescription}</p>
-              <div className="rounded-lg border border-red-200/80 bg-red-50/70 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+              <p className="corp-body-muted">{labels.deleteFlow.introDescription}</p>
+              <div className="corp-inline-danger">
                 {labels.deleteFlow.finalWarning}
               </div>
             </div>
@@ -618,7 +619,7 @@ export function SecurityCenter({
 
           {deleteStep === "emailCode" ? (
             <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">{labels.deleteFlow.fields.emailCode}</p>
+              <p className="corp-title-base">{labels.deleteFlow.fields.emailCode}</p>
               <VerificationCodeInput
                 id="account-delete-email-code"
                 value={deleteEmailCode}
@@ -628,7 +629,7 @@ export function SecurityCenter({
                 className="w-full"
               />
               {deleteCountdownSeconds !== null ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="corp-field-hint">
                   {labels.deleteFlow.countdownPrefix} {formatCountdown(deleteCountdownSeconds)}
                 </p>
               ) : null}
@@ -637,9 +638,9 @@ export function SecurityCenter({
 
           {deleteStep === "smsCode" ? (
             <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">{labels.deleteFlow.fields.smsCode}</p>
+              <p className="corp-title-base">{labels.deleteFlow.fields.smsCode}</p>
               {maskedPhone ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="corp-field-hint">
                   {labels.deleteFlow.smsSentToPrefix} {maskedPhone}
                 </p>
               ) : null}
@@ -652,7 +653,7 @@ export function SecurityCenter({
                 className="w-full"
               />
               {deleteCountdownSeconds !== null ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="corp-field-hint">
                   {labels.deleteFlow.countdownPrefix} {formatCountdown(deleteCountdownSeconds)}
                 </p>
               ) : null}
@@ -661,8 +662,8 @@ export function SecurityCenter({
 
           {deleteStep === "confirm" ? (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">{labels.deleteFlow.confirmDescription}</p>
-              <div className="rounded-lg border border-red-200/80 bg-red-50/70 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+              <p className="corp-body-muted">{labels.deleteFlow.confirmDescription}</p>
+              <div className="corp-inline-danger">
                 {labels.deleteFlow.finalWarning}
               </div>
             </div>
@@ -687,6 +688,7 @@ export function SecurityCenter({
             <Button
               type="button"
               variant="ghost"
+              className="corp-btn-md"
               disabled={isDeleteSubmitting}
               onClick={() => handleDeleteModalChange(false)}
             >
@@ -697,6 +699,7 @@ export function SecurityCenter({
               <Button
                 type="button"
                 variant="destructive"
+                className="corp-btn-md"
                 disabled={isDeleteSubmitting}
                 onClick={() => void requestDeleteEmailCode()}
               >
@@ -710,6 +713,7 @@ export function SecurityCenter({
                   <Button
                     type="button"
                     variant="outline"
+                    className="corp-btn-md"
                     disabled={isDeleteSubmitting}
                     onClick={() => {
                       resetDeleteFlow();
@@ -722,6 +726,7 @@ export function SecurityCenter({
                 <Button
                   type="button"
                   variant="destructive"
+                  className="corp-btn-md"
                   disabled={isDeleteSubmitting}
                   onClick={() => void verifyDeleteEmailCode()}
                 >
@@ -736,6 +741,7 @@ export function SecurityCenter({
                   <Button
                     type="button"
                     variant="outline"
+                    className="corp-btn-md"
                     disabled={isDeleteSubmitting}
                     onClick={() => {
                       resetDeleteFlow();
@@ -748,6 +754,7 @@ export function SecurityCenter({
                 <Button
                   type="button"
                   variant="destructive"
+                  className="corp-btn-md"
                   disabled={isDeleteSubmitting}
                   onClick={() => void verifyDeleteSmsCode()}
                 >
@@ -760,6 +767,7 @@ export function SecurityCenter({
               <Button
                 type="button"
                 variant="destructive"
+                className="corp-btn-md"
                 disabled={isDeleteSubmitting}
                 onClick={() => void completeDeleteAccount()}
               >

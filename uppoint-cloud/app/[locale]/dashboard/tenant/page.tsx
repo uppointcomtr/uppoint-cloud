@@ -1,11 +1,20 @@
 import type { Metadata } from "next";
+import { z } from "zod";
 
 import { DashboardPanel } from "@/modules/dashboard/components/dashboard-panel";
 import { loadDashboardPageData } from "@/modules/dashboard/server/page-loader";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { getLocaleFromParams } from "@/modules/i18n/server";
+import { TenantCenter } from "@/modules/tenant/components/tenant-center";
+import { getTenantManagementDetailForUser, TenantManagementError } from "@/modules/tenant/server/tenant-management";
+
+import { createTenantDashboardAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+
+const tenantViewSearchParamSchema = z.object({
+  tenantView: z.string().trim().min(1).max(191).optional(),
+});
 
 interface DashboardTenantPageProps {
   params: Promise<{ locale: string }>;
@@ -29,11 +38,52 @@ export default async function DashboardTenantPage({
   searchParams,
 }: DashboardTenantPageProps) {
   const locale = await getLocaleFromParams(params);
+  const rawSearchParams = await searchParams;
+  // Dashboard tenant context remains server-enforced in loadDashboardPageData() -> getDashboardOverview() -> resolveUserTenantContext().
   const { dictionary, overview } = await loadDashboardPageData({
     locale,
     callbackPath: "/dashboard/tenant",
-    rawSearchParams: await searchParams,
+    rawSearchParams,
   });
+  const tenantViewValue = rawSearchParams.tenantView;
+  const parsedTenantView = tenantViewSearchParamSchema.safeParse({
+    tenantView: Array.isArray(tenantViewValue) ? tenantViewValue[0] : tenantViewValue,
+  });
+  const tenantView = parsedTenantView.success ? parsedTenantView.data.tenantView : undefined;
+
+  let selectedTenantDetail = null;
+
+  if (tenantView) {
+    const selectedTenant = overview.tenantOptions.find((tenant) => tenant.tenantId === tenantView) ?? null;
+
+    try {
+      // Tenant detail access remains fail-closed in getTenantManagementDetailForUser() -> assertTenantAccess().
+      const detail = await getTenantManagementDetailForUser({
+        userId: overview.user.id,
+        tenantId: tenantView,
+      });
+
+      selectedTenantDetail = {
+        tenantId: detail.tenantId,
+        tenantName: selectedTenant?.tenantName ?? detail.tenantId,
+        role: detail.role,
+        permissions: detail.permissions,
+        resourceGroups: detail.resourceGroups.map((resourceGroup) => ({
+          id: resourceGroup.id,
+          name: resourceGroup.name,
+          slug: resourceGroup.slug,
+          regionCode: resourceGroup.regionCode,
+          createdAtIso: resourceGroup.createdAt.toISOString(),
+        })),
+        canDelete: detail.canDelete,
+        deleteBlockedReason: detail.deleteBlockedReason,
+      };
+    } catch (error) {
+      if (!(error instanceof TenantManagementError)) {
+        throw error;
+      }
+    }
+  }
 
   return (
     <DashboardPanel
@@ -41,6 +91,17 @@ export default async function DashboardTenantPage({
       dictionary={dictionary}
       overview={overview}
       activeSection="tenant"
+      createTenantAction={createTenantDashboardAction}
+      tenantContent={(
+        <TenantCenter
+          locale={locale}
+          labels={dictionary.dashboard.tenant}
+          tenantErrorCode={overview.tenantErrorCode}
+          tenants={overview.tenantOptions}
+          selectedTenantDetail={selectedTenantDetail}
+          createTenantAction={createTenantDashboardAction}
+        />
+      )}
     />
   );
 }

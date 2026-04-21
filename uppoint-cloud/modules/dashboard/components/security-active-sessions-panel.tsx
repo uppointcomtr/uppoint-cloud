@@ -62,27 +62,27 @@ export function SecurityActiveSessionsPanel({
   const loginAt = currentSession.loginAtIso ?? currentSession.observedAtIso;
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
+    <section className="corp-surface corp-surface-pad">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <h3 className="corp-section-title">{labels.activeSessionsTitle}</h3>
-          <p className="text-sm text-muted-foreground">{labels.activeSessionsDescription}</p>
+          <p className="corp-body-muted">{labels.activeSessionsDescription}</p>
         </div>
-        <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+        <div className="corp-badge corp-badge-info font-semibold">
           {labels.sessionCountLabel}: {activeSessions}
         </div>
       </div>
 
       <div className="mt-4">
         {activeSessions > 0 ? (
-          <div className="rounded-xl border border-border/60 bg-background/75 p-4">
+          <div className="corp-subcard border-border/60 bg-background/75">
             <div className="flex flex-wrap items-center gap-3">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Laptop2 className="h-4 w-4" />
               </span>
               <div>
-                <p className="font-medium">{currentSessionDevice}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="corp-title-base">{currentSessionDevice}</p>
+                <p className="corp-body-muted">
                   {labels.ipLabel}: {currentSession.ip ?? labels.unknownIp} · {labels.loginAtLabel}:{" "}
                   {new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
                     dateStyle: "medium",
@@ -90,18 +90,18 @@ export function SecurityActiveSessionsPanel({
                   }).format(new Date(loginAt))}
                 </p>
               </div>
-              <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              <span className="corp-badge corp-badge-success">
                 {labels.currentDevice}
               </span>
             </div>
             {extraSessionCount > 0 ? (
-              <p className="mt-3 text-xs text-muted-foreground">
+              <p className="corp-field-hint mt-3">
                 {labels.otherSessionsPrefix}: {extraSessionCount}
               </p>
             ) : null}
           </div>
         ) : (
-          <p className="rounded-lg border border-border/60 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
+          <p className="corp-subcard-sm text-muted-foreground">
             {labels.noActiveSessions}
           </p>
         )}

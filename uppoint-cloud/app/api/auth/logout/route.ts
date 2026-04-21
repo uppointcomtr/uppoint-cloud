@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { fail, ok } from "@/lib/http/response";
 import { withIdempotency } from "@/lib/http/idempotency";
+import { logServerError } from "@/lib/observability/safe-server-error-log";
 import { enforceFailClosedIdentifierRateLimit, enforceFailClosedIpRateLimit } from "@/lib/security/route-guard";
 import { revokeSessionJti } from "@/lib/session-revocation";
 
@@ -77,9 +78,31 @@ export async function POST(request: NextRequest) {
     const tokenExp = typeof token?.exp === "number" ? token.exp : null;
     const hasSessionJti = sessionJti !== null && tokenExp !== null;
 
+    if (session?.user?.id && !hasSessionJti) {
+      await logAudit("logout_failed", ip, session.user.id, {
+        reason: "REVOCABLE_SESSION_MISSING",
+        result: "FAILURE",
+        scope: "single-session",
+      });
+      return NextResponse.json(fail("LOGOUT_SESSION_INVALID"), { status: 409 });
+    }
+
     if (hasSessionJti) {
-      const expiresAt = new Date(tokenExp * 1000);
-      await revokeSessionJti({ jti: sessionJti, expiresAt });
+      try {
+        const expiresAt = new Date(tokenExp * 1000);
+        await revokeSessionJti({ jti: sessionJti, expiresAt });
+      } catch (error) {
+        await logAudit("logout_failed", ip, session?.user?.id, {
+          reason: "SESSION_REVOCATION_FAILED",
+          result: "FAILURE",
+          scope: "single-session",
+        });
+        logServerError("logout_revocation_failed", error, {
+          route: "/api/auth/logout",
+          userId: session?.user?.id,
+        });
+        return NextResponse.json(fail("LOGOUT_REVOCATION_FAILED"), { status: 500 });
+      }
     }
 
     await logAudit("logout_success", ip, session?.user?.id, {

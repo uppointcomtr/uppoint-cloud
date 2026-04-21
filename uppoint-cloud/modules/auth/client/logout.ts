@@ -9,9 +9,18 @@ interface PerformLogoutOptions {
   signOutImpl?: typeof signOut;
 }
 
+export class LogoutError extends Error {
+  code: "LOGOUT_REQUEST_FAILED" | "LOGOUT_REJECTED";
+
+  constructor(code: "LOGOUT_REQUEST_FAILED" | "LOGOUT_REJECTED") {
+    super(code);
+    this.name = "LogoutError";
+    this.code = code;
+  }
+}
+
 /**
- * Ensures logout audit/revocation endpoint is attempted before next-auth signOut.
- * signOut always runs even if audit endpoint is unavailable.
+ * Security-sensitive: never destroy the local session unless server-side revocation succeeded first.
  */
 export async function performLogout({
   callbackUrl,
@@ -23,12 +32,19 @@ export async function performLogout({
   const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    await fetchImpl("/api/auth/logout", {
+    const response = await fetchImpl("/api/auth/logout", {
       method: "POST",
       signal: controller.signal,
     });
-  } catch {
-    // Best-effort endpoint: user logout must continue.
+    if (!response.ok) {
+      throw new LogoutError("LOGOUT_REJECTED");
+    }
+  } catch (error) {
+    if (error instanceof LogoutError) {
+      throw error;
+    }
+
+    throw new LogoutError("LOGOUT_REQUEST_FAILED");
   } finally {
     globalThis.clearTimeout(timeoutId);
   }

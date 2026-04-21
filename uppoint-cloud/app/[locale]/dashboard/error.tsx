@@ -33,12 +33,12 @@ export default function DashboardError({
   const copy = COPY[locale];
 
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-3xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-      <section className="w-full rounded-2xl border border-border/70 bg-card/90 p-6 text-center shadow-sm">
+    <main className="corp-dashboard-shell max-w-3xl items-center justify-center">
+      <section className="corp-surface w-full p-6 text-center">
         <h1 className="corp-heading-2">{copy.title}</h1>
         <p className="corp-body-muted mt-2">{copy.description}</p>
         <div className="mt-5">
-          <Button type="button" onClick={reset}>
+          <Button type="button" className="corp-btn-md" onClick={reset}>
             {copy.action}
           </Button>
         </div>

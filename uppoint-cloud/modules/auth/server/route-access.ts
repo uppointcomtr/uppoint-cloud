@@ -24,6 +24,7 @@ export const PROTECTED_ROUTES: ProtectedRouteRule[] = [
   { path: "/dashboard/notifications", preserveCallbackUrl: true },
   { path: "/dashboard/tenant", preserveCallbackUrl: true },
   { path: "/dashboard/modules", preserveCallbackUrl: true },
+  { path: "/dashboard/modules/instances/new", preserveCallbackUrl: true },
 ];
 const AUTHENTICATED_HOME_PATH = "/dashboard";
 const UNAUTHENTICATED_HOME_PATH = "/login";

@@ -19,11 +19,20 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - SMS verification code (3 min countdown)
     - new password + confirm password step
   - Logout (dashboard action)
+    - fail-closed: local sign-out completes only after server-side session revocation succeeds
   - Protected dashboard V1 workspace (`/:locale/dashboard`)
     - control-plane style layout (navigation + operational sections)
     - account/session/verification/risk summary cards
-    - tenant context visibility, explicit tenant selection, and quick actions
+    - tenant center on `/dashboard/tenant`
+      - clickable tenant list with modal-based detail surface
+      - tenant detail modal shows current role scope and attached resource groups
+      - self-service tenant creation with automatic context switch to the newly created tenant
+      - tenant deletion is policy-disabled from control-plane UI and server action paths
     - notification and security signal overview
+  - Instance control-plane wizard (`/:locale/dashboard/modules/instances/new`)
+    - tenant-scoped resource group creation with default network + firewall policy
+    - idempotent instance provisioning request submission (`tenant -> resource group -> network/firewall`)
+    - internal module boundary for future provider adapters (`modules/kvm/*`)
   - Account center (`/:locale/dashboard/account`)
     - dedicated profile-management surface linked from the profile dropdown and dashboard navigation
     - full-name update now requires in-flow email verification code confirmation before persistence
@@ -51,6 +60,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Notification outbox + async dispatcher for SMTP email + Verimor SMS
     - auth flows enqueue notifications and trigger a best-effort immediate dispatch
     - minute-based cron dispatcher remains the reliability fallback
+    - all outbox-delivered emails now render through one shared corporate HTML template with plain-text fallback and light/dark mail-client support
   - Token-based password reset completion after dual verification
   - Identifier + IP based auth rate-limiting (email/phone/user + IP)
 - Root entry (`/` and `/:locale`) redirects directly to localized login page
@@ -179,6 +189,7 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `UPPOINT_EMAIL_POOL_MAX_MESSAGES` (optional, default `100`; SMTP max messages per pooled connection)
 - `NOTIFICATION_OUTBOX_RETENTION_DAYS` (optional, cleanup retention for sent/failed outbox rows, default `30`)
 - `AUTH_E2E_USER_RETENTION_DAYS` (optional, default `1`; cleanup window for legacy `e2e-unverified-*` synthetic users)
+- `INSTANCE_PROVISIONING_EVENT_RETENTION_DAYS` (optional, default `90`; cleanup retention for append-only instance provisioning events)
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE` (optional, default `true`; archive old audit rows before retention delete)
 - `AUDIT_LOG_ARCHIVE_DIR` (optional, default `/opt/backups/audit`; archive path used by `cleanup-db.sh`)
 - `UPPOINT_ENABLE_RESTORE_DRILL_EXECUTE` (optional, default `false`; required `true` for `restore-drill-db.sh --execute --confirm`)
@@ -262,14 +273,21 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Account deletion challenge service: [modules/auth/server/account-delete-challenge.ts](/opt/uppoint-cloud/modules/auth/server/account-delete-challenge.ts)
 - Account profile and contact-change service: [modules/auth/server/account-profile.ts](/opt/uppoint-cloud/modules/auth/server/account-profile.ts)
 - Notification outbox service: [modules/notifications/server/outbox.ts](/opt/uppoint-cloud/modules/notifications/server/outbox.ts)
+- Shared system email template: [modules/notifications/server/email-template.ts](/opt/uppoint-cloud/modules/notifications/server/email-template.ts)
 - User soft-delete lifecycle service: [modules/auth/server/user-lifecycle.ts](/opt/uppoint-cloud/modules/auth/server/user-lifecycle.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
 - SMS notification service: [modules/auth/server/sms-service.ts](/opt/uppoint-cloud/modules/auth/server/sms-service.ts)
 - Tenant context resolver: [modules/tenant/server/user-tenant.ts](/opt/uppoint-cloud/modules/tenant/server/user-tenant.ts)
-- Instance domain boundary (no runtime provisioning yet): [modules/instances/domain/contracts.ts](/opt/uppoint-cloud/modules/instances/domain/contracts.ts), [modules/instances/server/security-boundary.ts](/opt/uppoint-cloud/modules/instances/server/security-boundary.ts)
+- Tenant self-service management service: [modules/tenant/server/tenant-management.ts](/opt/uppoint-cloud/modules/tenant/server/tenant-management.ts)
+- Instance control-plane contracts and wizard services:
+  [modules/instances/domain/contracts.ts](/opt/uppoint-cloud/modules/instances/domain/contracts.ts),
+  [modules/instances/server/security-boundary.ts](/opt/uppoint-cloud/modules/instances/server/security-boundary.ts),
+  [modules/instances/server/wizard-service.ts](/opt/uppoint-cloud/modules/instances/server/wizard-service.ts),
+  [db/repositories/instance-control-plane-repository.ts](/opt/uppoint-cloud/db/repositories/instance-control-plane-repository.ts)
+- Provider boundary for future hypervisor adapters: [modules/kvm/domain/provider-contract.ts](/opt/uppoint-cloud/modules/kvm/domain/provider-contract.ts), [modules/kvm/server/provider.ts](/opt/uppoint-cloud/modules/kvm/server/provider.ts)
 - Idempotent API helper: [lib/http/idempotency.ts](/opt/uppoint-cloud/lib/http/idempotency.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
-- Logout audit endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
+- Fail-closed logout revocation endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
 - Locale configuration: [modules/i18n/config.ts](/opt/uppoint-cloud/modules/i18n/config.ts)
 - Locale path helpers: [modules/i18n/paths.ts](/opt/uppoint-cloud/modules/i18n/paths.ts)
 - Dictionaries: [messages/tr.ts](/opt/uppoint-cloud/messages/tr.ts), [messages/en.ts](/opt/uppoint-cloud/messages/en.ts)
@@ -284,6 +302,42 @@ npm ci
 npm run prisma:generate
 npm run dev
 ```
+
+## Run from tag (portable restore baseline)
+
+Use this flow to run an immutable tagged version (for example `v1.0.0`) on a fresh host.
+
+```bash
+cd /opt
+git clone git@github.com:uppointcomtr/uppoint-cloud.git
+cd uppoint-cloud/uppoint-cloud
+git checkout v1.0.0
+```
+
+Schema-only restore standard (no production data dump in release bundle):
+
+```bash
+cp /opt/uppoint-cloud/.env .env
+npm ci
+npm run prisma:generate
+npm run prisma:migrate:deploy
+npm run build
+npm run build:deploy
+```
+
+Portable release assets for `v1.0.0`:
+- `releases/v1.0.0/RELEASE_MANIFEST_v1.0.0.md`
+- `releases/v1.0.0/checksums.txt`
+
+Release versioning policy (SemVer):
+- use immutable tags in `vMAJOR.MINOR.PATCH` format (`v1.1.0`, `v1.1.1`, `v2.0.0`)
+- `PATCH`: backward-compatible bugfix/ops correction only
+- `MINOR`: backward-compatible feature expansion
+- `MAJOR`: backward-incompatible change
+- before creating a new release tag:
+  - run `npm run verify:security-gate`
+  - add a version entry to `CHANGELOG.md`
+  - add `releases/<tag>/RELEASE_MANIFEST_<tag>.md` and `releases/<tag>/checksums.txt`
 
 ## Verification
 
@@ -445,6 +499,10 @@ GitHub Actions release gate:
 - Mandatory checks:
   - `Verify security gate`
   - `Remote auth smoke (release gate)` on `push main`
+- Edge-audit emit behavior in release gate:
+  - default security-gate behavior remains fail-closed (`SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT=1`)
+  - pull request runs set `SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT=0` so PR validation is not blocked by unrelated host runtime log events
+  - push-to-main runs keep edge-audit emit enforcement active
 - Recommended branch protection:
   - require both checks before merge/deploy approval.
 

@@ -18,4 +18,12 @@ describe("verify-security-gate script guardrail", () => {
     expect(source).toContain("SECURITY_GATE_REQUIRE_REMOTE_SMOKE");
     expect(source).toContain("E2E_ALLOW_MUTATIONS=0 npm run test:e2e:remote");
   });
+
+  it("supports explicit edge-audit emit enforcement flag", () => {
+    const scriptPath = path.join(process.cwd(), "scripts", "verify-security-gate.sh");
+    const source = readFileSync(scriptPath, "utf8");
+
+    expect(source).toContain("SECURITY_GATE_REQUIRE_EDGE_AUDIT_EMIT");
+    expect(source).toContain("npm run verify:edge-audit-emit");
+  });
 });

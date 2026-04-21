@@ -22,6 +22,27 @@ npm run build
 sudo systemctl restart uppoint-cloud.service
 ```
 
+### 1.1 Fresh host restore from `v1.0.0` tag (schema-only)
+
+Use this when you need to recreate the V1 baseline on a different host without carrying production data.
+
+```bash
+cd /opt
+git clone git@github.com:uppointcomtr/uppoint-cloud.git
+cd uppoint-cloud/uppoint-cloud
+git checkout v1.0.0
+cp /opt/uppoint-cloud/.env .env
+npm ci
+npm run prisma:generate
+npm run prisma:migrate:deploy
+npm run build
+npm run build:deploy
+```
+
+Release bundle assets for verification:
+- `releases/v1.0.0/RELEASE_MANIFEST_v1.0.0.md`
+- `releases/v1.0.0/checksums.txt`
+
 `npm run build` only builds the app.
 Use `npm run build:deploy` if you want build + service restart in one command.
 
@@ -335,6 +356,7 @@ Auth abuse alert channels:
 
 - `AUDIT_LOG_ARCHIVE_BEFORE_DELETE=true` (default) exports old audit rows to JSONL archive before deletion.
 - archive target defaults to `/opt/backups/audit` and can be overridden with `AUDIT_LOG_ARCHIVE_DIR`.
+- append-only `InstanceProvisioningEvent` rows are cleaned by retention window (`INSTANCE_PROVISIONING_EVENT_RETENTION_DAYS`, default `90`).
 
 `dispatch-notifications.sh` reads `INTERNAL_DISPATCH_TOKEN` and
 `INTERNAL_DISPATCH_SIGNING_SECRET` from `/opt/uppoint-cloud/.env` and sends:

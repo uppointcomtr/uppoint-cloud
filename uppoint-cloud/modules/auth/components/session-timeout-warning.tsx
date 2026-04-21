@@ -12,6 +12,8 @@ interface SessionTimeoutDictionary {
   warning: string;
   minutesRemaining: string;
   signOut: string;
+  signOutLoading: string;
+  signOutFailed: string;
 }
 
 interface SessionTimeoutWarningProps {
@@ -30,6 +32,8 @@ export function SessionTimeoutWarning({
   sessionExpires,
 }: SessionTimeoutWarningProps) {
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
 
   useEffect(() => {
     function checkExpiry() {
@@ -59,15 +63,32 @@ export function SessionTimeoutWarning({
         <span className="font-medium">
           {minutesLeft} {dictionary.minutesRemaining}
         </span>
+        {signOutError ? (
+          <span className="mt-1 block text-xs font-medium text-destructive">
+            {signOutError}
+          </span>
+        ) : null}
       </span>
       <Button
         type="button"
         size="sm"
         variant="outline"
+        disabled={isSigningOut}
         className="h-7 shrink-0 border-amber-300 bg-transparent text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-900/40"
-        onClick={() => void performLogout({ callbackUrl: withLocale("/login", locale) })}
+        onClick={() => {
+          if (isSigningOut) {
+            return;
+          }
+
+          setSignOutError(null);
+          setIsSigningOut(true);
+          void performLogout({ callbackUrl: withLocale("/login", locale) }).catch(() => {
+            setSignOutError(dictionary.signOutFailed);
+            setIsSigningOut(false);
+          });
+        }}
       >
-        {dictionary.signOut}
+        {isSigningOut ? dictionary.signOutLoading : dictionary.signOut}
       </Button>
     </div>
   );

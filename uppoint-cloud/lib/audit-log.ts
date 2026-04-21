@@ -22,6 +22,7 @@ export type AuditAction =
   | "login_otp_failed"
   | "login_challenge_start_failed"
   | "logout_success"
+  | "logout_failed"
   | "rate_limit_exceeded"
   | "password_reset_requested"
   | "password_reset_success"
@@ -59,6 +60,15 @@ export type AuditAction =
   | "tenant_context_missing"
   | "tenant_selection_required"
   | "tenant_selection_invalid"
+  | "tenant_created"
+  | "tenant_create_failed"
+  | "tenant_deleted"
+  | "tenant_delete_failed"
+  | "resource_group_created"
+  | "resource_group_create_failed"
+  | "instance_wizard_draft_saved"
+  | "instance_provisioning_requested"
+  | "instance_provisioning_request_failed"
   | "user_soft_deleted";
 
 const SENSITIVE_KEY_PATTERN = /(password|secret|token|authorization|cookie|email|phone|name|fullName|firstName|lastName|address)/i;
@@ -68,6 +78,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "rate_limit_exceeded",
   "login_otp_failed",
   "login_challenge_start_failed",
+  "logout_failed",
   "password_reset_failed",
   "account_delete_challenge_failed",
   "account_contact_change_failed",
@@ -84,6 +95,9 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "deprecated_endpoint_access",
   "tenant_access_denied",
   "tenant_role_insufficient",
+  "tenant_delete_failed",
+  "resource_group_create_failed",
+  "instance_provisioning_request_failed",
 ]);
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
 const AUDIT_FALLBACK_CHAIN_STATE_PATH =

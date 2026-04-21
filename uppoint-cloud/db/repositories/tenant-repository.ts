@@ -138,6 +138,35 @@ export async function provisionDefaultTenantForUser(
   return tenant;
 }
 
+export async function createTenantWithOwnerMembership(
+  input: { userId: string; slug: string; name: string },
+  client: typeof prisma = prisma,
+): Promise<{ id: string; slug: string; name: string }> {
+  return client.$transaction(async (tx) => {
+    const tenant = await tx.tenant.create({
+      data: {
+        slug: input.slug,
+        name: input.name,
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+      },
+    });
+
+    await tx.tenantMembership.create({
+      data: {
+        tenantId: tenant.id,
+        userId: input.userId,
+        role: TenantRole.OWNER,
+      },
+    });
+
+    return tenant;
+  });
+}
+
 export async function ensureDefaultTenantMembershipForUser(
   input: { userId: string; now: Date },
   client: typeof prisma = prisma,
