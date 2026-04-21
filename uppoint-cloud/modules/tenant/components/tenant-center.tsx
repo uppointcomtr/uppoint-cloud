@@ -88,12 +88,12 @@ function formatDate(value: string, locale: Locale): string {
 function roleTone(role: TenantRole): string {
   switch (role) {
     case "OWNER":
-      return "border-emerald-500/25 bg-emerald-500/8 text-emerald-700 dark:text-emerald-300";
+      return "corp-role-owner";
     case "ADMIN":
-      return "border-sky-500/25 bg-sky-500/8 text-sky-700 dark:text-sky-300";
+      return "corp-role-admin";
     case "MEMBER":
     default:
-      return "border-border/70 bg-background/70 text-muted-foreground";
+      return "corp-role-member";
   }
 }
 

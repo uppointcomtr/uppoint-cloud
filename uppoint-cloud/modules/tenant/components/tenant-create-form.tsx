@@ -101,29 +101,30 @@ export function TenantCreateForm({
   const errorMessage = resolveErrorMessage(state, labels.errors);
 
   return (
-    <div className="mt-4 rounded-lg border border-border/60 bg-background/60 p-4">
-      <p className="text-sm font-medium text-foreground">{labels.title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{labels.description}</p>
+    <div className="corp-subcard mt-4 border-border/60 bg-background/60">
+      <p className="corp-title-base">{labels.title}</p>
+      <p className="corp-field-hint mt-1">{labels.description}</p>
 
       <form action={runCreateTenantAction} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full space-y-2 sm:flex-1">
-          <Label htmlFor="tenant-name">{labels.fieldName}</Label>
+          <Label htmlFor="tenant-name" className="corp-field-label">{labels.fieldName}</Label>
           <Input
             id="tenant-name"
             name="name"
+            className="corp-input"
             minLength={3}
             maxLength={80}
             required
             disabled={isPending}
           />
         </div>
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" className="corp-btn-md" disabled={isPending}>
           {isPending ? labels.submitLoading : labels.submitIdle}
         </Button>
       </form>
 
       {state.status === "success" ? (
-        <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-300">{labels.success}</p>
+        <p className="corp-inline-success mt-3">{labels.success}</p>
       ) : null}
 
       {errorMessage ? (

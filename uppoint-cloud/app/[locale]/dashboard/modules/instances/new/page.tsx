@@ -73,24 +73,24 @@ export default async function DashboardInstancesWizardPage({
 
   if (!overview.tenant) {
     modulesContent = (
-      <Card className="border-border/70 bg-card/90 shadow-sm">
+      <Card className="corp-surface">
         <CardHeader>
           <CardTitle className="corp-section-title">{dictionary.dashboard.instancesWizard.title}</CardTitle>
-          <CardDescription>{resolveTenantGateMessage(overview.tenantErrorCode, dictionary.dashboard.tenant)}</CardDescription>
+          <CardDescription className="corp-body-muted">{resolveTenantGateMessage(overview.tenantErrorCode, dictionary.dashboard.tenant)}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {overview.tenantOptions.length > 0 ? (
             <div className="space-y-2">
               {overview.tenantOptions.map((option) => (
-                <div key={`${option.tenantId}-${option.role}`} className="rounded-lg border border-border/60 bg-background/60 px-3 py-2">
+                <div key={`${option.tenantId}-${option.role}`} className="corp-subcard-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-foreground">{option.tenantName}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="corp-title-base">{option.tenantName}</p>
+                      <p className="corp-field-hint">
                         {dictionary.dashboard.tenant.roleLabel}: {option.role}
                       </p>
                     </div>
-                    <Button asChild size="sm" variant={option.isSelected ? "secondary" : "outline"}>
+                    <Button asChild size="sm" className="corp-btn-sm" variant={option.isSelected ? "secondary" : "outline"}>
                       <Link href={`${withLocale("/dashboard/modules/instances/new", locale)}?tenantId=${encodeURIComponent(option.tenantId)}`}>
                         {option.isSelected ? dictionary.dashboard.tenant.activeLabel : dictionary.dashboard.tenant.selectorLabel}
                       </Link>

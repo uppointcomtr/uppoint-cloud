@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-04-21 (dashboard global token adoption pass)
+
+### Changed
+- Applied global corporate UI tokens to remaining dashboard-adjacent surfaces to reduce local class drift and keep non-auth pages visually consistent:
+  - `app/[locale]/dashboard/error.tsx`
+  - `app/[locale]/dashboard/modules/instances/new/page.tsx`
+  - `modules/dashboard/components/security-center.tsx`
+  - `modules/instances/components/instance-provisioning-wizard.tsx`
+  - `modules/tenant/components/tenant-create-form.tsx`
+  - `modules/tenant/components/tenant-center.tsx`
+- Extended `app/globals.css` with reusable semantic utilities for:
+  - danger/warning/success inline states
+  - destructive panel surfaces
+  - normalized tenant-role badge tones
+
+### Verification
+- `npm run lint`
+- `npx tsc --noEmit`
+- `npm test`
+- `npm run build:deploy`
+
 ## 2026-04-21 (dashboard infra visibility + global corporate surface standardization)
 
 ### Added

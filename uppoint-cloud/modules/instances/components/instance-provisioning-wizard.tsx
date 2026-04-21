@@ -314,7 +314,7 @@ export function InstanceProvisioningWizard({
         </CardHeader>
         <CardContent className="space-y-4">
           {model.resourceGroups.length === 0 ? (
-            <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+            <p className="corp-inline-warning">
               {labels.sections.instance.noResourceGroups}
             </p>
           ) : null}
@@ -535,7 +535,7 @@ export function InstanceProvisioningWizard({
           <p className="corp-field-hint">{labels.hints.idempotency}</p>
 
           {submitState.status === "success" ? (
-            <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <div className="corp-inline-success space-y-1">
               <p>{labels.sections.instance.submitSuccess}</p>
               {submitState.reused ? (
                 <p>{labels.sections.instance.submitReused}</p>

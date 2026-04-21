@@ -499,7 +499,7 @@ export function SecurityCenter({
         </div>
 
         <div className="mt-5 space-y-4">
-          <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="corp-subcard flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <p className="corp-title-base">{labels.endAllSessionsTitle}</p>
               <p className="corp-body-muted">{labels.endAllSessionsDescription}</p>
@@ -517,7 +517,7 @@ export function SecurityCenter({
             </Button>
           </div>
 
-          <div className="rounded-xl border border-red-200 bg-red-50/70 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+          <div className="corp-panel-danger">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <p className="corp-title-base text-red-700 dark:text-red-200">{labels.deleteAccountTitle}</p>
@@ -611,7 +611,7 @@ export function SecurityCenter({
           {deleteStep === "intro" ? (
             <div className="space-y-4">
               <p className="corp-body-muted">{labels.deleteFlow.introDescription}</p>
-              <div className="rounded-lg border border-red-200/80 bg-red-50/70 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+              <div className="corp-inline-danger">
                 {labels.deleteFlow.finalWarning}
               </div>
             </div>
@@ -663,7 +663,7 @@ export function SecurityCenter({
           {deleteStep === "confirm" ? (
             <div className="space-y-3">
               <p className="corp-body-muted">{labels.deleteFlow.confirmDescription}</p>
-              <div className="rounded-lg border border-red-200/80 bg-red-50/70 px-3 py-2 text-sm text-red-700 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
+              <div className="corp-inline-danger">
                 {labels.deleteFlow.finalWarning}
               </div>
             </div>
