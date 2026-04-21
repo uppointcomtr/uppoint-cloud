@@ -416,7 +416,7 @@ export function AccountContactChangeModal({
         <div className="space-y-3">
           <div className="h-1 w-full overflow-hidden rounded-full bg-border/60">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-300"
+              className="corp-motion-interactive h-full rounded-full bg-primary"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -429,7 +429,7 @@ export function AccountContactChangeModal({
                 <div
                   key={stepKey}
                   className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors",
+                    "corp-motion-interactive flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold",
                     completed
                       ? "bg-primary text-primary-foreground"
                       : active
@@ -458,7 +458,7 @@ export function AccountContactChangeModal({
 
         {step === "intro" ? (
           <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+            <div className="corp-subcard flex items-start gap-3 dark:bg-input/10">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <ShieldCheck className="h-4 w-4 text-primary" />
               </div>
@@ -469,7 +469,7 @@ export function AccountContactChangeModal({
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 dark:bg-input/10">
+              <div className="corp-subcard dark:bg-input/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {currentValueLabel}
                 </p>
@@ -484,13 +484,14 @@ export function AccountContactChangeModal({
                 <FloatingInput
                   id="account-change-email"
                   label={labels.fields.nextEmail}
+                  className="corp-floating-input"
                   value={nextEmail}
                   onChange={(event) => setNextEmail(event.target.value)}
                   autoComplete="email"
                 />
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="account-change-phone">{labels.fields.nextPhone}</Label>
+                  <Label htmlFor="account-change-phone" className="corp-field-label">{labels.fields.nextPhone}</Label>
                   <PhoneInput
                     id="account-change-phone"
                     value={nextPhone}
@@ -502,10 +503,10 @@ export function AccountContactChangeModal({
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" variant="outline" onClick={() => handleModalOpenChange(false)}>
+              <Button type="button" variant="outline" className="corp-btn-md" onClick={() => handleModalOpenChange(false)}>
                 {labels.buttons.cancel}
               </Button>
-              <Button type="button" onClick={() => void startFlow()} disabled={!canStart || isSubmitting}>
+              <Button type="button" className="corp-btn-md" onClick={() => void startFlow()} disabled={!canStart || isSubmitting}>
                 {isSubmitting ? labels.buttons.processing : labels.buttons.start}
               </Button>
             </div>
@@ -514,7 +515,7 @@ export function AccountContactChangeModal({
 
         {step === "emailCode" ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+            <div className="corp-subcard flex items-center gap-3 dark:bg-input/10">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <Mail className="h-4 w-4 text-primary" />
               </div>
@@ -522,7 +523,7 @@ export function AccountContactChangeModal({
                 <p className="truncate text-sm font-semibold text-foreground">
                   {emailDestinationHint}
                 </p>
-                <p className="truncate text-sm text-muted-foreground">{maskedEmail ?? "—"}</p>
+                <p className="corp-body-muted truncate">{maskedEmail ?? "—"}</p>
                 {countdownSeconds !== null ? (
                   <p
                     className={cn(
@@ -546,16 +547,16 @@ export function AccountContactChangeModal({
             />
 
             <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" variant="outline" onClick={resetFlow}>
+              <Button type="button" variant="outline" className="corp-btn-md" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>
-              <Button type="button" onClick={() => void verifyEmailStep()} disabled={isSubmitting || isCodeExpired}>
+              <Button type="button" className="corp-btn-md" onClick={() => void verifyEmailStep()} disabled={isSubmitting || isCodeExpired}>
                 {isSubmitting ? labels.buttons.processing : labels.buttons.verifyEmail}
               </Button>
             </div>
 
             {isCodeExpired ? (
-              <Button type="button" variant="ghost" className="w-full" onClick={resetFlow}>
+              <Button type="button" variant="ghost" className="corp-btn-md w-full" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>
             ) : null}
@@ -564,7 +565,7 @@ export function AccountContactChangeModal({
 
         {step === "smsCode" ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+            <div className="corp-subcard flex items-center gap-3 dark:bg-input/10">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <Phone className="h-4 w-4 text-primary" />
               </div>
@@ -572,7 +573,7 @@ export function AccountContactChangeModal({
                 <p className="truncate text-sm font-semibold text-foreground">
                   {smsDestinationHint}
                 </p>
-                <p className="truncate text-sm text-muted-foreground">{maskedPhone ?? "—"}</p>
+                <p className="corp-body-muted truncate">{maskedPhone ?? "—"}</p>
                 {countdownSeconds !== null ? (
                   <p
                     className={cn(
@@ -596,16 +597,16 @@ export function AccountContactChangeModal({
             />
 
             <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" variant="outline" onClick={resetFlow}>
+              <Button type="button" variant="outline" className="corp-btn-md" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>
-              <Button type="button" onClick={() => void verifySmsStep()} disabled={isSubmitting || isCodeExpired}>
+              <Button type="button" className="corp-btn-md" onClick={() => void verifySmsStep()} disabled={isSubmitting || isCodeExpired}>
                 {isSubmitting ? labels.buttons.processing : labels.buttons.verifySms}
               </Button>
             </div>
 
             {isCodeExpired ? (
-              <Button type="button" variant="ghost" className="w-full" onClick={resetFlow}>
+              <Button type="button" variant="ghost" className="corp-btn-md w-full" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>
             ) : null}
@@ -614,7 +615,7 @@ export function AccountContactChangeModal({
 
         {step === "confirm" ? (
           <div className="space-y-4">
-            <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 dark:bg-input/10">
+            <div className="corp-subcard flex items-start gap-3 dark:bg-input/10">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <CheckCircle className="h-4 w-4 text-primary" />
               </div>
@@ -625,7 +626,7 @@ export function AccountContactChangeModal({
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 dark:bg-input/10">
+              <div className="corp-subcard dark:bg-input/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {currentValueLabel}
                 </p>
@@ -633,7 +634,7 @@ export function AccountContactChangeModal({
                   {changeType === "EMAIL" ? currentEmail : (currentPhone ?? labels.noPhoneAvailable)}
                 </p>
               </div>
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 dark:bg-input/10">
+              <div className="corp-subcard dark:bg-input/10">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   {nextValueLabel}
                 </p>
@@ -644,10 +645,10 @@ export function AccountContactChangeModal({
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
-              <Button type="button" variant="outline" onClick={resetFlow}>
+              <Button type="button" variant="outline" className="corp-btn-md" onClick={resetFlow}>
                 {labels.buttons.restart}
               </Button>
-              <Button type="button" onClick={() => void completeFlow()} disabled={isSubmitting}>
+              <Button type="button" className="corp-btn-md" onClick={() => void completeFlow()} disabled={isSubmitting}>
                 {isSubmitting ? labels.buttons.processing : labels.buttons.complete}
               </Button>
             </div>

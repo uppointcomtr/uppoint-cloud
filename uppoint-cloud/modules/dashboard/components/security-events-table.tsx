@@ -32,18 +32,18 @@ const EVENTS_PER_PAGE = 5;
 
 function resolveEventColor(result: string | null, action: string): string {
   if (result === "FAILURE" || action.includes("failed") || action.includes("denied")) {
-    return "bg-red-500";
+    return "corp-dot-danger";
   }
 
   if (result === "SUCCESS" || action.includes("success") || action.includes("verified")) {
-    return "bg-emerald-500";
+    return "corp-dot-success";
   }
 
   if (action.includes("otp") || action.includes("challenge")) {
-    return "bg-amber-500";
+    return "corp-dot-warning";
   }
 
-  return "bg-blue-500";
+  return "corp-dot-info";
 }
 
 export function SecurityEventsTable({
@@ -91,25 +91,25 @@ export function SecurityEventsTable({
               setPage(1);
             }}
             placeholder={labels.searchPlaceholder}
-            className="h-9 pl-8"
+            className="corp-input pl-9"
           />
         </div>
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-border/60">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="corp-table">
           <thead className="corp-table-head bg-background/80">
             <tr>
-              <th className="px-4 py-3 text-left">{labels.columns.date}</th>
-              <th className="px-4 py-3 text-left">{labels.columns.event}</th>
-              <th className="px-4 py-3 text-left">{labels.columns.ip}</th>
-              <th className="px-4 py-3 text-left">{labels.columns.device}</th>
+              <th className="corp-table-cell text-left">{labels.columns.date}</th>
+              <th className="corp-table-cell text-left">{labels.columns.event}</th>
+              <th className="corp-table-cell text-left">{labels.columns.ip}</th>
+              <th className="corp-table-cell text-left">{labels.columns.device}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
             {pagedEvents.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-6">
+                <td colSpan={4} className="corp-table-cell py-6">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <ShieldAlert className="h-4 w-4" />
                     <span>{labels.noEvents}</span>
@@ -118,30 +118,30 @@ export function SecurityEventsTable({
               </tr>
             ) : (
               pagedEvents.map((event) => (
-                <tr key={event.id} className="bg-card/40">
-                  <td className="px-4 py-3 align-top">
+                <tr key={event.id} className="corp-table-row">
+                  <td className="corp-table-cell align-top">
                     <div className="font-medium">
                       {new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
                         dateStyle: "medium",
                       }).format(new Date(event.createdAtIso))}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="corp-field-hint">
                       {new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
                         timeStyle: "medium",
                       }).format(new Date(event.createdAtIso))}
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="corp-table-cell">
                     <div className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${resolveEventColor(event.result, event.action)}`} />
                       <span className="font-medium">{event.actionLabel}</span>
                     </div>
                     {event.reason ? (
-                      <p className="mt-1 text-xs text-muted-foreground">{event.reason}</p>
+                      <p className="corp-field-hint mt-1">{event.reason}</p>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3 font-mono text-[13px]">{event.ip ?? labels.unknownIp}</td>
-                  <td className="px-4 py-3">{event.device}</td>
+                  <td className="corp-table-cell font-mono text-[13px]">{event.ip ?? labels.unknownIp}</td>
+                  <td className="corp-table-cell">{event.device}</td>
                 </tr>
               ))
             )}
@@ -154,18 +154,20 @@ export function SecurityEventsTable({
           type="button"
           variant="outline"
           size="sm"
+          className="corp-btn-sm"
           disabled={currentPage <= 1}
           onClick={() => setPage((current) => Math.max(1, current - 1))}
         >
           {labels.paginationPrev}
         </Button>
-        <p className="text-sm text-muted-foreground">
+        <p className="corp-body-muted">
           {labels.paginationPage}: {currentPage} / {totalPages}
         </p>
         <Button
           type="button"
           variant="outline"
           size="sm"
+          className="corp-btn-sm"
           disabled={currentPage >= totalPages}
           onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
         >
@@ -173,7 +175,7 @@ export function SecurityEventsTable({
         </Button>
       </div>
 
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="corp-field-hint mt-3">
         {labels.failures24h}: {auditFailures24h}
       </p>
     </section>

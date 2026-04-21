@@ -111,8 +111,8 @@ function VerificationBadge({
     <span
       className={
         verified
-          ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-          : "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+          ? "corp-badge corp-badge-success"
+          : "corp-badge corp-badge-warning"
       }
     >
       {verified ? labels.verified : labels.pending}
@@ -166,7 +166,7 @@ function InfoRow({
         <Button
           type="button"
           variant="outline"
-          className="h-11 w-full rounded-xl border-border/70 bg-background/80 px-5 sm:w-auto sm:min-w-[144px] sm:justify-center"
+          className="corp-btn-md w-full border-border/70 bg-background/80 sm:w-auto sm:min-w-[144px] sm:justify-center"
           onClick={onAction}
           disabled={disabled}
         >
@@ -529,6 +529,7 @@ export function AccountCenter({
           <FloatingInput
             id="account-full-name"
             label={labels.profile.fields.name}
+            className="corp-floating-input"
             value={draftName}
             onChange={(event) => {
               setDraftName(event.target.value);
@@ -542,14 +543,14 @@ export function AccountCenter({
 
           {isNameVerificationStep ? (
             <div className="space-y-4 rounded-2xl border border-border/60 bg-background/70 p-4">
-              <p className="text-sm font-medium text-foreground">
+              <p className="corp-title-base">
                 {labels.profile.verification.codeSentTo}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="corp-body-muted">
                 {nameVerificationMaskedEmail ?? "—"}
               </p>
               {nameCountdownSeconds !== null && nameCountdownSeconds > 0 ? (
-                <p className="text-xs font-medium text-primary">
+                <p className="corp-field-hint font-medium text-primary">
                   {labels.profile.verification.countdownPrefix} {formatCountdown(nameCountdownSeconds)}
                 </p>
               ) : null}
@@ -567,14 +568,14 @@ export function AccountCenter({
             <Button
               type="button"
               variant="outline"
-              className="h-11 rounded-xl sm:min-w-[144px]"
+              className="corp-btn-md sm:min-w-[144px]"
               onClick={() => handleNameModalOpenChange(false)}
             >
               {labels.layout.cancelEdit}
             </Button>
             <Button
               type="button"
-              className="h-11 rounded-xl sm:min-w-[144px]"
+              className="corp-btn-md sm:min-w-[144px]"
               onClick={() => {
                 if (isNameVerificationStep) {
                   void handleVerifyAndSaveName();

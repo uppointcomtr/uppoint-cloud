@@ -34,6 +34,12 @@
   - security timeline remains visible without emitting noisy `tenant_selection_required` audit events
   - notification/resource-group/instance aggregates remain fail-closed until tenant context is selected
   - repository audit queries now support `excludeActions` filtering for scoped timeline composition.
+- Extended global dashboard design contracts for consistent control-plane UX across non-auth surfaces:
+  - standardized shell/layout utilities (`corp-dashboard-shell`, `corp-section-stack`)
+  - standardized form controls (`corp-field-label`, `corp-input`, `corp-select`, `corp-textarea`, `corp-floating-input`)
+  - standardized button sizing/tones (`corp-btn-*`) and semantic badges/dots (`corp-badge-*`, `corp-dot-*`)
+  - standardized table primitives (`corp-table`, `corp-table-row`, `corp-table-cell`)
+  - applied to dashboard/account/security/tenant/instances wizard components without changing login/register pages.
 
 ## 2026-04-14 (tenant center list + detail modal + delete disabled by policy)
 

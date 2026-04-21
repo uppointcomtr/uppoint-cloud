@@ -95,7 +95,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email, activeTena
       <button
         type="button"
         onClick={() => setIsOpen((c) => !c)}
-        className="corp-toolbar-btn inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/80 text-xs font-semibold text-foreground hover:shadow"
+        className="corp-toolbar-btn corp-btn-icon inline-flex items-center justify-center border border-border/80 text-xs font-semibold text-foreground hover:shadow"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={dictionary.buttonLabel}
@@ -108,7 +108,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email, activeTena
         <div
           role="menu"
           aria-label={dictionary.menuLabel}
-          className="corp-menu-surface absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border/70 bg-popover/95 shadow-xl backdrop-blur-sm"
+          className="corp-menu-surface corp-motion-surface absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border/70 bg-popover/95 shadow-xl backdrop-blur-sm"
         >
           {/* User info header */}
           <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3.5">
@@ -116,8 +116,8 @@ export function ProfileMenu({ locale, dictionary, displayName, email, activeTena
               {initials}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight">{displayName}</p>
-              <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">{email}</p>
+              <p className="corp-title-base truncate leading-tight">{displayName}</p>
+              <p className="corp-field-hint mt-0.5 truncate leading-tight">{email}</p>
             </div>
           </div>
 

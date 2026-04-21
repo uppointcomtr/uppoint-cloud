@@ -156,8 +156,8 @@ export function TenantCenter({
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-foreground">{labels.list.title}</h3>
-                <p className="text-sm text-muted-foreground">{labels.list.description}</p>
+                <h3 className="corp-section-title">{labels.list.title}</h3>
+                <p className="corp-body-muted">{labels.list.description}</p>
               </div>
             </div>
 
@@ -176,7 +176,7 @@ export function TenantCenter({
                       key={`${tenant.tenantId}-${tenant.role}`}
                       type="button"
                       onClick={() => openTenantDetail(tenant.tenantId)}
-                      className="group w-full text-left transition-colors duration-150 ease-out hover:bg-accent/40"
+                      className="corp-motion-interactive group w-full text-left hover:bg-accent/40"
                     >
                       <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_130px_84px] items-center gap-3 px-4 py-3.5 md:grid">
                         <div className="flex min-w-0 items-center gap-3">
@@ -216,8 +216,8 @@ export function TenantCenter({
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border/70 bg-background/60 px-5 py-8 text-center">
-                <p className="text-sm font-medium text-foreground">{labels.list.emptyTitle}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{labels.list.emptyDescription}</p>
+                <p className="corp-title-base">{labels.list.emptyTitle}</p>
+                <p className="corp-body-muted mt-1">{labels.list.emptyDescription}</p>
               </div>
             )}
           </div>
@@ -286,7 +286,7 @@ function TenantDetailModalBody({
 
   return (
     <div className="relative space-y-6">
-      <section className="rounded-2xl border border-border/70 bg-background/70 p-4">
+      <section className="corp-subcard border-border/70">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -295,7 +295,7 @@ function TenantDetailModalBody({
               </span>
             </div>
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">{labels.details.summary}</p>
+              <p className="corp-body-muted">{labels.details.summary}</p>
               <p className="font-mono text-xs text-foreground/80">{detail.tenantId}</p>
             </div>
           </div>
@@ -320,10 +320,10 @@ function TenantDetailModalBody({
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+        <div className="corp-subcard border-border/70">
           <div className="space-y-1">
-            <h3 className="text-base font-semibold text-foreground">{labels.details.resourceGroups.title}</h3>
-            <p className="text-sm text-muted-foreground">{labels.details.resourceGroups.description}</p>
+            <h3 className="corp-section-title">{labels.details.resourceGroups.title}</h3>
+            <p className="corp-body-muted">{labels.details.resourceGroups.description}</p>
           </div>
 
           {detail.resourceGroups.length > 0 ? (
@@ -341,7 +341,7 @@ function TenantDetailModalBody({
                           {labels.details.resourceGroups.active}
                         </span>
                       </div>
-                      <p className="font-mono text-xs text-muted-foreground">{resourceGroup.slug}</p>
+                      <p className="corp-field-hint font-mono">{resourceGroup.slug}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/80 px-2.5 py-1">
@@ -358,17 +358,17 @@ function TenantDetailModalBody({
             </div>
           ) : (
             <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-card/70 px-4 py-8 text-center">
-              <p className="text-sm font-medium text-foreground">{labels.details.resourceGroups.emptyTitle}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{labels.details.resourceGroups.emptyDescription}</p>
+              <p className="corp-title-base">{labels.details.resourceGroups.emptyTitle}</p>
+              <p className="corp-body-muted mt-1">{labels.details.resourceGroups.emptyDescription}</p>
             </div>
           )}
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+          <div className="corp-subcard border-border/70">
             <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">{labels.details.roles.title}</h3>
-              <p className="text-sm text-muted-foreground">{labels.details.roles.description}</p>
+              <h3 className="corp-section-title">{labels.details.roles.title}</h3>
+              <p className="corp-body-muted">{labels.details.roles.description}</p>
             </div>
             <div className="mt-4 space-y-3">
               {selectedRoleCards.map((roleCard) => (
@@ -384,7 +384,7 @@ function TenantDetailModalBody({
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">{labels.roleNames[roleCard.role]}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{labels.roleDescriptions[roleCard.role]}</p>
+                      <p className="corp-body-muted mt-1">{labels.roleDescriptions[roleCard.role]}</p>
                     </div>
                     {roleCard.isActive ? (
                       <span className="rounded-full border border-primary/20 bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary">
@@ -401,6 +401,7 @@ function TenantDetailModalBody({
             <Button
               type="button"
               variant="destructive"
+              className="corp-btn-md"
               onClick={() => {
                 setDeleteConfirmAcknowledged(false);
                 setDeleteConfirmOpen(true);
@@ -427,17 +428,18 @@ function TenantDetailModalBody({
 
           <section className="relative z-10 w-full max-w-md rounded-2xl border border-border/70 bg-card p-5 shadow-xl">
             <div className="space-y-1">
-              <h3 className="text-base font-semibold text-foreground">{labels.delete.confirmTitle}</h3>
-              <p className="text-sm text-muted-foreground">{labels.delete.confirmDescription}</p>
+              <h3 className="corp-section-title">{labels.delete.confirmTitle}</h3>
+              <p className="corp-body-muted">{labels.delete.confirmDescription}</p>
             </div>
 
             {!deleteConfirmAcknowledged ? (
               <div className="mt-4 space-y-4">
-                <p className="text-sm text-muted-foreground">{labels.delete.confirmPrompt}</p>
+                <p className="corp-body-muted">{labels.delete.confirmPrompt}</p>
                 <div className="flex items-center justify-end gap-2">
                   <Button
                     type="button"
                     variant="outline"
+                    className="corp-btn-md"
                     onClick={() => {
                       setDeleteConfirmOpen(false);
                       setDeleteConfirmAcknowledged(false);
@@ -448,6 +450,7 @@ function TenantDetailModalBody({
                   <Button
                     type="button"
                     variant="destructive"
+                    className="corp-btn-md"
                     onClick={() => setDeleteConfirmAcknowledged(true)}
                   >
                     {labels.delete.confirmApprove}
@@ -456,10 +459,11 @@ function TenantDetailModalBody({
               </div>
             ) : (
               <div className="mt-4 space-y-4">
-                <p className="text-sm text-muted-foreground">{labels.delete.disabledByPolicy}</p>
+                <p className="corp-body-muted">{labels.delete.disabledByPolicy}</p>
                 <div className="flex justify-end">
                   <Button
                     type="button"
+                    className="corp-btn-md"
                     onClick={() => {
                       setDeleteConfirmOpen(false);
                       setDeleteConfirmAcknowledged(false);

@@ -49,8 +49,8 @@ function renderVerificationStatus(
   return (
     <span
       className={isVerified
-        ? "rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-        : "rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"}
+        ? "corp-badge corp-badge-success"
+        : "corp-badge corp-badge-warning"}
     >
       {isVerified ? labels.verified : labels.pending}
     </span>
@@ -101,7 +101,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
           <CardTitle className="corp-section-title">{labels.session.title}</CardTitle>
           <CardDescription className="corp-body-muted">{labels.session.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="corp-body space-y-2">
           <p>
             <span className="text-muted-foreground">{labels.session.activeSessions}:</span> {overview.activeSessions}
           </p>
@@ -121,7 +121,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
           <CardTitle className="corp-section-title">{labels.verification.title}</CardTitle>
           <CardDescription className="corp-body-muted">{labels.verification.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="corp-body space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">{labels.verification.email}</span>
             {renderVerificationStatus(Boolean(overview.user.emailVerified), labels.verification)}
@@ -138,7 +138,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
           <CardTitle className="corp-section-title">{labels.risk.title}</CardTitle>
           <CardDescription className="corp-body-muted">{labels.risk.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="corp-body space-y-2">
           <p>
             <span className="text-muted-foreground">{labels.risk.failedAttempts}:</span> {overview.user.failedLoginAttempts}
           </p>
@@ -154,7 +154,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
           <CardTitle className="corp-section-title">{labels.runtime.title}</CardTitle>
           <CardDescription className="corp-body-muted">{labels.runtime.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm">
+        <CardContent className="corp-body space-y-2">
           <p>
             <span className="text-muted-foreground">{labels.runtime.rateLimitBackend}:</span>{" "}
             {labels.runtime.backends[overview.runtime.rateLimitBackend]}
@@ -186,17 +186,17 @@ export function NotificationsCard({ overview, labels }: Pick<DashboardSectionPro
         <CardTitle className="corp-section-title">{labels.notifications.title}</CardTitle>
         <CardDescription className="corp-body-muted">{labels.notifications.description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
+      <CardContent className="corp-body space-y-3">
         <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border border-border/50 bg-background/60 p-3">
+          <div className="corp-subcard-sm border-border/50 bg-background/60">
             <p className="text-xs text-muted-foreground">{labels.notifications.pending}</p>
             <p className="corp-value mt-1">{overview.notifications.pending}</p>
           </div>
-          <div className="rounded-lg border border-border/50 bg-background/60 p-3">
+          <div className="corp-subcard-sm border-border/50 bg-background/60">
             <p className="text-xs text-muted-foreground">{labels.notifications.sent24h}</p>
             <p className="corp-value mt-1">{overview.notifications.sent24h}</p>
           </div>
-          <div className="rounded-lg border border-border/50 bg-background/60 p-3">
+          <div className="corp-subcard-sm border-border/50 bg-background/60">
             <p className="text-xs text-muted-foreground">{labels.notifications.failed24h}</p>
             <p className="corp-value mt-1">{overview.notifications.failed24h}</p>
           </div>
@@ -228,7 +228,7 @@ export function TenantCard({
         <CardTitle className="corp-section-title">{labels.tenant.title}</CardTitle>
         <CardDescription className="corp-body-muted">{labels.tenant.description}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-2 text-sm">
+      <CardContent className="corp-body space-y-2">
         {overview.tenant ? (
           <>
             <p>
@@ -250,8 +250,8 @@ export function TenantCard({
                 <div
                   key={`${option.tenantId}-${option.role}`}
                   className={option.isSelected
-                    ? "rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2"
-                    : "rounded-lg border border-border/50 bg-background/60 px-3 py-2"}
+                    ? "corp-subcard-sm border-emerald-500/30 bg-emerald-500/5"
+                    : "corp-subcard-sm border-border/50 bg-background/60"}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
@@ -262,7 +262,7 @@ export function TenantCard({
                       </p>
                     </div>
                     {!option.isSelected ? (
-                      <Button asChild size="sm" variant="outline">
+                      <Button asChild size="sm" variant="outline" className="corp-btn-sm">
                         <Link href={createTenantHref(locale, activeSection, option.tenantId)}>
                           {labels.tenant.selectorLabel}
                         </Link>
@@ -312,9 +312,9 @@ export function ModulesCard({
         <CardDescription className="corp-body-muted">{labels.modules.description}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.modules.instances}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.instancesDescription}</p>
+        <div className="corp-subcard-sm border-border/50 bg-background/60">
+          <p className="corp-title-base">{labels.modules.instances}</p>
+          <p className="corp-field-hint mt-1">{labels.modules.instancesDescription}</p>
           <p className="mt-3 text-xs font-medium text-muted-foreground">
             {labels.modules.activeInstancesLabel}:{" "}
             <span className="text-foreground">{overview.instances.totalActive}</span>
@@ -324,24 +324,24 @@ export function ModulesCard({
               overview.instances.recent.slice(0, 3).map((instance) => (
                 <div key={instance.instanceId} className="rounded-md border border-border/50 bg-card/80 px-2 py-1.5">
                   <p className="truncate text-xs font-medium text-foreground">{instance.name}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  <p className="corp-field-hint mt-0.5 truncate">
                     {labels.modules.lifecycle[instance.lifecycleState]} · {labels.modules.power[instance.powerState]}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="text-xs text-muted-foreground">{labels.modules.instancesEmpty}</p>
+              <p className="corp-field-hint">{labels.modules.instancesEmpty}</p>
             )}
           </div>
-          <Button asChild size="sm" variant="outline" className="mt-3">
+          <Button asChild size="sm" variant="outline" className="corp-btn-sm mt-3">
             <Link href={instancesWizardHref}>
               {labels.modules.instancesWizardCta}
             </Link>
           </Button>
         </div>
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.modules.resourceGroups}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.resourceGroupsDescription}</p>
+        <div className="corp-subcard-sm border-border/50 bg-background/60">
+          <p className="corp-title-base">{labels.modules.resourceGroups}</p>
+          <p className="corp-field-hint mt-1">{labels.modules.resourceGroupsDescription}</p>
           <p className="mt-3 text-xs font-medium text-muted-foreground">
             {labels.modules.activeResourceGroupsLabel}:{" "}
             <span className="text-foreground">{overview.resourceGroups.totalActive}</span>
@@ -351,32 +351,32 @@ export function ModulesCard({
               overview.resourceGroups.recent.slice(0, 3).map((group) => (
                 <div key={group.id} className="rounded-md border border-border/50 bg-card/80 px-2 py-1.5">
                   <p className="truncate text-xs font-medium text-foreground">{group.name}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  <p className="corp-field-hint mt-0.5 truncate">
                     {group.regionCode} · {formatDate(group.createdAt, locale)}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="text-xs text-muted-foreground">{labels.modules.resourceGroupsEmpty}</p>
+              <p className="corp-field-hint">{labels.modules.resourceGroupsEmpty}</p>
             )}
           </div>
-          <Button asChild size="sm" variant="outline" className="mt-3">
+          <Button asChild size="sm" variant="outline" className="corp-btn-sm mt-3">
             <Link href={instancesWizardHref}>
               {labels.modules.instancesWizardCta}
             </Link>
           </Button>
         </div>
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.modules.network}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.comingSoon}</p>
+        <div className="corp-subcard-sm border-border/50 bg-background/60">
+          <p className="corp-title-base">{labels.modules.network}</p>
+          <p className="corp-field-hint mt-1">{labels.modules.comingSoon}</p>
         </div>
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.modules.backup}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.comingSoon}</p>
+        <div className="corp-subcard-sm border-border/50 bg-background/60">
+          <p className="corp-title-base">{labels.modules.backup}</p>
+          <p className="corp-field-hint mt-1">{labels.modules.comingSoon}</p>
         </div>
-        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
-          <p className="font-medium">{labels.modules.billing}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.comingSoon}</p>
+        <div className="corp-subcard-sm border-border/50 bg-background/60">
+          <p className="corp-title-base">{labels.modules.billing}</p>
+          <p className="corp-field-hint mt-1">{labels.modules.comingSoon}</p>
         </div>
       </CardContent>
     </Card>

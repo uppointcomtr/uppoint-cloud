@@ -136,7 +136,7 @@ export function DashboardPanel({
   ];
 
   return (
-    <main className="relative mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="corp-dashboard-shell">
       <SessionTimeoutWarning
         locale={locale}
         dictionary={dictionary.sessionTimeout}
@@ -180,7 +180,7 @@ export function DashboardPanel({
               <Link key={item.section} href={getSectionPath(locale, item.section, activeTenantId)} className={navButtonClass(item.section === activeSection)}>
                 <span
                   className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-md transition-[background-color,color] duration-150 ease-out",
+                    "corp-motion-interactive flex size-7 shrink-0 items-center justify-center rounded-md",
                     item.section === activeSection
                       ? "bg-primary/12 text-primary"
                       : "text-muted-foreground group-hover:bg-accent group-hover:text-foreground",
@@ -200,15 +200,15 @@ export function DashboardPanel({
                 {getInitials(displayName)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium leading-tight text-foreground">{displayName}</p>
-                <p className="truncate text-[11px] text-muted-foreground mt-0.5">{overview.user.email}</p>
+                <p className="corp-title-base truncate leading-tight">{displayName}</p>
+                <p className="corp-field-hint mt-0.5 truncate">{overview.user.email}</p>
               </div>
               <LogoutButton locale={locale} labels={dictionary.logout} iconOnly />
             </div>
           </div>
         </aside>
 
-        <section className="space-y-6">
+        <section className="corp-section-stack">
           {/* ── Top bar ── */}
           <header className="corp-topbar">
             <div className="corp-topbar-inner">

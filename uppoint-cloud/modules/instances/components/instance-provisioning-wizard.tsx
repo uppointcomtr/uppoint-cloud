@@ -94,7 +94,7 @@ interface InstanceProvisioningWizardProps {
 }
 
 const INITIAL_ACTION_STATE: InstanceWizardActionState = { status: "idle" };
-const SELECT_CLASS_NAME = "border-input h-9 w-full rounded-md border bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30";
+const SELECT_CLASS_NAME = "corp-select";
 
 function createUuidV4(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -202,23 +202,23 @@ export function InstanceProvisioningWizard({
 
   return (
     <div className="space-y-6">
-      <Card className="border-border/70 bg-card/90 shadow-sm">
+      <Card className="corp-surface">
         <CardHeader className="pb-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="corp-section-title">{labels.title}</CardTitle>
               <CardDescription className="corp-body-muted mt-1">{labels.description}</CardDescription>
             </div>
-            <Button asChild size="sm" variant="outline">
+            <Button asChild size="sm" variant="outline" className="corp-btn-sm">
               <Link href={backToModulesHref}>
                 {labels.backToModules}
               </Link>
             </Button>
           </div>
-          <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-sm">
+          <div className="corp-subcard-sm text-sm">
             <div className="space-y-2">
               <div className="space-y-2">
-                <Label htmlFor="wizard-tenant-selector">{labels.tenantSelectionLabel}</Label>
+                <Label htmlFor="wizard-tenant-selector" className="corp-field-label">{labels.tenantSelectionLabel}</Label>
                 <select
                   id="wizard-tenant-selector"
                   value={model.selectedTenantId}
@@ -240,19 +240,20 @@ export function InstanceProvisioningWizard({
         </CardHeader>
       </Card>
 
-      <Card className="border-border/70 bg-card/90 shadow-sm">
+      <Card className="corp-surface">
         <CardHeader className="pb-4">
           <CardTitle className="corp-section-title">{labels.sections.resourceGroup.title}</CardTitle>
-          <CardDescription>{labels.sections.resourceGroup.description}</CardDescription>
+          <CardDescription className="corp-body-muted">{labels.sections.resourceGroup.description}</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={runCreateResourceGroup} className="grid gap-4 md:grid-cols-3">
             <input type="hidden" name="tenantId" value={model.selectedTenantId} />
             <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="rg-name">{labels.sections.resourceGroup.fields.name}</Label>
+              <Label htmlFor="rg-name" className="corp-field-label">{labels.sections.resourceGroup.fields.name}</Label>
               <Input
                 id="rg-name"
                 name="name"
+                className="corp-input"
                 minLength={3}
                 maxLength={80}
                 required
@@ -260,10 +261,11 @@ export function InstanceProvisioningWizard({
               />
             </div>
             <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="rg-slug">{labels.sections.resourceGroup.fields.slug}</Label>
+              <Label htmlFor="rg-slug" className="corp-field-label">{labels.sections.resourceGroup.fields.slug}</Label>
               <Input
                 id="rg-slug"
                 name="slug"
+                className="corp-input"
                 pattern="^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$"
                 minLength={3}
                 maxLength={40}
@@ -272,7 +274,7 @@ export function InstanceProvisioningWizard({
               />
             </div>
             <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="rg-region">{labels.sections.resourceGroup.fields.region}</Label>
+              <Label htmlFor="rg-region" className="corp-field-label">{labels.sections.resourceGroup.fields.region}</Label>
               <select
                 id="rg-region"
                 name="regionCode"
@@ -289,7 +291,7 @@ export function InstanceProvisioningWizard({
               </select>
             </div>
             <div className="md:col-span-3">
-              <Button type="submit" disabled={!canManageResources || isCreatePending}>
+              <Button type="submit" className="corp-btn-md" disabled={!canManageResources || isCreatePending}>
                 {isCreatePending ? labels.sections.resourceGroup.createLoading : labels.sections.resourceGroup.createIdle}
               </Button>
             </div>
@@ -305,10 +307,10 @@ export function InstanceProvisioningWizard({
         </CardContent>
       </Card>
 
-      <Card className="border-border/70 bg-card/90 shadow-sm">
+      <Card className="corp-surface">
         <CardHeader className="pb-4">
           <CardTitle className="corp-section-title">{labels.sections.instance.title}</CardTitle>
-          <CardDescription>{labels.sections.instance.description}</CardDescription>
+          <CardDescription className="corp-body-muted">{labels.sections.instance.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {model.resourceGroups.length === 0 ? (
@@ -323,7 +325,7 @@ export function InstanceProvisioningWizard({
             <input type="hidden" name="regionCode" value={selectedResourceGroup?.regionCode ?? ""} />
 
             <div className="space-y-2">
-              <Label htmlFor="instance-resource-group">{labels.sections.instance.fields.resourceGroup}</Label>
+              <Label htmlFor="instance-resource-group" className="corp-field-label">{labels.sections.instance.fields.resourceGroup}</Label>
               <select
                 id="instance-resource-group"
                 name="resourceGroupId"
@@ -345,7 +347,7 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-network">{labels.sections.instance.fields.network}</Label>
+              <Label htmlFor="instance-network" className="corp-field-label">{labels.sections.instance.fields.network}</Label>
               <select
                 key={`network-${effectiveResourceGroupId}`}
                 id="instance-network"
@@ -367,7 +369,7 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-firewall">{labels.sections.instance.fields.firewallPolicy}</Label>
+              <Label htmlFor="instance-firewall" className="corp-field-label">{labels.sections.instance.fields.firewallPolicy}</Label>
               <select
                 key={`firewall-${effectiveResourceGroupId}`}
                 id="instance-firewall"
@@ -389,10 +391,11 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-name">{labels.sections.instance.fields.name}</Label>
+              <Label htmlFor="instance-name" className="corp-field-label">{labels.sections.instance.fields.name}</Label>
               <Input
                 id="instance-name"
                 name="name"
+                className="corp-input"
                 pattern="^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$"
                 minLength={3}
                 maxLength={63}
@@ -402,7 +405,7 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-plan">{labels.sections.instance.fields.plan}</Label>
+              <Label htmlFor="instance-plan" className="corp-field-label">{labels.sections.instance.fields.plan}</Label>
               <select
                 id="instance-plan"
                 name="planCode"
@@ -421,7 +424,7 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-image">{labels.sections.instance.fields.image}</Label>
+              <Label htmlFor="instance-image" className="corp-field-label">{labels.sections.instance.fields.image}</Label>
               <select
                 id="instance-image"
                 name="imageCode"
@@ -439,9 +442,10 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-region">{labels.sections.instance.fields.region}</Label>
+              <Label htmlFor="instance-region" className="corp-field-label">{labels.sections.instance.fields.region}</Label>
               <Input
                 id="instance-region"
+                className="corp-input"
                 value={selectedRegionLabel}
                 readOnly
                 disabled
@@ -449,10 +453,11 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-admin">{labels.sections.instance.fields.adminUsername}</Label>
+              <Label htmlFor="instance-admin" className="corp-field-label">{labels.sections.instance.fields.adminUsername}</Label>
               <Input
                 id="instance-admin"
                 name="adminUsername"
+                className="corp-input"
                 pattern="^[a-z_][a-z0-9_-]{1,31}$"
                 defaultValue="cloudadmin"
                 required
@@ -461,12 +466,13 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-cpu">{labels.sections.instance.fields.cpuCores}</Label>
+              <Label htmlFor="instance-cpu" className="corp-field-label">{labels.sections.instance.fields.cpuCores}</Label>
               <Input
                 key={`cpu-${selectedPlanCode}`}
                 id="instance-cpu"
                 name="cpuCores"
                 type="number"
+                className="corp-input"
                 min={selectedPlan?.cpuCores ?? 1}
                 max={64}
                 defaultValue={String(selectedPlan?.cpuCores ?? 1)}
@@ -476,12 +482,13 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-memory">{labels.sections.instance.fields.memoryMb}</Label>
+              <Label htmlFor="instance-memory" className="corp-field-label">{labels.sections.instance.fields.memoryMb}</Label>
               <Input
                 key={`memory-${selectedPlanCode}`}
                 id="instance-memory"
                 name="memoryMb"
                 type="number"
+                className="corp-input"
                 min={selectedPlan?.memoryMb ?? 1024}
                 max={262144}
                 defaultValue={String(selectedPlan?.memoryMb ?? 1024)}
@@ -491,12 +498,13 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instance-disk">{labels.sections.instance.fields.diskGb}</Label>
+              <Label htmlFor="instance-disk" className="corp-field-label">{labels.sections.instance.fields.diskGb}</Label>
               <Input
                 key={`disk-${selectedPlanCode}`}
                 id="instance-disk"
                 name="diskGb"
                 type="number"
+                className="corp-input"
                 min={selectedPlan?.diskGb ?? 20}
                 max={4096}
                 defaultValue={String(selectedPlan?.diskGb ?? 20)}
@@ -506,25 +514,25 @@ export function InstanceProvisioningWizard({
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="instance-ssh-key">{labels.sections.instance.fields.sshPublicKey}</Label>
+              <Label htmlFor="instance-ssh-key" className="corp-field-label">{labels.sections.instance.fields.sshPublicKey}</Label>
               <textarea
                 id="instance-ssh-key"
                 name="sshPublicKey"
                 rows={3}
                 maxLength={2048}
-                className="border-input w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                className="corp-textarea"
                 disabled={isProvisioningFormLocked}
               />
             </div>
 
             <div className="md:col-span-2">
-              <Button type="submit" disabled={!canSubmitProvisioning || isSubmitPending || !canManageResources}>
+              <Button type="submit" className="corp-btn-md" disabled={!canSubmitProvisioning || isSubmitPending || !canManageResources}>
                 {isSubmitPending ? labels.sections.instance.submitLoading : labels.sections.instance.submitIdle}
               </Button>
             </div>
           </form>
 
-          <p className="text-xs text-muted-foreground">{labels.hints.idempotency}</p>
+          <p className="corp-field-hint">{labels.hints.idempotency}</p>
 
           {submitState.status === "success" ? (
             <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
