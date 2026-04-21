@@ -31,7 +31,7 @@ function getInitials(name: string): string {
 }
 
 const menuItemClass =
-  "flex w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-foreground/80 transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border/60 hover:bg-accent/70 hover:text-foreground";
+  "corp-menu-item";
 
 function appendTenantQuery(path: string, tenantId: string | null | undefined): string {
   if (!tenantId) {
@@ -95,7 +95,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email, activeTena
       <button
         type="button"
         onClick={() => setIsOpen((c) => !c)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/80 bg-background/90 text-xs font-semibold text-foreground shadow-sm transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border hover:bg-accent/80 hover:shadow dark:bg-background/70"
+        className="corp-toolbar-btn inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/80 text-xs font-semibold text-foreground hover:shadow"
         aria-haspopup="menu"
         aria-expanded={isOpen}
         aria-label={dictionary.buttonLabel}
@@ -155,7 +155,7 @@ export function ProfileMenu({ locale, dictionary, displayName, email, activeTena
               role="menuitem"
               disabled={isLoggingOut}
               onClick={() => void handleLogout()}
-              className="flex w-full items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium text-destructive transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-destructive/20 hover:bg-destructive/10 disabled:opacity-50"
+              className="corp-menu-item-danger"
             >
               <LogOut className="h-4 w-4 shrink-0" />
               {isLoggingOut ? dictionary.signOutLoading : dictionary.signOut}

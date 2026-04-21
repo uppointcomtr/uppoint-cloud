@@ -1,6 +1,7 @@
 import "server-only";
 
 import { NotificationOutboxStatus, TenantRole } from "@prisma/client";
+import type { InstanceRuntimeView, ResourceGroupView } from "@/modules/instances/domain/contracts";
 
 import {
   countUserActiveSessions,
@@ -13,6 +14,10 @@ import {
   type DashboardTenantMembershipOption,
   type DashboardUserSnapshot,
 } from "@/db/repositories/dashboard-repository";
+import {
+  listActiveInstancesForTenant,
+  listActiveResourceGroupsForTenant,
+} from "@/db/repositories/instance-control-plane-repository";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { resolveUserTenantContext, UserTenantContextError } from "@/modules/tenant/server/user-tenant";
@@ -42,6 +47,31 @@ interface DashboardCurrentSessionContext {
 }
 
 const SECURITY_EVENTS_TAKE = 60;
+const DASHBOARD_RESOURCE_GROUPS_TAKE = 12;
+const DASHBOARD_INSTANCES_TAKE = 20;
+const DASHBOARD_NON_SECURITY_AUDIT_ACTIONS = ["tenant_selection_required"] as const;
+
+interface DashboardResourceGroupSummary {
+  totalActive: number;
+  recent: Array<{
+    id: string;
+    name: string;
+    regionCode: string;
+    createdAt: Date;
+  }>;
+}
+
+interface DashboardInstanceSummary {
+  totalActive: number;
+  recent: Array<{
+    instanceId: string;
+    name: string;
+    resourceGroupId: string;
+    lifecycleState: InstanceRuntimeView["lifecycleState"];
+    powerState: InstanceRuntimeView["powerState"];
+    createdAt: Date;
+  }>;
+}
 
 export interface DashboardTenantSelectionOption extends DashboardTenantMembershipOption {
   isSelected: boolean;
@@ -60,6 +90,8 @@ export interface DashboardOverview {
   currentSession: DashboardCurrentSessionContext;
   sessionExpiresAt: Date;
   runtime: DashboardRuntimeSummary;
+  resourceGroups: DashboardResourceGroupSummary;
+  instances: DashboardInstanceSummary;
 }
 
 interface DashboardAuditContext {
@@ -82,10 +114,22 @@ export interface DashboardOverviewDependencies {
     since?: Date;
     tenantId?: string;
   }) => Promise<number>;
-  countUserAuditFailuresSince: (input: { userId: string; since: Date; tenantId?: string }) => Promise<number>;
-  listRecentUserAuditEvents: (input: { userId: string; take?: number; tenantId?: string }) => Promise<DashboardAuditEvent[]>;
+  countUserAuditFailuresSince: (input: {
+    userId: string;
+    since: Date;
+    tenantId?: string;
+    excludeActions?: string[];
+  }) => Promise<number>;
+  listRecentUserAuditEvents: (input: {
+    userId: string;
+    take?: number;
+    tenantId?: string;
+    excludeActions?: string[];
+  }) => Promise<DashboardAuditEvent[]>;
   listUserTenantOptions: (input: { userId: string; take?: number }) => Promise<DashboardTenantMembershipOption[]>;
   countUserActiveSessions: (input: { userId: string; now: Date }) => Promise<number>;
+  listActiveResourceGroups: (input: { tenantId: string; take?: number }) => Promise<ResourceGroupView[]>;
+  listActiveInstances: (input: { tenantId: string; take?: number }) => Promise<InstanceRuntimeView[]>;
   logAudit: typeof logAudit;
   now: () => Date;
 }
@@ -99,6 +143,8 @@ const defaultDependencies: DashboardOverviewDependencies = {
   listRecentUserAuditEvents: async ({ userId, take }) => listRecentUserAuditEvents({ userId, take }),
   listUserTenantOptions: async ({ userId, take }) => listActiveUserTenantMembershipOptions({ userId, take }),
   countUserActiveSessions: async ({ userId, now }) => countUserActiveSessions({ userId, now }),
+  listActiveResourceGroups: async ({ tenantId, take }) => listActiveResourceGroupsForTenant({ tenantId, take }),
+  listActiveInstances: async ({ tenantId, take }) => listActiveInstancesForTenant({ tenantId, take }),
   logAudit,
   now: () => new Date(),
 };
@@ -161,19 +207,21 @@ export async function getDashboardOverview(
   } catch (error) {
     if (error instanceof UserTenantContextError) {
       tenantErrorCode = error.code;
-      await dependencies.logAudit(
-        resolveTenantContextAuditAction(error.code),
-        auditContext.ip ?? "unknown",
-        input.userId,
-        {
-          reason: error.code,
-          tenantId: input.tenantId ?? null,
-          result: "FAILURE",
-          requestId: auditContext.requestId,
-          userAgent: auditContext.userAgent,
-          forwardedFor: auditContext.forwardedFor,
-        },
-      );
+      if (error.code !== "TENANT_SELECTION_REQUIRED") {
+        await dependencies.logAudit(
+          resolveTenantContextAuditAction(error.code),
+          auditContext.ip ?? "unknown",
+          input.userId,
+          {
+            reason: error.code,
+            tenantId: input.tenantId ?? null,
+            result: "FAILURE",
+            requestId: auditContext.requestId,
+            userAgent: auditContext.userAgent,
+            forwardedFor: auditContext.forwardedFor,
+          },
+        );
+      }
     } else {
       throw error;
     }
@@ -185,7 +233,16 @@ export async function getDashboardOverview(
   }
 
   const selectedTenantId = tenantContext?.tenantId;
-  const [pendingCount, sent24hCount, failed24hCount, auditFailures24h, recentAuditEvents, activeSessions] = await Promise.all([
+  const [
+    pendingCount,
+    sent24hCount,
+    failed24hCount,
+    auditFailures24h,
+    recentAuditEvents,
+    activeSessions,
+    activeResourceGroups,
+    activeInstances,
+  ] = await Promise.all([
     selectedTenantId
       ? dependencies.countUserNotificationByStatus({
           userId: input.userId,
@@ -214,19 +271,41 @@ export async function getDashboardOverview(
           userId: input.userId,
           tenantId: selectedTenantId,
           since: since24h,
+          excludeActions: [...DASHBOARD_NON_SECURITY_AUDIT_ACTIONS],
         })
-      : Promise.resolve(0),
+      : dependencies.countUserAuditFailuresSince({
+          userId: input.userId,
+          since: since24h,
+          excludeActions: [...DASHBOARD_NON_SECURITY_AUDIT_ACTIONS],
+        }),
     selectedTenantId
       ? dependencies.listRecentUserAuditEvents({
           userId: input.userId,
           tenantId: selectedTenantId,
           take: SECURITY_EVENTS_TAKE,
+          excludeActions: [...DASHBOARD_NON_SECURITY_AUDIT_ACTIONS],
         })
-      : Promise.resolve([]),
+      : dependencies.listRecentUserAuditEvents({
+          userId: input.userId,
+          take: SECURITY_EVENTS_TAKE,
+          excludeActions: [...DASHBOARD_NON_SECURITY_AUDIT_ACTIONS],
+        }),
     dependencies.countUserActiveSessions({
       userId: input.userId,
       now,
     }),
+    selectedTenantId
+      ? dependencies.listActiveResourceGroups({
+          tenantId: selectedTenantId,
+          take: DASHBOARD_RESOURCE_GROUPS_TAKE,
+        })
+      : Promise.resolve([]),
+    selectedTenantId
+      ? dependencies.listActiveInstances({
+          tenantId: selectedTenantId,
+          take: DASHBOARD_INSTANCES_TAKE,
+        })
+      : Promise.resolve([]),
   ]);
 
   const tenantOptions = (await dependencies.listUserTenantOptions({ userId: input.userId, take: 20 })).map((option) => ({
@@ -237,6 +316,8 @@ export async function getDashboardOverview(
   // JWT strategy does not persist every browser/device session row.
   // Treat the count as a lower-bound signal and never present "0" for an authenticated request.
   const normalizedActiveSessions = Math.max(activeSessions, 1);
+  const recentResourceGroups = activeResourceGroups.slice(-4).reverse();
+  const recentInstances = activeInstances.slice(0, 6);
 
   return {
     generatedAt: now,
@@ -263,6 +344,26 @@ export async function getDashboardOverview(
       appUrl: env.NEXT_PUBLIC_APP_URL,
       internalTransportMode: env.INTERNAL_AUTH_TRANSPORT_MODE,
       rateLimitBackend: resolveRateLimitBackend(),
+    },
+    resourceGroups: {
+      totalActive: activeResourceGroups.length,
+      recent: recentResourceGroups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        regionCode: group.regionCode,
+        createdAt: group.createdAt,
+      })),
+    },
+    instances: {
+      totalActive: activeInstances.length,
+      recent: recentInstances.map((instance) => ({
+        instanceId: instance.instanceId,
+        name: instance.name,
+        resourceGroupId: instance.resourceGroupId,
+        lifecycleState: instance.lifecycleState,
+        powerState: instance.powerState,
+        createdAt: instance.createdAt,
+      })),
     },
   };
 }

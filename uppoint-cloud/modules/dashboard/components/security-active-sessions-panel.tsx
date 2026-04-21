@@ -62,11 +62,11 @@ export function SecurityActiveSessionsPanel({
   const loginAt = currentSession.loginAtIso ?? currentSession.observedAtIso;
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
+    <section className="corp-surface corp-surface-pad">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <h3 className="corp-section-title">{labels.activeSessionsTitle}</h3>
-          <p className="text-sm text-muted-foreground">{labels.activeSessionsDescription}</p>
+          <p className="corp-body-muted">{labels.activeSessionsDescription}</p>
         </div>
         <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
           {labels.sessionCountLabel}: {activeSessions}

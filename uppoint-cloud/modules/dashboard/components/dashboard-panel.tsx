@@ -85,10 +85,9 @@ function getSectionPath(locale: Locale, section: DashboardSection, tenantId?: st
 
 function navButtonClass(isActive: boolean): string {
   return cn(
-    "group flex items-center gap-2.5 rounded-lg border px-3 py-2 text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-150 ease-out",
-    isActive
-      ? "border-primary/20 bg-primary/10 text-foreground shadow-sm shadow-primary/5"
-      : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-background/80 hover:text-foreground hover:shadow-sm",
+    "group",
+    "corp-nav-item",
+    isActive ? "corp-nav-item-active" : "corp-nav-item-idle",
   );
 }
 
@@ -146,7 +145,7 @@ export function DashboardPanel({
 
       <div className="grid gap-6 xl:grid-cols-[256px_minmax(0,1fr)]">
         {/* ── Sidebar ── */}
-        <aside className="flex flex-col overflow-hidden rounded-xl border border-border/60 bg-sidebar shadow-sm shadow-black/5 xl:sticky xl:top-6 xl:h-[fit-content]">
+        <aside className="corp-nav-surface flex flex-col overflow-hidden xl:sticky xl:top-6 xl:h-[fit-content]">
           {/* Logo + brand */}
           <div className="flex items-center gap-3 border-b border-border/50 px-4 py-3.5">
             <Link href={dashboardHomePath} aria-label="Uppoint Cloud" className="shrink-0">
@@ -211,8 +210,8 @@ export function DashboardPanel({
 
         <section className="space-y-6">
           {/* ── Top bar ── */}
-          <header className="relative z-30 rounded-xl border border-border/60 bg-sidebar shadow-sm shadow-black/5">
-            <div className="flex h-14 items-center justify-between px-5">
+          <header className="corp-topbar">
+            <div className="corp-topbar-inner">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-5 w-0.5 shrink-0 rounded-full bg-primary" />
                 <Link
@@ -231,15 +230,15 @@ export function DashboardPanel({
                 <ThemeToggle
                   labels={dictionary.header.theme}
                   iconOnly
-                  className="border-border/70 bg-background/80 shadow-none transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border hover:bg-background dark:bg-background/60"
+                  className="corp-toolbar-btn"
                 />
-                <div className="h-4 w-px bg-border/60 mx-0.5" />
+                <div className="corp-toolbar-divider" />
                 <LocaleSwitcher
                   locale={locale}
                   labels={dictionary.header.locales}
-                  className="border-border/70 bg-background/80 shadow-none transition-[background-color,border-color,color,box-shadow] duration-150 ease-out hover:border-border hover:bg-background dark:bg-background/60"
+                  className="corp-toolbar-btn"
                 />
-                <div className="h-4 w-px bg-border/60 mx-0.5" />
+                <div className="corp-toolbar-divider" />
                 <ProfileMenu
                   locale={locale}
                   dictionary={dashboard.profileMenu}
@@ -321,7 +320,7 @@ export function DashboardPanel({
 
           {activeSection === "modules" ? (
             <>
-              {modulesContent ?? <ModulesCard locale={locale} labels={dashboard} activeTenantId={activeTenantId} />}
+              {modulesContent ?? <ModulesCard locale={locale} overview={overview} labels={dashboard} activeTenantId={activeTenantId} />}
             </>
           ) : null}
         </section>

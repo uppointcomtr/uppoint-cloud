@@ -76,11 +76,11 @@ export function SecurityEventsTable({
   const pagedEvents = filteredEvents.slice(pageStart, pageStart + EVENTS_PER_PAGE);
 
   return (
-    <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
+    <section className="corp-surface corp-surface-pad">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h3 className="corp-section-title">{labels.eventsTitle}</h3>
-          <p className="text-sm text-muted-foreground">{labels.eventsDescription}</p>
+          <p className="corp-body-muted">{labels.eventsDescription}</p>
         </div>
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -98,7 +98,7 @@ export function SecurityEventsTable({
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-border/60">
         <table className="w-full min-w-[720px] text-sm">
-          <thead className="bg-background/80 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+          <thead className="corp-table-head bg-background/80">
             <tr>
               <th className="px-4 py-3 text-left">{labels.columns.date}</th>
               <th className="px-4 py-3 text-left">{labels.columns.event}</th>

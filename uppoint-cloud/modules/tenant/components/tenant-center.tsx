@@ -134,11 +134,11 @@ export function TenantCenter({
 
   return (
     <div className="space-y-6">
-      <Card className="border-border/70 bg-card/95 shadow-sm">
-        <CardHeader className="gap-3 md:flex-row md:items-end md:justify-between">
+      <Card className="corp-surface bg-card/95">
+        <CardHeader className="corp-surface-header gap-3 md:flex-row md:items-end md:justify-between">
           <div className="space-y-1.5">
             <CardTitle className="corp-section-title">{labels.title}</CardTitle>
-            <CardDescription>{labels.description}</CardDescription>
+            <CardDescription className="corp-body-muted">{labels.description}</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-border/70 bg-background/80 px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -146,7 +146,7 @@ export function TenantCenter({
             </span>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="corp-surface-body space-y-5">
           {statusMessage ? (
             <Alert className="border-border/70 bg-background/70">
               <AlertDescription>{statusMessage}</AlertDescription>
@@ -163,7 +163,7 @@ export function TenantCenter({
 
             {tenants.length > 0 ? (
               <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/70">
-                <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_130px_84px] items-center gap-3 border-b border-border/70 bg-muted/30 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground md:grid">
+                <div className="corp-table-head hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_130px_84px] items-center gap-3 border-b border-border/70 bg-muted/30 px-4 py-3 md:grid">
                   <span>{labels.list.columns.name}</span>
                   <span>{labels.list.columns.id}</span>
                   <span>{labels.list.columns.role}</span>

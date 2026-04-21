@@ -14,6 +14,7 @@ import {
 import { prisma } from "@/db/client";
 import type {
   FirewallPolicyView,
+  InstanceRuntimeView,
   InstanceLifecycleState,
   InstanceProvisioningJob,
   InstanceProvisioningRequest,
@@ -115,6 +116,23 @@ function mapFirewallPolicy(model: {
   };
 }
 
+function mapPowerState(state: InstancePowerState): InstanceRuntimeView["powerState"] {
+  switch (state) {
+    case InstancePowerState.STOPPED:
+      return "stopped";
+    case InstancePowerState.STARTING:
+      return "starting";
+    case InstancePowerState.RUNNING:
+      return "running";
+    case InstancePowerState.STOPPING:
+      return "stopping";
+    case InstancePowerState.REBOOTING:
+      return "rebooting";
+    case InstancePowerState.ERROR:
+      return "error";
+  }
+}
+
 export async function listActiveResourceGroupsForTenant(
   input: { tenantId: string; take?: number },
   client: InstanceRepositoryClient = prisma,
@@ -201,6 +219,56 @@ export async function listActiveFirewallPoliciesForTenant(
   });
 
   return policies.map(mapFirewallPolicy);
+}
+
+export async function listActiveInstancesForTenant(
+  input: { tenantId: string; resourceGroupId?: string; take?: number },
+  client: InstanceRepositoryClient = prisma,
+): Promise<InstanceRuntimeView[]> {
+  const instances = await client.cloudInstance.findMany({
+    where: {
+      tenantId: input.tenantId,
+      deletedAt: null,
+      ...(input.resourceGroupId ? { resourceGroupId: input.resourceGroupId } : {}),
+      resourceGroup: {
+        deletedAt: null,
+        status: ResourceGroupStatus.ACTIVE,
+      },
+      network: {
+        deletedAt: null,
+        status: NetworkStatus.ACTIVE,
+      },
+      firewallPolicy: {
+        deletedAt: null,
+        status: FirewallStatus.ACTIVE,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: input.take ?? 100,
+    select: {
+      id: true,
+      tenantId: true,
+      resourceGroupId: true,
+      name: true,
+      powerState: true,
+      lifecycleStatus: true,
+      providerInstanceRef: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  return instances.map((instance) => ({
+    instanceId: instance.id,
+    tenantId: instance.tenantId,
+    resourceGroupId: instance.resourceGroupId,
+    name: instance.name,
+    powerState: mapPowerState(instance.powerState),
+    lifecycleState: mapProvisioningState(instance.lifecycleStatus),
+    providerInstanceRef: instance.providerInstanceRef,
+    createdAt: instance.createdAt,
+    updatedAt: instance.updatedAt,
+  }));
 }
 
 export async function findActiveResourceGroupForTenant(

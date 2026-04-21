@@ -492,7 +492,7 @@ export function SecurityCenter({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur">
+      <section className="corp-surface corp-surface-pad">
         <div className="space-y-1">
           <h2 className="corp-section-title">{labels.accountTitle}</h2>
           <p className="corp-body-muted">{labels.accountDescription}</p>
@@ -501,8 +501,8 @@ export function SecurityCenter({
         <div className="mt-5 space-y-4">
           <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <p className="font-medium">{labels.endAllSessionsTitle}</p>
-              <p className="text-sm text-muted-foreground">{labels.endAllSessionsDescription}</p>
+              <p className="corp-title-base">{labels.endAllSessionsTitle}</p>
+              <p className="corp-body-muted">{labels.endAllSessionsDescription}</p>
             </div>
             <Button
               type="button"
@@ -520,8 +520,8 @@ export function SecurityCenter({
           <div className="rounded-xl border border-red-200 bg-red-50/70 p-4 dark:border-red-900/50 dark:bg-red-950/20">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
-                <p className="font-medium text-red-700 dark:text-red-200">{labels.deleteAccountTitle}</p>
-                <p className="text-sm text-red-700/90 dark:text-red-300/90">{labels.deleteAccountDescription}</p>
+                <p className="corp-title-base text-red-700 dark:text-red-200">{labels.deleteAccountTitle}</p>
+                <p className="text-sm leading-6 text-red-700/90 dark:text-red-300/90">{labels.deleteAccountDescription}</p>
               </div>
               <Button
                 type="button"

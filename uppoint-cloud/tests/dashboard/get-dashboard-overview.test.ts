@@ -5,6 +5,7 @@ import {
   getDashboardOverview,
   type DashboardOverviewDependencies,
 } from "@/modules/dashboard/server/get-dashboard-overview";
+import type { InstanceRuntimeView } from "@/modules/instances/domain/contracts";
 import { UserTenantContextError } from "@/modules/tenant/server/user-tenant";
 
 function createBaseDependencies(overrides?: Partial<DashboardOverviewDependencies>): DashboardOverviewDependencies {
@@ -58,6 +59,39 @@ function createBaseDependencies(overrides?: Partial<DashboardOverviewDependencie
       },
     ])),
     countUserActiveSessions: vi.fn(async () => 2),
+    listActiveResourceGroups: vi.fn(async () => ([
+      {
+        id: "rg_1",
+        tenantId: "tenant_1",
+        name: "Core RG",
+        slug: "core-rg",
+        regionCode: "tr-ist-1",
+        createdAt: new Date("2026-03-04T09:00:00.000Z"),
+        updatedAt: new Date("2026-03-04T09:00:00.000Z"),
+      },
+      {
+        id: "rg_2",
+        tenantId: "tenant_1",
+        name: "Edge RG",
+        slug: "edge-rg",
+        regionCode: "tr-ist-1",
+        createdAt: new Date("2026-03-05T08:00:00.000Z"),
+        updatedAt: new Date("2026-03-05T08:00:00.000Z"),
+      },
+    ])),
+    listActiveInstances: vi.fn(async (): Promise<InstanceRuntimeView[]> => ([
+      {
+        instanceId: "inst_1",
+        tenantId: "tenant_1",
+        resourceGroupId: "rg_2",
+        name: "web-01",
+        powerState: "running",
+        lifecycleState: "running",
+        providerInstanceRef: "vm-001",
+        createdAt: new Date("2026-03-05T08:10:00.000Z"),
+        updatedAt: new Date("2026-03-05T08:15:00.000Z"),
+      },
+    ])),
     logAudit: vi.fn(async () => {}),
     now: () => now,
     ...overrides,
@@ -97,6 +131,8 @@ describe("getDashboardOverview", () => {
     });
     expect(result.auditFailures24h).toBe(3);
     expect(result.activeSessions).toBe(2);
+    expect(result.resourceGroups.totalActive).toBe(2);
+    expect(result.instances.totalActive).toBe(1);
     expect(result.currentSession).toEqual({
       ip: null,
       userAgent: null,
@@ -135,14 +171,14 @@ describe("getDashboardOverview", () => {
     );
   });
 
-  it("fails closed for tenant-scoped aggregates when tenant selection is required", async () => {
+  it("keeps security timeline available while tenant-scoped aggregates stay fail-closed when tenant selection is required", async () => {
     const countUserNotificationByStatus = vi.fn(async () => 999);
-    const countUserAuditFailuresSince = vi.fn(async () => 999);
+    const countUserAuditFailuresSince = vi.fn(async () => 4);
     const listRecentUserAuditEvents = vi.fn(async () => ([
       {
-        action: "tenant_access_denied",
-        result: "FAILURE",
-        reason: "TENANT_SELECTION_REQUIRED",
+        action: "login_success",
+        result: "SUCCESS",
+        reason: null,
         requestId: "req-2",
         ip: "88.236.40.120",
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0",
@@ -156,6 +192,8 @@ describe("getDashboardOverview", () => {
       countUserNotificationByStatus,
       countUserAuditFailuresSince,
       listRecentUserAuditEvents,
+      listActiveResourceGroups: vi.fn(async () => []),
+      listActiveInstances: vi.fn(async () => []),
       logAudit: vi.fn(async () => {}),
     });
 
@@ -171,20 +209,38 @@ describe("getDashboardOverview", () => {
       sent24h: 0,
       failed24h: 0,
     });
-    expect(result.auditFailures24h).toBe(0);
-    expect(result.recentAuditEvents).toEqual([]);
+    expect(result.auditFailures24h).toBe(4);
+    expect(result.recentAuditEvents).toEqual([
+      {
+        action: "login_success",
+        result: "SUCCESS",
+        reason: null,
+        requestId: "req-2",
+        ip: "88.236.40.120",
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0",
+        createdAt: new Date("2026-03-05T08:20:00.000Z"),
+      },
+    ]);
+    expect(result.resourceGroups).toEqual({
+      totalActive: 0,
+      recent: [],
+    });
+    expect(result.instances).toEqual({
+      totalActive: 0,
+      recent: [],
+    });
     expect(countUserNotificationByStatus).not.toHaveBeenCalled();
-    expect(countUserAuditFailuresSince).not.toHaveBeenCalled();
-    expect(listRecentUserAuditEvents).not.toHaveBeenCalled();
-    expect(dependencies.logAudit).toHaveBeenCalledWith(
-      "tenant_selection_required",
-      "unknown",
-      "user_1",
-      expect.objectContaining({
-        reason: "TENANT_SELECTION_REQUIRED",
-        result: "FAILURE",
-      }),
-    );
+    expect(countUserAuditFailuresSince).toHaveBeenCalledWith({
+      userId: "user_1",
+      since: new Date("2026-03-04T08:30:00.000Z"),
+      excludeActions: ["tenant_selection_required"],
+    });
+    expect(listRecentUserAuditEvents).toHaveBeenCalledWith({
+      userId: "user_1",
+      take: 60,
+      excludeActions: ["tenant_selection_required"],
+    });
+    expect(dependencies.logAudit).not.toHaveBeenCalled();
   });
 
   it("reports a lower-bound minimum of one active session for authenticated JWT context", async () => {

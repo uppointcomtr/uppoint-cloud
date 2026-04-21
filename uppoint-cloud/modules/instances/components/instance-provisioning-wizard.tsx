@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,9 +66,17 @@ interface ImageCatalogModel {
   label: string;
 }
 
+interface TenantOptionModel {
+  tenantId: string;
+  tenantName: string;
+  role: "OWNER" | "ADMIN" | "MEMBER";
+  isSelected: boolean;
+}
+
 interface InstanceWizardViewModel {
   selectedTenantId: string;
   selectedTenantRole: "OWNER" | "ADMIN" | "MEMBER";
+  tenantOptions: TenantOptionModel[];
   resourceGroups: ResourceGroupModel[];
   networks: NetworkModel[];
   firewallPolicies: FirewallPolicyModel[];
@@ -120,6 +128,8 @@ export function InstanceProvisioningWizard({
   submitProvisioningAction,
 }: InstanceProvisioningWizardProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [selectedResourceGroupId, setSelectedResourceGroupId] = useState(
     model.resourceGroups[0]?.id ?? "",
   );
@@ -170,7 +180,6 @@ export function InstanceProvisioningWizard({
   const selectedPlan = model.planCatalog.find((item) => item.code === selectedPlanCode)
     ?? model.planCatalog[0]
     ?? null;
-
   const createErrorMessage = resolveErrorMessage(createState, labels.errors);
   const submitErrorMessage = resolveErrorMessage(submitState, labels.errors);
   const isProvisioningFormLocked = !canManageResources || isSubmitPending || model.resourceGroups.length === 0;
@@ -179,6 +188,17 @@ export function InstanceProvisioningWizard({
     && Boolean(selectedResourceGroup)
     && availableNetworks.length > 0
     && availableFirewallPolicies.length > 0;
+
+  function handleTenantChange(tenantId: string) {
+    if (!tenantId || tenantId === model.selectedTenantId) {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tenantId", tenantId);
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
 
   return (
     <div className="space-y-6">
@@ -196,12 +216,23 @@ export function InstanceProvisioningWizard({
             </Button>
           </div>
           <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-sm">
-            <p>
-              <span className="text-muted-foreground">{labels.tenantLabel}:</span> {model.selectedTenantId}
-            </p>
-            <p className="mt-1">
-              <span className="text-muted-foreground">{labels.tenantRoleLabel}:</span> {model.selectedTenantRole}
-            </p>
+            <div className="space-y-2">
+              <div className="space-y-2">
+                <Label htmlFor="wizard-tenant-selector">{labels.tenantSelectionLabel}</Label>
+                <select
+                  id="wizard-tenant-selector"
+                  value={model.selectedTenantId}
+                  onChange={(event) => handleTenantChange(event.currentTarget.value)}
+                  className={SELECT_CLASS_NAME}
+                >
+                  {model.tenantOptions.map((tenantOption) => (
+                    <option key={tenantOption.tenantId} value={tenantOption.tenantId}>
+                      {tenantOption.tenantName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             {!canManageResources ? (
               <p className="mt-2 text-sm text-amber-600 dark:text-amber-300">{labels.roleInsufficient}</p>
             ) : null}

@@ -123,6 +123,12 @@ export default async function DashboardInstancesWizardPage({
         model={{
           selectedTenantId: bootstrap.selectedTenantId,
           selectedTenantRole: bootstrap.selectedTenantRole,
+          tenantOptions: bootstrap.tenantOptions.map((tenantOption) => ({
+            tenantId: tenantOption.tenantId,
+            tenantName: tenantOption.tenantName,
+            role: tenantOption.role,
+            isSelected: tenantOption.isSelected,
+          })),
           resourceGroups: bootstrap.resourceGroups.map((resourceGroup) => ({
             id: resourceGroup.id,
             name: resourceGroup.name,

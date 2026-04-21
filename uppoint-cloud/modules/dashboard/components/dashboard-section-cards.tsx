@@ -15,7 +15,7 @@ import { TenantCreateForm, type TenantCreateAction } from "@/modules/tenant/comp
 
 import type { DashboardOverview } from "../server/get-dashboard-overview";
 
-const corporateCardClass = "border-border/70 bg-card/90 shadow-sm";
+const corporateCardClass = "corp-surface";
 
 export type DashboardActiveSection = "overview" | "account" | "security" | "notifications" | "tenant" | "modules";
 
@@ -33,6 +33,12 @@ function formatDateTime(value: Date | null, locale: Locale): string {
   return new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
     dateStyle: "medium",
     timeStyle: "short",
+  }).format(value);
+}
+
+function formatDate(value: Date, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-US", {
+    dateStyle: "medium",
   }).format(value);
 }
 
@@ -93,7 +99,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
       <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="corp-section-title">{labels.session.title}</CardTitle>
-          <CardDescription>{labels.session.description}</CardDescription>
+          <CardDescription className="corp-body-muted">{labels.session.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
@@ -113,7 +119,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
       <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="corp-section-title">{labels.verification.title}</CardTitle>
-          <CardDescription>{labels.verification.description}</CardDescription>
+          <CardDescription className="corp-body-muted">{labels.verification.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="flex items-center justify-between">
@@ -130,7 +136,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
       <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="corp-section-title">{labels.risk.title}</CardTitle>
-          <CardDescription>{labels.risk.description}</CardDescription>
+          <CardDescription className="corp-body-muted">{labels.risk.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
@@ -146,7 +152,7 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
       <Card className={corporateCardClass}>
         <CardHeader className="pb-3">
           <CardTitle className="corp-section-title">{labels.runtime.title}</CardTitle>
-          <CardDescription>{labels.runtime.description}</CardDescription>
+          <CardDescription className="corp-body-muted">{labels.runtime.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <p>
@@ -156,6 +162,14 @@ export function OverviewCards({ locale, overview, labels }: DashboardSectionProp
           <p>
             <span className="text-muted-foreground">{labels.runtime.transportMode}:</span>{" "}
             {overview.runtime.internalTransportMode}
+          </p>
+          <p>
+            <span className="text-muted-foreground">{labels.runtime.resourceGroupsActive}:</span>{" "}
+            {overview.resourceGroups.totalActive}
+          </p>
+          <p>
+            <span className="text-muted-foreground">{labels.runtime.instancesActive}:</span>{" "}
+            {overview.instances.totalActive}
           </p>
         </CardContent>
       </Card>
@@ -170,7 +184,7 @@ export function NotificationsCard({ overview, labels }: Pick<DashboardSectionPro
     <Card className={corporateCardClass}>
       <CardHeader>
         <CardTitle className="corp-section-title">{labels.notifications.title}</CardTitle>
-        <CardDescription>{labels.notifications.description}</CardDescription>
+        <CardDescription className="corp-body-muted">{labels.notifications.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <div className="grid grid-cols-3 gap-3">
@@ -212,7 +226,7 @@ export function TenantCard({
     <Card className={corporateCardClass}>
       <CardHeader>
         <CardTitle className="corp-section-title">{labels.tenant.title}</CardTitle>
-        <CardDescription>{labels.tenant.description}</CardDescription>
+        <CardDescription className="corp-body-muted">{labels.tenant.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         {overview.tenant ? (
@@ -283,23 +297,69 @@ export function TenantCard({
 
 export function ModulesCard({
   locale,
+  overview,
   labels,
   activeTenantId,
-}: Pick<DashboardSectionProps, "locale" | "labels"> & { activeTenantId?: string | null }) {
+}: Pick<DashboardSectionProps, "locale" | "overview" | "labels"> & { activeTenantId?: string | null }) {
   const instancesWizardHref = activeTenantId
     ? `${withLocale("/dashboard/modules/instances/new", locale)}?tenantId=${encodeURIComponent(activeTenantId)}`
     : withLocale("/dashboard/modules/instances/new", locale);
 
   return (
-    <Card className="border-border/60">
+    <Card className={corporateCardClass}>
       <CardHeader>
         <CardTitle className="corp-section-title">{labels.modules.title}</CardTitle>
-        <CardDescription>{labels.modules.description}</CardDescription>
+        <CardDescription className="corp-body-muted">{labels.modules.description}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-border/50 bg-background/60 p-3">
           <p className="font-medium">{labels.modules.instances}</p>
           <p className="mt-1 text-xs text-muted-foreground">{labels.modules.instancesDescription}</p>
+          <p className="mt-3 text-xs font-medium text-muted-foreground">
+            {labels.modules.activeInstancesLabel}:{" "}
+            <span className="text-foreground">{overview.instances.totalActive}</span>
+          </p>
+          <div className="mt-2 space-y-1">
+            {overview.instances.recent.length > 0 ? (
+              overview.instances.recent.slice(0, 3).map((instance) => (
+                <div key={instance.instanceId} className="rounded-md border border-border/50 bg-card/80 px-2 py-1.5">
+                  <p className="truncate text-xs font-medium text-foreground">{instance.name}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {labels.modules.lifecycle[instance.lifecycleState]} · {labels.modules.power[instance.powerState]}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground">{labels.modules.instancesEmpty}</p>
+            )}
+          </div>
+          <Button asChild size="sm" variant="outline" className="mt-3">
+            <Link href={instancesWizardHref}>
+              {labels.modules.instancesWizardCta}
+            </Link>
+          </Button>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-background/60 p-3">
+          <p className="font-medium">{labels.modules.resourceGroups}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{labels.modules.resourceGroupsDescription}</p>
+          <p className="mt-3 text-xs font-medium text-muted-foreground">
+            {labels.modules.activeResourceGroupsLabel}:{" "}
+            <span className="text-foreground">{overview.resourceGroups.totalActive}</span>
+          </p>
+          <div className="mt-2 space-y-1">
+            {overview.resourceGroups.recent.length > 0 ? (
+              overview.resourceGroups.recent.slice(0, 3).map((group) => (
+                <div key={group.id} className="rounded-md border border-border/50 bg-card/80 px-2 py-1.5">
+                  <p className="truncate text-xs font-medium text-foreground">{group.name}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {group.regionCode} · {formatDate(group.createdAt, locale)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground">{labels.modules.resourceGroupsEmpty}</p>
+            )}
+          </div>
           <Button asChild size="sm" variant="outline" className="mt-3">
             <Link href={instancesWizardHref}>
               {labels.modules.instancesWizardCta}

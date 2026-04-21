@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-04-21 (dashboard infra visibility + global corporate surface standardization)
+
+### Added
+- Added tenant-scoped infrastructure snapshot signals into dashboard overview/model:
+  - active resource-group totals + recent list
+  - active instance totals + recent list
+  - files:
+    - `modules/dashboard/server/get-dashboard-overview.ts`
+    - `db/repositories/instance-control-plane-repository.ts`
+    - `tests/dashboard/get-dashboard-overview.test.ts`
+- Added tenant selector to instance setup wizard so tenant context can be switched before resource-group selection:
+  - files:
+    - `modules/instances/components/instance-provisioning-wizard.tsx`
+    - `app/[locale]/dashboard/modules/instances/new/page.tsx`
+
+### Changed
+- Standardized dashboard visual system with shared corporate surface/nav/menu classes and reduced padding drift across non-auth pages:
+  - `app/globals.css`
+  - `modules/dashboard/components/dashboard-panel.tsx`
+  - `modules/dashboard/components/profile-menu.tsx`
+  - `components/shared/app-modal.tsx`
+  - `modules/dashboard/components/account-center.tsx`
+  - `modules/dashboard/components/security-center.tsx`
+  - `modules/dashboard/components/security-active-sessions-panel.tsx`
+  - `modules/dashboard/components/security-events-table.tsx`
+  - `modules/tenant/components/tenant-center.tsx`
+- Updated dashboard modules section to "Infrastructure" and surfaced active resource-group/instance summaries with localized lifecycle/power labels:
+  - `modules/dashboard/components/dashboard-section-cards.tsx`
+  - `messages/tr.ts`
+  - `messages/en.ts`
+- Refined tenant-selection-required behavior in dashboard overview:
+  - security timeline remains visible without emitting noisy `tenant_selection_required` audit events
+  - notification/resource-group/instance aggregates remain fail-closed until tenant context is selected
+  - repository audit queries now support `excludeActions` filtering for scoped timeline composition.
+
 ## 2026-04-14 (tenant center list + detail modal + delete disabled by policy)
 
 ### Added
