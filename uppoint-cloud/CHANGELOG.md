@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-21 (dashboard topbar active icon context)
+
+### Changed
+- Updated dashboard topbar context indicator to show the active section icon instead of a static home icon.
+- Removed breadcrumb chevron flow in topbar for a cleaner, module-aware context line.
+- File:
+  - `modules/dashboard/components/dashboard-panel.tsx`
+
+### Verification
+- `npm run lint`
+- `npx tsc --noEmit`
+- `npm test`
+- `npm run build:deploy`
+
 ## 2026-04-21 (dashboard global token adoption pass)
 
 ### Changed

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Building2, ChevronRight, House, LayoutDashboard, Layers3, ShieldCheck, UserCircle2 } from "lucide-react";
+import { Bell, Building2, LayoutDashboard, Layers3, ShieldCheck, UserCircle2 } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -91,21 +91,6 @@ function navButtonClass(isActive: boolean): string {
   );
 }
 
-function getActiveSectionLabel(
-  section: DashboardSection,
-  nav: { overview: string; account: string; security: string; notifications: string; tenant: string; modules: string },
-): string {
-  const map: Record<DashboardSection, string> = {
-    overview: nav.overview,
-    account: nav.account,
-    security: nav.security,
-    notifications: nav.notifications,
-    tenant: nav.tenant,
-    modules: nav.modules,
-  };
-  return map[section];
-}
-
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return (parts[0] ?? "").slice(0, 2).toUpperCase();
@@ -134,6 +119,8 @@ export function DashboardPanel({
     { section: "tenant", label: dashboard.nav.tenant, icon: Building2 },
     { section: "modules", label: dashboard.nav.modules, icon: Layers3 },
   ];
+  const activeNavItem = navItems.find((item) => item.section === activeSection) ?? navItems[0];
+  const ActiveSectionIcon = activeNavItem.icon;
 
   return (
     <main className="corp-dashboard-shell">
@@ -214,16 +201,11 @@ export function DashboardPanel({
             <div className="corp-topbar-inner">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-5 w-0.5 shrink-0 rounded-full bg-primary" />
-                <Link
-                  href={dashboardHomePath}
-                  aria-label={dashboard.title}
-                  className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <House className="h-4 w-4" />
-                </Link>
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-border" aria-hidden />
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <ActiveSectionIcon className="h-4 w-4" />
+                </span>
                 <span className="truncate text-sm font-semibold text-foreground">
-                  {getActiveSectionLabel(activeSection, dashboard.nav)}
+                  {activeNavItem.label}
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-1 ml-4">
