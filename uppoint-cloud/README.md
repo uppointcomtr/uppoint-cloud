@@ -273,6 +273,7 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
 - Account deletion challenge service: [modules/auth/server/account-delete-challenge.ts](/opt/uppoint-cloud/modules/auth/server/account-delete-challenge.ts)
 - Account profile and contact-change service: [modules/auth/server/account-profile.ts](/opt/uppoint-cloud/modules/auth/server/account-profile.ts)
 - Notification outbox service: [modules/notifications/server/outbox.ts](/opt/uppoint-cloud/modules/notifications/server/outbox.ts)
+- Notification delivery boundary (SMTP/SMS adapters): [modules/notifications/server/channel-delivery.ts](/opt/uppoint-cloud/modules/notifications/server/channel-delivery.ts)
 - Shared system email template: [modules/notifications/server/email-template.ts](/opt/uppoint-cloud/modules/notifications/server/email-template.ts)
 - User soft-delete lifecycle service: [modules/auth/server/user-lifecycle.ts](/opt/uppoint-cloud/modules/auth/server/user-lifecycle.ts)
 - Email notification service: [modules/auth/server/email-service.ts](/opt/uppoint-cloud/modules/auth/server/email-service.ts)
