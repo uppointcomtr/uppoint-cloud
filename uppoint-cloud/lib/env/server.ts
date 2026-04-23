@@ -42,10 +42,18 @@ const serverEnvSchema = z.object({
   AUTH_OTP_PEPPER: z.string().min(32).optional(),
   INTERNAL_AUDIT_TOKEN: z.string().min(32).optional(),
   INTERNAL_DISPATCH_TOKEN: z.string().min(32).optional(),
+  INTERNAL_PROVISIONING_TOKEN: z.string().min(32).optional(),
   INTERNAL_AUDIT_SIGNING_SECRET: z.string().min(32).optional(),
   INTERNAL_DISPATCH_SIGNING_SECRET: z.string().min(32).optional(),
+  INTERNAL_PROVISIONING_SIGNING_SECRET: z.string().min(32).optional(),
   INTERNAL_AUTH_TRANSPORT_MODE: z.enum(["loopback-hmac-v1", "mtls-hmac-v1"]).default("loopback-hmac-v1"),
   INTERNAL_AUDIT_ENDPOINT_URL: z.string().url().optional(),
+  INCUS_SOCKET_PATH: z.string().trim().min(1).optional(),
+  INCUS_ENDPOINT: z.string().url().optional(),
+  KVM_WORKER_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
+  KVM_WORKER_LOCK_STALE_SECONDS: z.coerce.number().int().min(30).max(3600).default(180),
+  KVM_OVS_BRIDGE_PREFIX: z.string().trim().min(1).max(32).regex(/^[a-z0-9][a-z0-9-]{0,31}$/).default("upkvm"),
+  KVM_VLAN_RANGE: z.string().trim().regex(/^\d{1,4}\s*-\s*\d{1,4}$/).default("2000-2999"),
   AUTH_TRUST_HOST: booleanFromString.default(false),
   AUTH_BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   AUTH_SESSION_REVALIDATE_SECONDS: z.coerce.number().int().min(30).max(3600).default(300),
@@ -156,6 +164,14 @@ const serverEnvSchema = z.object({
       });
     }
 
+    if (!input.INTERNAL_PROVISIONING_TOKEN) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["INTERNAL_PROVISIONING_TOKEN"],
+        message: "INTERNAL_PROVISIONING_TOKEN must be set in production",
+      });
+    }
+
     if (!input.INTERNAL_AUDIT_SIGNING_SECRET) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -169,6 +185,22 @@ const serverEnvSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ["INTERNAL_DISPATCH_SIGNING_SECRET"],
         message: "INTERNAL_DISPATCH_SIGNING_SECRET must be set in production",
+      });
+    }
+
+    if (!input.INTERNAL_PROVISIONING_SIGNING_SECRET) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["INTERNAL_PROVISIONING_SIGNING_SECRET"],
+        message: "INTERNAL_PROVISIONING_SIGNING_SECRET must be set in production",
+      });
+    }
+
+    if (!input.INCUS_SOCKET_PATH && !input.INCUS_ENDPOINT) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["INCUS_SOCKET_PATH"],
+        message: "INCUS_SOCKET_PATH or INCUS_ENDPOINT must be set in production",
       });
     }
 
@@ -280,6 +312,18 @@ const serverEnvSchema = z.object({
     });
   }
 
+  if (
+    input.UPPOINT_CLOSED_SYSTEM_MODE
+    && input.INCUS_ENDPOINT
+    && !isLoopbackUrl(input.INCUS_ENDPOINT)
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["INCUS_ENDPOINT"],
+      message: "Closed-system mode requires INCUS_ENDPOINT to stay on loopback",
+    });
+  }
+
   if (input.UPPOINT_CLOSED_SYSTEM_MODE && hasUpstashRateLimitRedis) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
@@ -348,6 +392,21 @@ const serverEnvSchema = z.object({
       }
     }
   }
+
+  const [rawVlanStart, rawVlanEnd] = input.KVM_VLAN_RANGE.split("-").map((part) => Number(part.trim()));
+  if (
+    !Number.isInteger(rawVlanStart)
+    || !Number.isInteger(rawVlanEnd)
+    || rawVlanStart < 2
+    || rawVlanEnd > 4094
+    || rawVlanStart >= rawVlanEnd
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["KVM_VLAN_RANGE"],
+      message: "KVM_VLAN_RANGE must be between 2-4094 and use ascending range format (start-end)",
+    });
+  }
 });
 
 const parsedEnv = serverEnvSchema.safeParse({
@@ -358,10 +417,18 @@ const parsedEnv = serverEnvSchema.safeParse({
   AUTH_OTP_PEPPER: process.env.AUTH_OTP_PEPPER,
   INTERNAL_AUDIT_TOKEN: process.env.INTERNAL_AUDIT_TOKEN,
   INTERNAL_DISPATCH_TOKEN: process.env.INTERNAL_DISPATCH_TOKEN,
+  INTERNAL_PROVISIONING_TOKEN: process.env.INTERNAL_PROVISIONING_TOKEN,
   INTERNAL_AUDIT_SIGNING_SECRET: process.env.INTERNAL_AUDIT_SIGNING_SECRET,
   INTERNAL_DISPATCH_SIGNING_SECRET: process.env.INTERNAL_DISPATCH_SIGNING_SECRET,
+  INTERNAL_PROVISIONING_SIGNING_SECRET: process.env.INTERNAL_PROVISIONING_SIGNING_SECRET,
   INTERNAL_AUTH_TRANSPORT_MODE: process.env.INTERNAL_AUTH_TRANSPORT_MODE,
   INTERNAL_AUDIT_ENDPOINT_URL: process.env.INTERNAL_AUDIT_ENDPOINT_URL,
+  INCUS_SOCKET_PATH: process.env.INCUS_SOCKET_PATH,
+  INCUS_ENDPOINT: process.env.INCUS_ENDPOINT,
+  KVM_WORKER_BATCH_SIZE: process.env.KVM_WORKER_BATCH_SIZE,
+  KVM_WORKER_LOCK_STALE_SECONDS: process.env.KVM_WORKER_LOCK_STALE_SECONDS,
+  KVM_OVS_BRIDGE_PREFIX: process.env.KVM_OVS_BRIDGE_PREFIX,
+  KVM_VLAN_RANGE: process.env.KVM_VLAN_RANGE,
   AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
   AUTH_BCRYPT_ROUNDS: process.env.AUTH_BCRYPT_ROUNDS,
   AUTH_SESSION_REVALIDATE_SECONDS: process.env.AUTH_SESSION_REVALIDATE_SECONDS,

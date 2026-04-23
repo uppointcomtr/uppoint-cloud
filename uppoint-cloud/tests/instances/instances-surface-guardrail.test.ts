@@ -2,6 +2,12 @@ import { readdirSync, readFileSync, statSync } from "fs";
 import path from "path";
 import { describe, expect, it } from "vitest";
 
+const INSTANCE_ENTRYPOINT_GUARD_EXEMPT_FILES = new Set([
+  // Internal worker protocol uses token+signature+replay guard and does not rely on user session tenant context.
+  "app/api/internal/instances/provisioning/claim/route.ts",
+  "app/api/internal/instances/provisioning/report/route.ts",
+]);
+
 function collectFilesRecursively(rootDir: string): string[] {
   const entries = readdirSync(rootDir);
   const files: string[] = [];
@@ -33,6 +39,11 @@ describe("instances module guardrails", () => {
     const violations: string[] = [];
 
     for (const filePath of candidateFiles) {
+      const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, "/");
+      if (INSTANCE_ENTRYPOINT_GUARD_EXEMPT_FILES.has(relativePath)) {
+        continue;
+      }
+
       const source = readFileSync(filePath, "utf8");
       const hasServerGuard =
         /assertInstanceTenantAccess\(/.test(source)
@@ -40,7 +51,7 @@ describe("instances module guardrails", () => {
         || /resolveUserTenantContext\(/.test(source);
 
       if (!hasServerGuard) {
-        violations.push(path.relative(process.cwd(), filePath).replace(/\\/g, "/"));
+        violations.push(relativePath);
       }
     }
 

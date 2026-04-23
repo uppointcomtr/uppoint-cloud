@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-04-23 (incus-first provisioning runtime v2.1.0)
+
+### Added
+- Introduced internal signed provisioning control-plane endpoints for worker orchestration:
+  - `POST /api/internal/instances/provisioning/claim`
+  - `POST /api/internal/instances/provisioning/report`
+- Added Incus-first worker runtime under `workers/incus` (Go):
+  - claim -> OVS/VLAN preparation -> instance create/start -> report lifecycle mapping.
+- Added DB-backed VLAN allocation boundary (`KvmVlanAllocation`) with uniqueness guarantees.
+- Added repository-level claim/report orchestration with lock ownership checks, stale-lock recovery, and retry/backoff scheduling.
+- Added targeted unit/contract tests for provisioning routes and control-plane repository transitions.
+- Added operational runtime assets for Incus worker scheduling:
+  - `ops/cron/uppoint-incus-provisioning`
+  - `ops/systemd/uppoint-incus-worker.service`
+  - `scripts/run-incus-worker.sh`
+
+### Changed
+- Extended `InstanceProvisioningJob` lifecycle metadata to support worker claim/report runtime:
+  - `attemptCount`, `maxAttempts`, `nextAttemptAt`, `lockedAt`, `lockedBy`,
+    `providerRef`, `providerMessage`.
+- Extended audit action catalog and localized security-event labels for provisioning lifecycle and internal-provisioning guardrail failures.
+- Extended environment validation (fail-closed in production) with provisioning/Incus worker keys.
+- Updated docs and ops runbooks to keep architecture/runtime inventory aligned:
+  - `README.md`
+  - `ops/README.md`
+  - `ops/RUNTIME_SERVICES_AND_CRON.md`
+- Fixed Incus cloud-init payload rendering to emit real newline characters instead of escaped literals.
+
+### Verification
+- `npm run prisma:generate`
+- `npm run lint`
+- `npm run typecheck`
+- `npm test`
+- `npm run build` (with provisioning env vars set)
+- `npm run verify:security-gate` (with provisioning env vars set)
+
 ## 2026-04-21 (dashboard topbar active icon context)
 
 ### Changed

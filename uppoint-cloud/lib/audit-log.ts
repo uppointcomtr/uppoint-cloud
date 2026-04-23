@@ -50,6 +50,10 @@ export type AuditAction =
   | "internal_dispatch_failed"
   | "internal_dispatch_replay_blocked"
   | "internal_dispatch_unauthorized"
+  | "internal_provisioning_unauthorized"
+  | "internal_provisioning_replay_blocked"
+  | "internal_provisioning_claim_failed"
+  | "internal_provisioning_report_failed"
   | "notification_delivery_terminal_failed"
   | "internal_audit_security_event_unauthorized"
   | "internal_audit_security_event_replay_blocked"
@@ -68,6 +72,9 @@ export type AuditAction =
   | "resource_group_create_failed"
   | "instance_wizard_draft_saved"
   | "instance_provisioning_requested"
+  | "instance_provisioning_started"
+  | "instance_provisioning_completed"
+  | "instance_provisioning_failed"
   | "instance_provisioning_request_failed"
   | "user_soft_deleted";
 
@@ -88,6 +95,10 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "internal_dispatch_failed",
   "internal_dispatch_replay_blocked",
   "internal_dispatch_unauthorized",
+  "internal_provisioning_unauthorized",
+  "internal_provisioning_replay_blocked",
+  "internal_provisioning_claim_failed",
+  "internal_provisioning_report_failed",
   "notification_delivery_terminal_failed",
   "internal_audit_security_event_unauthorized",
   "internal_audit_security_event_replay_blocked",
@@ -97,6 +108,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "tenant_role_insufficient",
   "tenant_delete_failed",
   "resource_group_create_failed",
+  "instance_provisioning_failed",
   "instance_provisioning_request_failed",
 ]);
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";

@@ -71,6 +71,15 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now uppoint-tune.service
 ```
 
+Optional Incus worker service (manual one-shot trigger surface):
+
+```bash
+sudo cp /opt/uppoint-cloud/ops/systemd/uppoint-incus-worker.service /etc/systemd/system/uppoint-incus-worker.service
+sudo systemctl daemon-reload
+sudo systemctl start uppoint-incus-worker.service
+sudo systemctl status uppoint-incus-worker.service
+```
+
 Environment values should be provided in `/opt/uppoint-cloud/.env` (not in git).
 
 Closed-system baseline example (default policy):
@@ -83,9 +92,17 @@ AUTH_SECRET=replace-with-strong-random-secret
 AUTH_OTP_PEPPER=replace-with-separate-strong-random-secret
 INTERNAL_AUDIT_TOKEN=replace-with-strong-random-token
 INTERNAL_DISPATCH_TOKEN=replace-with-strong-random-token
+INTERNAL_PROVISIONING_TOKEN=replace-with-strong-random-token
 INTERNAL_AUDIT_SIGNING_SECRET=replace-with-strong-random-secret
 INTERNAL_DISPATCH_SIGNING_SECRET=replace-with-strong-random-secret
+INTERNAL_PROVISIONING_SIGNING_SECRET=replace-with-strong-random-secret
 INTERNAL_AUTH_TRANSPORT_MODE=loopback-hmac-v1
+INCUS_SOCKET_PATH=/var/lib/incus/unix.socket
+INCUS_ENDPOINT=
+KVM_WORKER_BATCH_SIZE=10
+KVM_WORKER_LOCK_STALE_SECONDS=180
+KVM_OVS_BRIDGE_PREFIX=upkvm
+KVM_VLAN_RANGE=2000-2999
 NOTIFICATION_PAYLOAD_SECRET=replace-with-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
@@ -319,13 +336,14 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-backup /etc/cron.d/uppoint-
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-restore-drill /etc/cron.d/uppoint-postgres-restore-drill
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-incus-provisioning /etc/cron.d/uppoint-incus-provisioning
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-canary /etc/cron.d/uppoint-notification-canary
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-slo-report /etc/cron.d/uppoint-security-slo-report
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-gate-weekly /etc/cron.d/uppoint-security-gate-weekly
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-canary /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report /etc/cron.d/uppoint-security-gate-weekly
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-incus-provisioning /etc/cron.d/uppoint-notification-canary /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report /etc/cron.d/uppoint-security-gate-weekly
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -339,6 +357,7 @@ sudo /opt/uppoint-cloud/scripts/backup-db.sh
 sudo /opt/uppoint-cloud/scripts/restore-drill-db.sh --check-only
 sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
+sudo /opt/uppoint-cloud/scripts/run-incus-worker.sh
 sudo /opt/uppoint-cloud/scripts/run-notification-canary.sh
 sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
 sudo /opt/uppoint-cloud/scripts/export-audit-anchor.sh
@@ -365,6 +384,28 @@ Auth abuse alert channels:
 - `x-internal-dispatch-token`
 - `x-internal-request-ts`
 - `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
+
+`run-incus-worker.sh` reads `INTERNAL_PROVISIONING_TOKEN` and
+`INTERNAL_PROVISIONING_SIGNING_SECRET` from `/opt/uppoint-cloud/.env` and signs
+calls to:
+
+- `POST /api/internal/instances/provisioning/claim`
+- `POST /api/internal/instances/provisioning/report`
+
+Worker runtime defaults:
+
+- `KVM_WORKER_BATCH_SIZE=10`
+- `KVM_WORKER_LOCK_STALE_SECONDS=180`
+- `KVM_OVS_BRIDGE_PREFIX=upkvm`
+- `KVM_VLAN_RANGE=2000-2999`
+- `INCUS_SOCKET_PATH=/var/lib/incus/unix.socket` (preferred local daemon path)
+
+Manual worker run:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/run-incus-worker.sh
+tail -n 100 /var/log/uppoint-cloud/incus-provisioning-worker.log
+```
 
 Production guard:
 
@@ -741,12 +782,13 @@ redis-cli -s "$TMP_DIR/redis-drill.sock" shutdown nosave
 rm -rf "$TMP_DIR"
 ```
 
-## 16. Internal token rotation runbook (`INTERNAL_AUDIT_TOKEN`, `INTERNAL_DISPATCH_TOKEN`)
+## 16. Internal token rotation runbook (`INTERNAL_AUDIT_TOKEN`, `INTERNAL_DISPATCH_TOKEN`, `INTERNAL_PROVISIONING_TOKEN`)
 
 These tokens secure internal-only endpoints:
 
 - `INTERNAL_AUDIT_TOKEN` -> `POST /api/internal/audit/security-event`
 - `INTERNAL_DISPATCH_TOKEN` -> `POST /api/internal/notifications/dispatch`
+- `INTERNAL_PROVISIONING_TOKEN` -> `POST /api/internal/instances/provisioning/claim|report`
 
 Current implementation is single-active-token (no dual-token grace window), so rotation is a direct cutover.
 
@@ -755,6 +797,7 @@ Current implementation is single-active-token (no dual-token grace window), so r
 ```bash
 NEW_INTERNAL_AUDIT_TOKEN="$(openssl rand -hex 32)"
 NEW_INTERNAL_DISPATCH_TOKEN="$(openssl rand -hex 32)"
+NEW_INTERNAL_PROVISIONING_TOKEN="$(openssl rand -hex 32)"
 ```
 
 ### 16.2 Back up and update `.env`
@@ -763,6 +806,7 @@ NEW_INTERNAL_DISPATCH_TOKEN="$(openssl rand -hex 32)"
 sudo cp /opt/uppoint-cloud/.env "/opt/uppoint-cloud/.env.bak.$(date +%Y%m%d%H%M%S)"
 sudo sed -i "s#^INTERNAL_AUDIT_TOKEN=.*#INTERNAL_AUDIT_TOKEN=${NEW_INTERNAL_AUDIT_TOKEN}#" /opt/uppoint-cloud/.env
 sudo sed -i "s#^INTERNAL_DISPATCH_TOKEN=.*#INTERNAL_DISPATCH_TOKEN=${NEW_INTERNAL_DISPATCH_TOKEN}#" /opt/uppoint-cloud/.env
+sudo sed -i "s#^INTERNAL_PROVISIONING_TOKEN=.*#INTERNAL_PROVISIONING_TOKEN=${NEW_INTERNAL_PROVISIONING_TOKEN}#" /opt/uppoint-cloud/.env
 ```
 
 If keys do not exist yet, append once:
@@ -770,6 +814,7 @@ If keys do not exist yet, append once:
 ```bash
 grep -q '^INTERNAL_AUDIT_TOKEN=' /opt/uppoint-cloud/.env || echo "INTERNAL_AUDIT_TOKEN=${NEW_INTERNAL_AUDIT_TOKEN}" | sudo tee -a /opt/uppoint-cloud/.env
 grep -q '^INTERNAL_DISPATCH_TOKEN=' /opt/uppoint-cloud/.env || echo "INTERNAL_DISPATCH_TOKEN=${NEW_INTERNAL_DISPATCH_TOKEN}" | sudo tee -a /opt/uppoint-cloud/.env
+grep -q '^INTERNAL_PROVISIONING_TOKEN=' /opt/uppoint-cloud/.env || echo "INTERNAL_PROVISIONING_TOKEN=${NEW_INTERNAL_PROVISIONING_TOKEN}" | sudo tee -a /opt/uppoint-cloud/.env
 ```
 
 ### 16.3 Restart service and verify
@@ -779,6 +824,7 @@ cd /opt/uppoint-cloud
 sudo systemctl restart uppoint-cloud.service
 sudo systemctl is-active --quiet uppoint-cloud.service
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
+sudo /opt/uppoint-cloud/scripts/run-incus-worker.sh
 ```
 
 Expected:
@@ -788,8 +834,9 @@ Expected:
 ### 16.4 Post-rotation checks
 
 ```bash
-journalctl -u uppoint-cloud.service -n 200 --no-pager | rg -n "INTERNAL_AUDIT_TOKEN|INTERNAL_DISPATCH_TOKEN|UNAUTHORIZED|INVALID_BODY" || true
+journalctl -u uppoint-cloud.service -n 200 --no-pager | rg -n "INTERNAL_AUDIT_TOKEN|INTERNAL_DISPATCH_TOKEN|INTERNAL_PROVISIONING_TOKEN|UNAUTHORIZED|INVALID_BODY" || true
 tail -n 100 /var/log/uppoint-cloud/dispatch-notifications.log
+tail -n 100 /var/log/uppoint-cloud/incus-provisioning-worker.log
 ```
 
 ### 16.5 Rollback

@@ -11,13 +11,20 @@ const baseServerEnv: Record<string, string | undefined> = {
   AUTH_OTP_PEPPER: "b".repeat(32),
   INTERNAL_AUDIT_TOKEN: "c".repeat(32),
   INTERNAL_DISPATCH_TOKEN: "d".repeat(32),
-  INTERNAL_AUDIT_SIGNING_SECRET: "e".repeat(32),
-  INTERNAL_DISPATCH_SIGNING_SECRET: "f".repeat(32),
-  NOTIFICATION_PAYLOAD_SECRET: "g".repeat(32),
+  INTERNAL_PROVISIONING_TOKEN: "e".repeat(32),
+  INTERNAL_AUDIT_SIGNING_SECRET: "f".repeat(32),
+  INTERNAL_DISPATCH_SIGNING_SECRET: "g".repeat(32),
+  INTERNAL_PROVISIONING_SIGNING_SECRET: "h".repeat(32),
+  NOTIFICATION_PAYLOAD_SECRET: "i".repeat(32),
   AUTH_TRUST_HOST: "true",
-  HEALTHCHECK_TOKEN: "h".repeat(16),
+  HEALTHCHECK_TOKEN: "j".repeat(16),
   UPPOINT_CLOSED_SYSTEM_MODE: "true",
   RATE_LIMIT_REDIS_URL: "redis://127.0.0.1:6379",
+  INCUS_SOCKET_PATH: "/var/lib/incus/unix.socket",
+  KVM_WORKER_BATCH_SIZE: "10",
+  KVM_WORKER_LOCK_STALE_SECONDS: "180",
+  KVM_OVS_BRIDGE_PREFIX: "upkvm",
+  KVM_VLAN_RANGE: "2000-2999",
   UPPOINT_EMAIL_BACKEND: "smtp",
   UPPOINT_DEFAULT_FROM_EMAIL: "noreply@uppoint.com.tr",
   UPPOINT_EMAIL_HOST: "smtp.uppoint.com.tr",
@@ -30,8 +37,8 @@ const baseServerEnv: Record<string, string | undefined> = {
   UPPOINT_SMS_USERNAME: "sms-user",
   UPPOINT_SMS_PASSWORD: "sms-password",
   UPPOINT_SMS_SOURCE_ADDR: "UPPOINT",
-  AUDIT_LOG_SIGNING_SECRET: "i".repeat(32),
-  AUDIT_ANCHOR_SIGNING_SECRET: "j".repeat(32),
+  AUDIT_LOG_SIGNING_SECRET: "k".repeat(32),
+  AUDIT_ANCHOR_SIGNING_SECRET: "l".repeat(32),
 };
 
 const baseProxyEnv: Record<string, string | undefined> = {
@@ -92,6 +99,16 @@ describe("closed-system env guardrail", () => {
     applyEnv({
       ...baseServerEnv,
       INTERNAL_AUDIT_ENDPOINT_URL: "https://audit.example.com/api/internal/audit/security-event",
+    });
+
+    await expect(loadServerEnv()).rejects.toThrow("Invalid environment configuration");
+  });
+
+  it("rejects non-loopback incus endpoint overrides in closed-system server env", async () => {
+    applyEnv({
+      ...baseServerEnv,
+      INCUS_SOCKET_PATH: undefined,
+      INCUS_ENDPOINT: "https://incus.example.com",
     });
 
     await expect(loadServerEnv()).rejects.toThrow("Invalid environment configuration");

@@ -113,6 +113,7 @@ model Tenant {
   cloudInstances CloudInstance[]
   instanceProvisioningJobs InstanceProvisioningJob[]
   instanceProvisioningEvents InstanceProvisioningEvent[]
+  kvmVlanAllocations KvmVlanAllocation[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
@@ -419,6 +420,7 @@ model ResourceGroup {
   firewallPolicies FirewallPolicy[]
   cloudInstances CloudInstance[]
   provisioningJobs InstanceProvisioningJob[]
+  kvmVlanAllocations KvmVlanAllocation[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, status, deletedAt])
@@ -440,6 +442,7 @@ model VirtualNetwork {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   resourceGroup ResourceGroup @relation(fields: [resourceGroupId], references: [id], onDelete: Cascade)
   cloudInstances CloudInstance[]
+  kvmVlanAllocations KvmVlanAllocation[]
 
   @@unique([resourceGroupId, name])
   @@index([tenantId, resourceGroupId, status, deletedAt])
@@ -537,8 +540,15 @@ model InstanceProvisioningJob {
   requestedByUserId String
   idempotencyKey String
   requestPayload Json
+  attemptCount Int                     @default(0)
+  maxAttempts Int                      @default(5)
+  nextAttemptAt DateTime               @default(now())
+  lockedAt DateTime?
+  lockedBy String?
   lastErrorCode String?
   lastErrorMessage String?
+  providerRef String?
+  providerMessage String?
   startedAt DateTime?
   completedAt DateTime?
   failedAt DateTime?
@@ -553,7 +563,28 @@ model InstanceProvisioningJob {
 
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId, status, createdAt])
+  @@index([status, nextAttemptAt, lockedAt])
   @@index([requestedByUserId, createdAt])
+}
+
+model KvmVlanAllocation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  resourceGroupId String
+  networkId       String
+  vlanTag         Int
+  bridgeName      String
+  ovsNetworkName  String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resourceGroup ResourceGroup @relation(fields: [resourceGroupId], references: [id], onDelete: Cascade)
+  network VirtualNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+
+  @@unique([networkId])
+  @@unique([vlanTag])
+  @@index([tenantId, resourceGroupId, createdAt])
 }
 
 model InstanceProvisioningEvent {

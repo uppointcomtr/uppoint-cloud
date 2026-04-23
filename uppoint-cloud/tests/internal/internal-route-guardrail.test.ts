@@ -22,6 +22,18 @@ const CASES: InternalRouteGuardrailCase[] = [
     expectedPathLiteral: "/api/internal/notifications/dispatch",
     expectedTokenHeaderName: "x-internal-dispatch-token",
   },
+  {
+    label: "internal instance provisioning claim route",
+    routePath: "app/api/internal/instances/provisioning/claim/route.ts",
+    expectedPathLiteral: "/api/internal/instances/provisioning/claim",
+    expectedTokenHeaderName: "x-internal-provisioning-token",
+  },
+  {
+    label: "internal instance provisioning report route",
+    routePath: "app/api/internal/instances/provisioning/report/route.ts",
+    expectedPathLiteral: "/api/internal/instances/provisioning/report",
+    expectedTokenHeaderName: "x-internal-provisioning-token",
+  },
 ];
 
 describe("internal route auth guardrail", () => {

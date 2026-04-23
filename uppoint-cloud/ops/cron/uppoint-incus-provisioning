@@ -1,0 +1,6 @@
+# Uppoint Cloud Incus provisioning worker poller (every minute)
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# Runs the Incus worker under root because OVS and local Incus daemon operations require elevated host privileges.
+* * * * * root /usr/bin/env -i PATH=/usr/local/bin:/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-incus-provisioning.lock /opt/uppoint-cloud/scripts/run-incus-worker.sh >> /var/log/uppoint-cloud/incus-provisioning-worker.log 2>&1

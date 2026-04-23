@@ -32,7 +32,8 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
   - Instance control-plane wizard (`/:locale/dashboard/modules/instances/new`)
     - tenant-scoped resource group creation with default network + firewall policy
     - idempotent instance provisioning request submission (`tenant -> resource group -> network/firewall`)
-    - internal module boundary for future provider adapters (`modules/kvm/*`)
+    - Incus-first internal worker protocol (`claim` / `report`) with signed loopback-only internal routes
+    - OVS/VLAN day-1 network preparation is modeled as worker-side idempotent stage events
   - Account center (`/:locale/dashboard/account`)
     - dedicated profile-management surface linked from the profile dropdown and dashboard navigation
     - full-name update now requires in-flow email verification code confirmation before persistence
@@ -119,8 +120,10 @@ Minimum required keys for production boot:
 - `AUTH_OTP_PEPPER`
 - `INTERNAL_AUDIT_TOKEN`
 - `INTERNAL_DISPATCH_TOKEN`
+- `INTERNAL_PROVISIONING_TOKEN`
 - `INTERNAL_AUDIT_SIGNING_SECRET`
 - `INTERNAL_DISPATCH_SIGNING_SECRET`
+- `INTERNAL_PROVISIONING_SIGNING_SECRET`
 - `NOTIFICATION_PAYLOAD_SECRET`
 - `HEALTHCHECK_TOKEN`
 
@@ -133,10 +136,18 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `AUTH_OTP_PEPPER` (required in production; must be distinct from `AUTH_SECRET`)
 - `INTERNAL_AUDIT_TOKEN` (required in production; secures internal edge-audit ingest route)
 - `INTERNAL_DISPATCH_TOKEN` (required in production; secures internal notification dispatcher route)
+- `INTERNAL_PROVISIONING_TOKEN` (required in production; secures internal provisioning claim/report routes)
 - `INTERNAL_AUDIT_SIGNING_SECRET` (required in production; HMAC signing key for internal audit ingest requests)
 - `INTERNAL_DISPATCH_SIGNING_SECRET` (required in production; HMAC signing key for notification dispatch requests)
+- `INTERNAL_PROVISIONING_SIGNING_SECRET` (required in production; HMAC signing key for internal provisioning worker requests)
 - `INTERNAL_AUTH_TRANSPORT_MODE` (optional, default `loopback-hmac-v1`; set `mtls-hmac-v1` only after trusted mTLS headers are configured at reverse proxy)
 - `INTERNAL_AUDIT_ENDPOINT_URL` (optional override; defaults to loopback `http://127.0.0.1:3000/api/internal/audit/security-event`; when `UPPOINT_CLOSED_SYSTEM_MODE=true` it must remain loopback-only)
+- `INCUS_SOCKET_PATH` (optional but recommended in production; local Incus daemon socket path)
+- `INCUS_ENDPOINT` (optional fallback; loopback-only in closed-system mode)
+- `KVM_WORKER_BATCH_SIZE` (optional, default `10`; max jobs claimed per poll cycle)
+- `KVM_WORKER_LOCK_STALE_SECONDS` (optional, default `180`; stale lock recovery threshold for provisioning jobs)
+- `KVM_OVS_BRIDGE_PREFIX` (optional, default `upkvm`; deterministic OVS bridge/network naming prefix)
+- `KVM_VLAN_RANGE` (optional, default `2000-2999`; VLAN allocation range, must stay within `2-4094`)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)
@@ -285,7 +296,12 @@ Store logo assets in `public/logo/` with these exact names for theme-aware heade
   [modules/instances/server/security-boundary.ts](/opt/uppoint-cloud/modules/instances/server/security-boundary.ts),
   [modules/instances/server/wizard-service.ts](/opt/uppoint-cloud/modules/instances/server/wizard-service.ts),
   [db/repositories/instance-control-plane-repository.ts](/opt/uppoint-cloud/db/repositories/instance-control-plane-repository.ts)
-- Provider boundary for future hypervisor adapters: [modules/kvm/domain/provider-contract.ts](/opt/uppoint-cloud/modules/kvm/domain/provider-contract.ts), [modules/kvm/server/provider.ts](/opt/uppoint-cloud/modules/kvm/server/provider.ts)
+- Incus-first provider boundary and worker runtime:
+  [modules/kvm/domain/provider-contract.ts](/opt/uppoint-cloud/modules/kvm/domain/provider-contract.ts),
+  [modules/kvm/server/provider.ts](/opt/uppoint-cloud/modules/kvm/server/provider.ts),
+  [workers/incus/cmd/worker/main.go](/opt/uppoint-cloud/workers/incus/cmd/worker/main.go),
+  [app/api/internal/instances/provisioning/claim/route.ts](/opt/uppoint-cloud/app/api/internal/instances/provisioning/claim/route.ts),
+  [app/api/internal/instances/provisioning/report/route.ts](/opt/uppoint-cloud/app/api/internal/instances/provisioning/report/route.ts)
 - Idempotent API helper: [lib/http/idempotency.ts](/opt/uppoint-cloud/lib/http/idempotency.ts)
 - Route protection and locale redirects: [proxy.ts](/opt/uppoint-cloud/proxy.ts)
 - Fail-closed logout revocation endpoint: [app/api/auth/logout/route.ts](/opt/uppoint-cloud/app/api/auth/logout/route.ts)
@@ -577,6 +593,12 @@ Run this checklist after deployment or UI-affecting changes:
     - `x-internal-request-id` (single-use request nonce)
     - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
     - shared signing secret: `INTERNAL_DISPATCH_SIGNING_SECRET`
+  - `/api/internal/instances/provisioning/claim` and `/api/internal/instances/provisioning/report` require:
+    - loopback source (`127.0.0.1`/`::1`) in production when `INTERNAL_AUTH_TRANSPORT_MODE=loopback-hmac-v1`
+    - `x-internal-provisioning-token` matching `INTERNAL_PROVISIONING_TOKEN`
+    - `x-internal-request-id` (single-use request nonce)
+    - `x-internal-request-ts` + `x-internal-request-signature` (HMAC-SHA256 canonical request signature)
+    - shared signing secret: `INTERNAL_PROVISIONING_SIGNING_SECRET`
 - Notification outbox payloads are encrypted at rest with `NOTIFICATION_PAYLOAD_SECRET`.
 - Backup scripts now enforce restrictive filesystem permissions (`umask 077`, directories `700`, files `600`).
 - Backup scripts now create `*.sha256` checksum sidecars, and restore scripts verify checksums by default.

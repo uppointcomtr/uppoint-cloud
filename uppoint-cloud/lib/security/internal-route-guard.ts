@@ -20,7 +20,8 @@ interface InternalRouteGuardInput {
   };
   unauthorizedAuditAction:
     | "internal_dispatch_unauthorized"
-    | "internal_audit_security_event_unauthorized";
+    | "internal_audit_security_event_unauthorized"
+    | "internal_provisioning_unauthorized";
 }
 
 type InternalRouteGuardResult =

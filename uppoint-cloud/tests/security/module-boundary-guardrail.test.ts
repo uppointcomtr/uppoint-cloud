@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 const APP_DB_IMPORT_ALLOWLIST = new Set([
   "app/api/health/route.ts",
+  "app/api/internal/instances/provisioning/claim/route.ts",
+  "app/api/internal/instances/provisioning/report/route.ts",
 ]);
 
 function collectFilesRecursively(rootDir: string): string[] {

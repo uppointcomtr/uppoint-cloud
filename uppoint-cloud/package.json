@@ -26,6 +26,7 @@
     "verify:security-slo": "bash ./scripts/run-security-slo-report.sh",
     "verify:notification-canary": "bash ./scripts/run-notification-canary.sh",
     "verify:findings-freshness": "node ./scripts/check-findings-freshness.mjs",
+    "worker:incus": "bash ./scripts/run-incus-worker.sh",
     "audit:anchor:export": "bash ./scripts/export-audit-anchor.sh",
     "audit:anchor:replicate": "bash ./scripts/replicate-audit-anchor.sh",
     "verify:security-gate": "bash ./scripts/verify-security-gate.sh",

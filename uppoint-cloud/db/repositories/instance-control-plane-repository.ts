@@ -13,6 +13,10 @@ import {
 
 import { prisma } from "@/db/client";
 import type {
+  ClaimedProvisioningJob,
+  InstanceProvisioningClaimRequest,
+  InstanceProvisioningReportRequest,
+  InstanceProvisioningReportResult,
   FirewallPolicyView,
   InstanceRuntimeView,
   InstanceLifecycleState,
@@ -23,6 +27,25 @@ import type {
 } from "@/types/instance-control-plane";
 
 type InstanceRepositoryClient = Prisma.TransactionClient | typeof prisma;
+const MAX_PROVISIONING_BACKOFF_SECONDS = 15 * 60;
+
+export class InstanceProvisioningControlPlaneError extends Error {
+  constructor(
+    public readonly code:
+      | "PROVISIONING_JOB_NOT_FOUND"
+      | "PROVISIONING_INSTANCE_NOT_FOUND"
+      | "PROVISIONING_LOCK_OWNERSHIP_MISMATCH"
+      | "PROVISIONING_REPORT_CONFLICT"
+      | "VLAN_ALLOCATION_CONFLICT"
+      | "INVALID_NETWORK_PREPARATION_PAYLOAD"
+      | "INVALID_PROVISIONING_EVENT"
+      | "UNKNOWN",
+    message: string,
+  ) {
+    super(message);
+    this.name = "InstanceProvisioningControlPlaneError";
+  }
+}
 
 function mapProvisioningState(state: InstanceProvisioningStatus): InstanceLifecycleState {
   switch (state) {
@@ -131,6 +154,19 @@ function mapPowerState(state: InstancePowerState): InstanceRuntimeView["powerSta
     case InstancePowerState.ERROR:
       return "error";
   }
+}
+
+function parseJsonObject(value: Prisma.JsonValue): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function computeProvisioningRetryDelaySeconds(attemptCount: number): number {
+  const exponent = Math.max(0, Math.min(attemptCount, 8));
+  return Math.min(MAX_PROVISIONING_BACKOFF_SECONDS, 2 ** exponent);
 }
 
 export async function listActiveResourceGroupsForTenant(
@@ -484,9 +520,17 @@ export async function findProvisioningJobByIdempotencyKey(
       instanceId: true,
       requestedByUserId: true,
       status: true,
+      attemptCount: true,
+      maxAttempts: true,
+      nextAttemptAt: true,
+      lockedAt: true,
+      lockedBy: true,
+      providerRef: true,
+      providerMessage: true,
       createdAt: true,
       updatedAt: true,
       lastErrorCode: true,
+      lastErrorMessage: true,
     },
   });
 
@@ -501,9 +545,17 @@ export async function findProvisioningJobByIdempotencyKey(
     instanceId: job.instanceId,
     requestedByUserId: job.requestedByUserId,
     state: mapProvisioningState(job.status),
+    attemptCount: job.attemptCount,
+    maxAttempts: job.maxAttempts,
+    nextAttemptAt: job.nextAttemptAt,
+    lockedAt: job.lockedAt,
+    lockedBy: job.lockedBy,
+    providerRef: job.providerRef,
+    providerMessage: job.providerMessage,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
     lastErrorCode: job.lastErrorCode,
+    lastErrorMessage: job.lastErrorMessage,
   };
 }
 
@@ -581,9 +633,17 @@ export async function createProvisioningRequest(
           instanceId: true,
           requestedByUserId: true,
           status: true,
+          attemptCount: true,
+          maxAttempts: true,
+          nextAttemptAt: true,
+          lockedAt: true,
+          lockedBy: true,
+          providerRef: true,
+          providerMessage: true,
           createdAt: true,
           updatedAt: true,
           lastErrorCode: true,
+          lastErrorMessage: true,
         },
       });
 
@@ -608,9 +668,17 @@ export async function createProvisioningRequest(
           instanceId: jobRow.instanceId,
           requestedByUserId: jobRow.requestedByUserId,
           state: mapProvisioningState(jobRow.status),
+          attemptCount: jobRow.attemptCount,
+          maxAttempts: jobRow.maxAttempts,
+          nextAttemptAt: jobRow.nextAttemptAt,
+          lockedAt: jobRow.lockedAt,
+          lockedBy: jobRow.lockedBy,
+          providerRef: jobRow.providerRef,
+          providerMessage: jobRow.providerMessage,
           createdAt: jobRow.createdAt,
           updatedAt: jobRow.updatedAt,
           lastErrorCode: jobRow.lastErrorCode,
+          lastErrorMessage: jobRow.lastErrorMessage,
         },
         reused: false,
         instanceId: instance.id,
@@ -633,4 +701,610 @@ export async function createProvisioningRequest(
 
     throw error;
   }
+}
+
+function mapReportResultFromJob(model: {
+  id: string;
+  status: InstanceProvisioningStatus;
+  attemptCount: number;
+  maxAttempts: number;
+  nextAttemptAt: Date;
+  providerRef: string | null;
+  providerMessage: string | null;
+}): InstanceProvisioningReportResult {
+  const state = mapProvisioningState(model.status);
+  const terminal = state === "completed" || state === "failed" || state === "cancelled";
+  return {
+    jobId: model.id,
+    state,
+    terminal,
+    retryScheduled: !terminal && state === "pending",
+    attemptCount: model.attemptCount,
+    maxAttempts: model.maxAttempts,
+    nextAttemptAt: model.nextAttemptAt,
+    providerRef: model.providerRef,
+    providerMessage: model.providerMessage,
+  };
+}
+
+async function createOrValidateVlanAllocation(
+  input: {
+    tx: Prisma.TransactionClient;
+    tenantId: string;
+    resourceGroupId: string;
+    networkId: string;
+    vlanTag: number;
+    bridgeName: string;
+    ovsNetworkName: string;
+  },
+): Promise<void> {
+  const existing = await input.tx.kvmVlanAllocation.findUnique({
+    where: {
+      networkId: input.networkId,
+    },
+    select: {
+      vlanTag: true,
+      bridgeName: true,
+      ovsNetworkName: true,
+    },
+  });
+
+  if (existing) {
+    return;
+  }
+
+  try {
+    await input.tx.kvmVlanAllocation.create({
+      data: {
+        tenantId: input.tenantId,
+        resourceGroupId: input.resourceGroupId,
+        networkId: input.networkId,
+        vlanTag: input.vlanTag,
+        bridgeName: input.bridgeName,
+        ovsNetworkName: input.ovsNetworkName,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError
+      && error.code === "P2002"
+    ) {
+      throw new InstanceProvisioningControlPlaneError(
+        "VLAN_ALLOCATION_CONFLICT",
+        "VLAN allocation conflict",
+      );
+    }
+    throw error;
+  }
+}
+
+export async function claimProvisioningJobs(
+  input: InstanceProvisioningClaimRequest,
+  client: typeof prisma = prisma,
+): Promise<ClaimedProvisioningJob[]> {
+  const workerId = input.workerId.trim();
+  const batchSize = Math.max(1, Math.min(100, Math.floor(input.batchSize)));
+  const lockStaleSeconds = Math.max(30, Math.min(3600, Math.floor(input.lockStaleSeconds)));
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - lockStaleSeconds * 1000);
+
+  return client.$transaction(async (tx) => {
+    const candidates = await tx.$queryRaw<{ id: string }[]>`
+      SELECT "id"
+      FROM "InstanceProvisioningJob"
+      WHERE "status" IN ('PENDING'::"InstanceProvisioningStatus", 'RUNNING'::"InstanceProvisioningStatus")
+        AND "nextAttemptAt" <= ${now}
+        AND "attemptCount" < "maxAttempts"
+        AND ("lockedAt" IS NULL OR "lockedAt" < ${staleBefore})
+      ORDER BY "nextAttemptAt" ASC, "createdAt" ASC
+      LIMIT ${batchSize}
+      FOR UPDATE SKIP LOCKED
+    `;
+
+    if (candidates.length === 0) {
+      return [];
+    }
+
+    const candidateIds = candidates
+      .map((candidate) => candidate.id)
+      .filter((candidateId) => candidateId.length > 0);
+
+    if (candidateIds.length === 0) {
+      return [];
+    }
+
+    await tx.$executeRaw`
+      UPDATE "InstanceProvisioningJob"
+      SET
+        "status" = 'RUNNING'::"InstanceProvisioningStatus",
+        "lockedAt" = ${now},
+        "lockedBy" = ${workerId},
+        "startedAt" = COALESCE("startedAt", ${now}),
+        "attemptCount" = "attemptCount" + 1,
+        "updatedAt" = ${now}
+      WHERE "id" IN (${Prisma.join(candidateIds)})
+    `;
+
+    const claimedRows = await tx.instanceProvisioningJob.findMany({
+      where: {
+        id: {
+          in: candidateIds,
+        },
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        resourceGroupId: true,
+        requestedByUserId: true,
+        attemptCount: true,
+        maxAttempts: true,
+        requestPayload: true,
+        providerRef: true,
+        providerMessage: true,
+        instance: {
+          select: {
+            id: true,
+            name: true,
+            planCode: true,
+            imageCode: true,
+            regionCode: true,
+            cpuCores: true,
+            memoryMb: true,
+            diskGb: true,
+            adminUsername: true,
+            sshPublicKey: true,
+            providerInstanceRef: true,
+            network: {
+              select: {
+                id: true,
+                name: true,
+                cidr: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { nextAttemptAt: "asc" },
+        { createdAt: "asc" },
+      ],
+    });
+
+    const claimableRows = claimedRows.filter((row) => row.instance && row.instance.network);
+    if (claimableRows.length !== claimedRows.length) {
+      const invalidRows = claimedRows.filter((row) => !row.instance || !row.instance.network);
+      const invalidRowIds = invalidRows.map((row) => row.id);
+
+      if (invalidRowIds.length > 0) {
+        await tx.instanceProvisioningJob.updateMany({
+          where: {
+            id: {
+              in: invalidRowIds,
+            },
+            lockedBy: workerId,
+          },
+          data: {
+            status: InstanceProvisioningStatus.FAILED,
+            failedAt: now,
+            lockedAt: null,
+            lockedBy: null,
+            lastErrorCode: "PROVISIONING_INSTANCE_NOT_FOUND",
+            lastErrorMessage: "Provisioning instance or network relation missing",
+            nextAttemptAt: now,
+          },
+        });
+
+        await tx.instanceProvisioningEvent.createMany({
+          data: invalidRows.map((row) => ({
+            tenantId: row.tenantId,
+            jobId: row.id,
+            instanceId: null,
+            eventType: "provisioning_failed",
+            payload: {
+              workerId,
+              reason: "PROVISIONING_INSTANCE_NOT_FOUND",
+              terminal: true,
+            },
+          })),
+        });
+      }
+    }
+
+    await tx.instanceProvisioningEvent.createMany({
+      data: claimableRows.map((row) => ({
+        tenantId: row.tenantId,
+        jobId: row.id,
+        instanceId: row.instance?.id ?? null,
+        eventType: "provisioning_started",
+        payload: {
+          workerId,
+          attemptCount: row.attemptCount,
+          maxAttempts: row.maxAttempts,
+        },
+      })),
+    });
+
+    return claimableRows.map((row) => {
+      if (!row.instance || !row.instance.network) {
+        throw new InstanceProvisioningControlPlaneError(
+          "PROVISIONING_INSTANCE_NOT_FOUND",
+          "Provisioning instance or network relation missing",
+        );
+      }
+
+      return {
+        jobId: row.id,
+        tenantId: row.tenantId,
+        resourceGroupId: row.resourceGroupId,
+        requestedByUserId: row.requestedByUserId,
+        attemptCount: row.attemptCount,
+        maxAttempts: row.maxAttempts,
+        requestPayload: parseJsonObject(row.requestPayload),
+        providerRef: row.providerRef,
+        providerMessage: row.providerMessage,
+        network: {
+          networkId: row.instance.network.id,
+          name: row.instance.network.name,
+          cidr: row.instance.network.cidr,
+        },
+        instance: {
+          instanceId: row.instance.id,
+          name: row.instance.name,
+          planCode: row.instance.planCode,
+          imageCode: row.instance.imageCode,
+          regionCode: row.instance.regionCode,
+          cpuCores: row.instance.cpuCores,
+          memoryMb: row.instance.memoryMb,
+          diskGb: row.instance.diskGb,
+          adminUsername: row.instance.adminUsername,
+          sshPublicKey: row.instance.sshPublicKey,
+          providerInstanceRef: row.instance.providerInstanceRef,
+        },
+      };
+    });
+  });
+}
+
+export async function reportProvisioningJob(
+  input: InstanceProvisioningReportRequest,
+  client: typeof prisma = prisma,
+): Promise<InstanceProvisioningReportResult> {
+  const workerId = input.workerId.trim();
+  const now = new Date();
+
+  return client.$transaction(async (tx) => {
+    const job = await tx.instanceProvisioningJob.findUnique({
+      where: { id: input.jobId },
+      select: {
+        id: true,
+        tenantId: true,
+        resourceGroupId: true,
+        instanceId: true,
+        status: true,
+        attemptCount: true,
+        maxAttempts: true,
+        nextAttemptAt: true,
+        lockedBy: true,
+        providerRef: true,
+        providerMessage: true,
+        instance: {
+          select: {
+            id: true,
+            tenantId: true,
+            resourceGroupId: true,
+            networkId: true,
+          },
+        },
+      },
+    });
+
+    if (!job) {
+      throw new InstanceProvisioningControlPlaneError(
+        "PROVISIONING_JOB_NOT_FOUND",
+        "Provisioning job not found",
+      );
+    }
+
+    if (
+      input.eventType === "provisioning_completed"
+      && job.status === InstanceProvisioningStatus.COMPLETED
+    ) {
+      return mapReportResultFromJob(job);
+    }
+
+    if (
+      input.eventType === "provisioning_failed"
+      && job.status === InstanceProvisioningStatus.FAILED
+    ) {
+      return mapReportResultFromJob(job);
+    }
+
+    if (job.lockedBy !== workerId) {
+      throw new InstanceProvisioningControlPlaneError(
+        "PROVISIONING_LOCK_OWNERSHIP_MISMATCH",
+        "Provisioning report lock ownership mismatch",
+      );
+    }
+
+    if (!job.instance) {
+      throw new InstanceProvisioningControlPlaneError(
+        "PROVISIONING_INSTANCE_NOT_FOUND",
+        "Provisioning instance not found",
+      );
+    }
+
+    const resolvedProviderRef = input.providerRef ?? job.providerRef ?? null;
+    const resolvedProviderMessage = input.providerMessage ?? job.providerMessage ?? null;
+    const metadataPayload = parseJsonObject((input.metadata ?? {}) as Prisma.JsonValue);
+
+    if (input.eventType === "network_prepared") {
+      const networkPreparation = input.networkPreparation;
+      if (
+        !networkPreparation
+        || !Number.isInteger(networkPreparation.vlanTag)
+        || networkPreparation.vlanTag < 2
+        || networkPreparation.vlanTag > 4094
+        || networkPreparation.bridgeName.trim().length === 0
+        || networkPreparation.ovsNetworkName.trim().length === 0
+      ) {
+        throw new InstanceProvisioningControlPlaneError(
+          "INVALID_NETWORK_PREPARATION_PAYLOAD",
+          "Invalid network preparation payload",
+        );
+      }
+
+      await createOrValidateVlanAllocation({
+        tx,
+        tenantId: job.instance.tenantId,
+        resourceGroupId: job.instance.resourceGroupId,
+        networkId: job.instance.networkId,
+        vlanTag: networkPreparation.vlanTag,
+        bridgeName: networkPreparation.bridgeName.trim(),
+        ovsNetworkName: networkPreparation.ovsNetworkName.trim(),
+      });
+
+      const updated = await tx.instanceProvisioningJob.updateMany({
+        where: {
+          id: input.jobId,
+          lockedBy: workerId,
+        },
+        data: {
+          status: InstanceProvisioningStatus.RUNNING,
+          providerRef: resolvedProviderRef,
+          providerMessage: resolvedProviderMessage,
+          updatedAt: now,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new InstanceProvisioningControlPlaneError(
+          "PROVISIONING_REPORT_CONFLICT",
+          "Provisioning report conflict",
+        );
+      }
+
+      await tx.cloudInstance.update({
+        where: {
+          id: job.instance.id,
+        },
+        data: {
+          lifecycleStatus: InstanceProvisioningStatus.RUNNING,
+          providerInstanceRef: resolvedProviderRef,
+        },
+      });
+
+      await tx.instanceProvisioningEvent.create({
+        data: {
+          tenantId: job.tenantId,
+          jobId: job.id,
+          instanceId: job.instance.id,
+          eventType: "network_prepared",
+          payload: {
+            workerId,
+            vlanTag: networkPreparation.vlanTag,
+            bridgeName: networkPreparation.bridgeName.trim(),
+            ovsNetworkName: networkPreparation.ovsNetworkName.trim(),
+            ...metadataPayload,
+          },
+        },
+      });
+    } else if (input.eventType === "instance_created") {
+      const updated = await tx.instanceProvisioningJob.updateMany({
+        where: {
+          id: input.jobId,
+          lockedBy: workerId,
+        },
+        data: {
+          status: InstanceProvisioningStatus.RUNNING,
+          providerRef: resolvedProviderRef,
+          providerMessage: resolvedProviderMessage,
+          updatedAt: now,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new InstanceProvisioningControlPlaneError(
+          "PROVISIONING_REPORT_CONFLICT",
+          "Provisioning report conflict",
+        );
+      }
+
+      await tx.cloudInstance.update({
+        where: {
+          id: job.instance.id,
+        },
+        data: {
+          lifecycleStatus: InstanceProvisioningStatus.RUNNING,
+          providerInstanceRef: resolvedProviderRef,
+        },
+      });
+
+      await tx.instanceProvisioningEvent.create({
+        data: {
+          tenantId: job.tenantId,
+          jobId: job.id,
+          instanceId: job.instance.id,
+          eventType: "instance_created",
+          payload: {
+            workerId,
+            providerRef: resolvedProviderRef,
+            providerMessage: resolvedProviderMessage,
+            ...metadataPayload,
+          },
+        },
+      });
+    } else if (input.eventType === "provisioning_completed") {
+      const updated = await tx.instanceProvisioningJob.updateMany({
+        where: {
+          id: input.jobId,
+          lockedBy: workerId,
+        },
+        data: {
+          status: InstanceProvisioningStatus.COMPLETED,
+          completedAt: now,
+          failedAt: null,
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          providerRef: resolvedProviderRef,
+          providerMessage: resolvedProviderMessage,
+          lockedAt: null,
+          lockedBy: null,
+          nextAttemptAt: now,
+          updatedAt: now,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new InstanceProvisioningControlPlaneError(
+          "PROVISIONING_REPORT_CONFLICT",
+          "Provisioning report conflict",
+        );
+      }
+
+      await tx.cloudInstance.update({
+        where: {
+          id: job.instance.id,
+        },
+        data: {
+          lifecycleStatus: InstanceProvisioningStatus.COMPLETED,
+          powerState: InstancePowerState.RUNNING,
+          providerInstanceRef: resolvedProviderRef,
+        },
+      });
+
+      await tx.instanceProvisioningEvent.create({
+        data: {
+          tenantId: job.tenantId,
+          jobId: job.id,
+          instanceId: job.instance.id,
+          eventType: "provisioning_completed",
+          payload: {
+            workerId,
+            providerRef: resolvedProviderRef,
+            providerMessage: resolvedProviderMessage,
+            ...metadataPayload,
+          },
+        },
+      });
+    } else if (input.eventType === "provisioning_failed") {
+      const terminal = job.attemptCount >= job.maxAttempts;
+      const errorCode = input.errorCode?.trim() || "PROVISIONING_FAILED";
+      const errorMessage = input.errorMessage?.trim() || input.providerMessage?.trim() || "Provisioning failed";
+      const retryDelaySeconds = computeProvisioningRetryDelaySeconds(job.attemptCount);
+      const nextAttemptAt = terminal
+        ? now
+        : new Date(now.getTime() + retryDelaySeconds * 1000);
+
+      const updated = await tx.instanceProvisioningJob.updateMany({
+        where: {
+          id: input.jobId,
+          lockedBy: workerId,
+        },
+        data: {
+          status: terminal ? InstanceProvisioningStatus.FAILED : InstanceProvisioningStatus.PENDING,
+          failedAt: terminal ? now : null,
+          completedAt: null,
+          nextAttemptAt,
+          lastErrorCode: errorCode,
+          lastErrorMessage: errorMessage,
+          providerRef: resolvedProviderRef,
+          providerMessage: errorMessage,
+          lockedAt: null,
+          lockedBy: null,
+          updatedAt: now,
+        },
+      });
+
+      if (updated.count !== 1) {
+        throw new InstanceProvisioningControlPlaneError(
+          "PROVISIONING_REPORT_CONFLICT",
+          "Provisioning report conflict",
+        );
+      }
+
+      await tx.cloudInstance.update({
+        where: {
+          id: job.instance.id,
+        },
+        data: {
+          lifecycleStatus: terminal
+            ? InstanceProvisioningStatus.FAILED
+            : InstanceProvisioningStatus.PENDING,
+          powerState: terminal ? InstancePowerState.ERROR : InstancePowerState.STOPPED,
+          providerInstanceRef: resolvedProviderRef,
+        },
+      });
+
+      await tx.instanceProvisioningEvent.create({
+        data: {
+          tenantId: job.tenantId,
+          jobId: job.id,
+          instanceId: job.instance.id,
+          eventType: "provisioning_failed",
+          payload: {
+            workerId,
+            terminal,
+            errorCode,
+            errorMessage,
+            nextAttemptAt: nextAttemptAt.toISOString(),
+            ...metadataPayload,
+          },
+        },
+      });
+    } else {
+      throw new InstanceProvisioningControlPlaneError(
+        "INVALID_PROVISIONING_EVENT",
+        "Invalid provisioning event type",
+      );
+    }
+
+    const refreshedJob = await tx.instanceProvisioningJob.findUnique({
+      where: { id: input.jobId },
+      select: {
+        id: true,
+        status: true,
+        attemptCount: true,
+        maxAttempts: true,
+        nextAttemptAt: true,
+        providerRef: true,
+        providerMessage: true,
+      },
+    });
+
+    if (!refreshedJob) {
+      throw new InstanceProvisioningControlPlaneError(
+        "PROVISIONING_JOB_NOT_FOUND",
+        "Provisioning job not found after report update",
+      );
+    }
+
+    const mapped = mapReportResultFromJob(refreshedJob);
+    return {
+      ...mapped,
+      retryScheduled:
+        input.eventType === "provisioning_failed"
+        ? !mapped.terminal
+        : false,
+    };
+  });
 }

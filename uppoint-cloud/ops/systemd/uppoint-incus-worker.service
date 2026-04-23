@@ -1,0 +1,17 @@
+[Unit]
+Description=Uppoint Cloud Incus Provisioning Worker (oneshot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/uppoint-cloud
+EnvironmentFile=/opt/uppoint-cloud/.env
+ExecStart=/opt/uppoint-cloud/scripts/run-incus-worker.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

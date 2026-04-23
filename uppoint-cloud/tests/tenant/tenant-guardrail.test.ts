@@ -15,6 +15,9 @@ const TENANT_INPUT_GUARD_EXEMPT_FILES = new Set([
 const TENANT_APP_ENTRYPOINT_GUARD_EXEMPT_FILES = new Set([
   // Tenant scope validation is delegated to getDashboardOverview -> resolveUserTenantContext in domain service.
   "app/[locale]/dashboard/page.tsx",
+  // Internal provisioning worker protocol is token + signature + replay guarded and does not use user session tenant selection.
+  "app/api/internal/instances/provisioning/claim/route.ts",
+  "app/api/internal/instances/provisioning/report/route.ts",
 ]);
 
 const APPROVED_TENANT_SCOPED_MODEL_FILES = new Set([
