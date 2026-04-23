@@ -5,6 +5,7 @@ import {
   createTenantForUser,
   deleteTenantForUser,
   getTenantManagementDetailForUser,
+  listTenantManagementMembershipsForUser,
   TenantManagementError,
 } from "@/modules/tenant/server/tenant-management";
 
@@ -162,6 +163,34 @@ describe("tenant management service", () => {
     ).rejects.toMatchObject({
       code: "TENANT_DETAIL_ACCESS_DENIED",
     } satisfies Partial<TenantManagementError>);
+  });
+
+  it("lists tenant management memberships through service boundary", async () => {
+    const result = await listTenantManagementMembershipsForUser(
+      {
+        userId: "user_1",
+        take: 10,
+      },
+      {
+        listMembershipsForManagement: vi.fn().mockResolvedValue([
+          {
+            tenantId: "tenant_1",
+            tenantName: "Acme",
+            role: TenantRole.OWNER,
+            tenantDeletedAt: null,
+          },
+        ]),
+      },
+    );
+
+    expect(result).toEqual([
+      {
+        tenantId: "tenant_1",
+        tenantName: "Acme",
+        role: TenantRole.OWNER,
+        tenantDeletedAt: null,
+      },
+    ]);
   });
 
   it("cancels tenant when owner role has no attached resource groups", async () => {

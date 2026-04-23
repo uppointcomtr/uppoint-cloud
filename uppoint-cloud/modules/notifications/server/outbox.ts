@@ -8,8 +8,7 @@ import { prisma } from "@/db/client";
 import { logAudit } from "@/lib/audit-log";
 import { env } from "@/lib/env";
 import { logServerError } from "@/lib/observability/safe-server-error-log";
-import { sendAuthEmail } from "@/modules/auth/server/email-service";
-import { sendAuthSms } from "@/modules/auth/server/sms-service";
+import { sendEmailNotification, sendSmsNotification } from "@/modules/notifications/server/channel-delivery";
 import { openNotificationPayload, sealNotificationPayload } from "@/modules/notifications/server/payload-crypto";
 
 type NotificationChannel = "EMAIL" | "SMS";
@@ -229,8 +228,8 @@ const defaultOutboxDependencies: OutboxDependencies = {
       input.tenantId ?? undefined,
     );
   },
-  sendEmail: async (input) => sendAuthEmail(input),
-  sendSms: async (input) => sendAuthSms(input),
+  sendEmail: async (input) => sendEmailNotification(input),
+  sendSms: async (input) => sendSmsNotification(input),
 };
 
 function trimErrorMessage(error: unknown): string {

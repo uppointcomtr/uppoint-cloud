@@ -8,6 +8,7 @@ import { listActiveResourceGroupsForTenant } from "@/db/repositories/instance-co
 import {
   createTenantWithOwnerMembership,
   findUserTenantMembershipsForContext,
+  listUserTenantMembershipsForManagement,
   softDeleteTenantIfActive,
 } from "@/db/repositories/tenant-repository";
 import { type TenantPermission, hasTenantPermission } from "@/modules/tenant/server/permissions";
@@ -42,6 +43,10 @@ interface DeleteTenantDependencies extends TenantDetailDependencies {
   now: () => Date;
 }
 
+interface TenantManagementListDependencies {
+  listMembershipsForManagement: typeof listUserTenantMembershipsForManagement;
+}
+
 const defaultDependencies: CreateTenantDependencies = {
   createTenant: async (input) => createTenantWithOwnerMembership(input),
   createSlugSuffix: () => randomBytes(TENANT_SLUG_SUFFIX_LENGTH_BYTES).toString("hex"),
@@ -63,9 +68,18 @@ const defaultDeleteTenantDependencies: DeleteTenantDependencies = {
   now: () => new Date(),
 };
 
+const defaultTenantManagementListDependencies: TenantManagementListDependencies = {
+  listMembershipsForManagement: async ({ userId, take }) =>
+    listUserTenantMembershipsForManagement({ userId, take }),
+};
+
 const tenantManagementScopeSchema = z.object({
   userId: z.string().trim().min(1).max(191),
   tenantId: z.string().trim().min(1).max(191),
+});
+const tenantManagementListInputSchema = z.object({
+  userId: z.string().trim().min(1).max(191),
+  take: z.number().int().min(1).max(100).optional(),
 });
 
 const TENANT_DETAIL_RESOURCE_GROUP_TAKE = 24;
@@ -109,6 +123,13 @@ export interface TenantManagementDetail {
   }>;
   canDelete: boolean;
   deleteBlockedReason: "RESOURCE_GROUPS_PRESENT" | "ROLE_INSUFFICIENT" | "DELETE_DISABLED" | null;
+}
+
+export interface TenantManagementMembershipRow {
+  tenantId: string;
+  tenantName: string;
+  role: TenantRole;
+  tenantDeletedAt: Date | null;
 }
 
 function normalizeSlugBase(name: string): string {
@@ -290,4 +311,16 @@ export async function deleteTenantForUser(
     deletedTenantId: input.tenantId,
     nextTenantId: nextTenant?.tenantId ?? memberships[0]?.tenantId ?? null,
   };
+}
+
+export async function listTenantManagementMembershipsForUser(
+  rawInput: unknown,
+  dependencies: TenantManagementListDependencies = defaultTenantManagementListDependencies,
+): Promise<TenantManagementMembershipRow[]> {
+  const input = tenantManagementListInputSchema.parse(rawInput);
+
+  return dependencies.listMembershipsForManagement({
+    userId: input.userId,
+    take: input.take ?? 50,
+  });
 }

@@ -20,7 +20,7 @@ import type {
   InstanceProvisioningRequest,
   ResourceGroupView,
   VirtualNetworkView,
-} from "@/modules/instances/domain/contracts";
+} from "@/types/instance-control-plane";
 
 type InstanceRepositoryClient = Prisma.TransactionClient | typeof prisma;
 

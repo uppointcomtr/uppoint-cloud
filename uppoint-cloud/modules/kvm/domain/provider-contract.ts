@@ -2,7 +2,7 @@ import type {
   InstanceLifecycleState,
   InstanceProvisioningRequest,
   InstanceProvisioningJob,
-} from "@/modules/instances/domain/contracts";
+} from "@/types/instance-control-plane";
 
 export interface KvmProvisioningHandle {
   providerJobRef: string;

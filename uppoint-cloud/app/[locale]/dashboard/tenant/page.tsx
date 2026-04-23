@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import { z } from "zod";
 
 import { DashboardPanel } from "@/modules/dashboard/components/dashboard-panel";
-import { listUserTenantMembershipsForManagement } from "@/db/repositories/tenant-repository";
 import { loadDashboardPageData } from "@/modules/dashboard/server/page-loader";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { getLocaleFromParams } from "@/modules/i18n/server";
 import { TenantCenter } from "@/modules/tenant/components/tenant-center";
-import { getTenantManagementDetailForUser, TenantManagementError } from "@/modules/tenant/server/tenant-management";
+import {
+  getTenantManagementDetailForUser,
+  listTenantManagementMembershipsForUser,
+  TenantManagementError,
+} from "@/modules/tenant/server/tenant-management";
 
 import { createTenantDashboardAction, deleteTenantDashboardAction } from "./actions";
 
@@ -51,7 +54,7 @@ export default async function DashboardTenantPage({
     tenantView: Array.isArray(tenantViewValue) ? tenantViewValue[0] : tenantViewValue,
   });
   const tenantView = parsedTenantView.success ? parsedTenantView.data.tenantView : undefined;
-  const managementTenantList = await listUserTenantMembershipsForManagement({
+  const managementTenantList = await listTenantManagementMembershipsForUser({
     userId: overview.user.id,
     take: 50,
   });
