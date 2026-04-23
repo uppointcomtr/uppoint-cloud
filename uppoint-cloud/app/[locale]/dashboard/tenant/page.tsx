@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { z } from "zod";
 
 import { DashboardPanel } from "@/modules/dashboard/components/dashboard-panel";
+import { listUserTenantMembershipsForManagement } from "@/db/repositories/tenant-repository";
 import { loadDashboardPageData } from "@/modules/dashboard/server/page-loader";
 import { getDictionary } from "@/modules/i18n/dictionaries";
 import { getLocaleFromParams } from "@/modules/i18n/server";
 import { TenantCenter } from "@/modules/tenant/components/tenant-center";
 import { getTenantManagementDetailForUser, TenantManagementError } from "@/modules/tenant/server/tenant-management";
 
-import { createTenantDashboardAction } from "./actions";
+import { createTenantDashboardAction, deleteTenantDashboardAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -50,37 +51,49 @@ export default async function DashboardTenantPage({
     tenantView: Array.isArray(tenantViewValue) ? tenantViewValue[0] : tenantViewValue,
   });
   const tenantView = parsedTenantView.success ? parsedTenantView.data.tenantView : undefined;
+  const managementTenantList = await listUserTenantMembershipsForManagement({
+    userId: overview.user.id,
+    take: 50,
+  });
+  const tenantRows = managementTenantList.map((tenant) => ({
+    tenantId: tenant.tenantId,
+    tenantName: tenant.tenantName,
+    role: tenant.role,
+    isDisabled: Boolean(tenant.tenantDeletedAt),
+  }));
 
   let selectedTenantDetail = null;
 
   if (tenantView) {
-    const selectedTenant = overview.tenantOptions.find((tenant) => tenant.tenantId === tenantView) ?? null;
+    const selectedTenant = tenantRows.find((tenant) => tenant.tenantId === tenantView) ?? null;
 
-    try {
-      // Tenant detail access remains fail-closed in getTenantManagementDetailForUser() -> assertTenantAccess().
-      const detail = await getTenantManagementDetailForUser({
-        userId: overview.user.id,
-        tenantId: tenantView,
-      });
+    if (!selectedTenant?.isDisabled) {
+      try {
+        // Tenant detail access remains fail-closed in getTenantManagementDetailForUser() -> assertTenantAccess().
+        const detail = await getTenantManagementDetailForUser({
+          userId: overview.user.id,
+          tenantId: tenantView,
+        });
 
-      selectedTenantDetail = {
-        tenantId: detail.tenantId,
-        tenantName: selectedTenant?.tenantName ?? detail.tenantId,
-        role: detail.role,
-        permissions: detail.permissions,
-        resourceGroups: detail.resourceGroups.map((resourceGroup) => ({
-          id: resourceGroup.id,
-          name: resourceGroup.name,
-          slug: resourceGroup.slug,
-          regionCode: resourceGroup.regionCode,
-          createdAtIso: resourceGroup.createdAt.toISOString(),
-        })),
-        canDelete: detail.canDelete,
-        deleteBlockedReason: detail.deleteBlockedReason,
-      };
-    } catch (error) {
-      if (!(error instanceof TenantManagementError)) {
-        throw error;
+        selectedTenantDetail = {
+          tenantId: detail.tenantId,
+          tenantName: selectedTenant?.tenantName ?? detail.tenantId,
+          role: detail.role,
+          permissions: detail.permissions,
+          resourceGroups: detail.resourceGroups.map((resourceGroup) => ({
+            id: resourceGroup.id,
+            name: resourceGroup.name,
+            slug: resourceGroup.slug,
+            regionCode: resourceGroup.regionCode,
+            createdAtIso: resourceGroup.createdAt.toISOString(),
+          })),
+          canDelete: detail.canDelete,
+          deleteBlockedReason: detail.deleteBlockedReason,
+        };
+      } catch (error) {
+        if (!(error instanceof TenantManagementError)) {
+          throw error;
+        }
       }
     }
   }
@@ -97,9 +110,10 @@ export default async function DashboardTenantPage({
           locale={locale}
           labels={dictionary.dashboard.tenant}
           tenantErrorCode={overview.tenantErrorCode}
-          tenants={overview.tenantOptions}
+          tenants={tenantRows}
           selectedTenantDetail={selectedTenantDetail}
           createTenantAction={createTenantDashboardAction}
+          deleteTenantAction={deleteTenantDashboardAction}
         />
       )}
     />

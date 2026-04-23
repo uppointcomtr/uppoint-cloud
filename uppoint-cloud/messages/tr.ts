@@ -746,6 +746,7 @@ export const trMessages = {
         title: "Tenant listesi",
         description: "Detayları görüntülemek için herhangi bir tenant satırına tıklayın.",
         openDetails: "Detayları aç",
+        cancelledBadge: "İptal edildi",
         columns: {
           name: "Tenant adı",
           id: "Tenant ID",
@@ -792,7 +793,7 @@ export const trMessages = {
         disabledByPolicy: "Tenant silme işlemi kapalıdır. Tenantlar hiçbir koşulda bu panelden silinemez.",
         confirmTitle: "Tenant iptal onayı",
         confirmDescription: "Tenant iptal işlemi için onay adımı.",
-        confirmPrompt: "Bu işlem bu panelde uygulanmaz. Onaylasanız da tenant silinmez. Devam etmek istiyor musunuz?",
+        confirmPrompt: "Bu tenantı iptal etmek istediğinizi onaylıyor musunuz?",
         confirmCancel: "Vazgeç",
         confirmApprove: "Onayla",
         confirmClose: "Tamam",

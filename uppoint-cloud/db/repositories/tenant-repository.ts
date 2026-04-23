@@ -167,6 +167,36 @@ export async function createTenantWithOwnerMembership(
   });
 }
 
+export async function listUserTenantMembershipsForManagement(
+  input: { userId: string; take?: number },
+  client: TenantRepositoryClient = prisma,
+): Promise<Array<{ tenantId: string; tenantName: string; role: TenantRole; tenantDeletedAt: Date | null }>> {
+  const memberships = await client.tenantMembership.findMany({
+    where: {
+      userId: input.userId,
+    },
+    orderBy: { createdAt: "asc" },
+    take: input.take ?? 50,
+    select: {
+      tenantId: true,
+      role: true,
+      tenant: {
+        select: {
+          name: true,
+          deletedAt: true,
+        },
+      },
+    },
+  });
+
+  return memberships.map((membership) => ({
+    tenantId: membership.tenantId,
+    tenantName: membership.tenant.name,
+    role: membership.role,
+    tenantDeletedAt: membership.tenant.deletedAt,
+  }));
+}
+
 export async function ensureDefaultTenantMembershipForUser(
   input: { userId: string; now: Date },
   client: typeof prisma = prisma,

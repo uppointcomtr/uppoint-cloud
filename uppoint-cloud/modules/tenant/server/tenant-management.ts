@@ -221,25 +221,73 @@ export async function getTenantManagementDetailForUser(
     tenantId: input.tenantId,
     take: TENANT_DETAIL_RESOURCE_GROUP_TAKE,
   });
+  const canDelete = access.role === TenantRole.OWNER && resourceGroups.length === 0;
+  const deleteBlockedReason: TenantManagementDetail["deleteBlockedReason"] = access.role !== TenantRole.OWNER
+    ? "ROLE_INSUFFICIENT"
+    : resourceGroups.length > 0
+      ? "RESOURCE_GROUPS_PRESENT"
+      : null;
 
   return {
     tenantId: access.tenantId,
     role: access.role,
     permissions: TENANT_PERMISSION_ORDER.filter((permission) => hasTenantPermission(access.role, permission)),
     resourceGroups,
-    canDelete: false,
-    deleteBlockedReason: "DELETE_DISABLED",
+    canDelete,
+    deleteBlockedReason,
   };
 }
 
 export async function deleteTenantForUser(
   rawInput: unknown,
-  _dependencies: DeleteTenantDependencies = defaultDeleteTenantDependencies,
+  dependencies: DeleteTenantDependencies = defaultDeleteTenantDependencies,
 ): Promise<{ deletedTenantId: string; nextTenantId: string | null }> {
-  tenantManagementScopeSchema.parse(rawInput);
-  void _dependencies;
-  throw new TenantManagementError(
-    "TENANT_DELETE_DISABLED",
-    "Tenant deletion is disabled by policy",
-  );
+  const input = tenantManagementScopeSchema.parse(rawInput);
+  let access: { tenantId: string; role: TenantRole };
+
+  try {
+    access = await dependencies.assertAccess({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      minimumRole: TenantRole.MEMBER,
+    });
+  } catch {
+    throw new TenantManagementError("TENANT_DELETE_FORBIDDEN_ROLE", "Tenant cancel requires owner role");
+  }
+
+  if (access.role !== TenantRole.OWNER) {
+    throw new TenantManagementError("TENANT_DELETE_FORBIDDEN_ROLE", "Tenant cancel requires owner role");
+  }
+
+  const resourceGroups = await dependencies.listResourceGroups({
+    tenantId: input.tenantId,
+    take: 1,
+  });
+
+  if (resourceGroups.length > 0) {
+    throw new TenantManagementError(
+      "TENANT_DELETE_BLOCKED_RESOURCE_GROUPS",
+      "Tenant cancel is blocked while resource groups are attached",
+    );
+  }
+
+  try {
+    await dependencies.softDeleteTenant({
+      tenantId: input.tenantId,
+      now: dependencies.now(),
+    });
+  } catch {
+    throw new TenantManagementError("TENANT_DELETE_FAILED", "Tenant cancel failed");
+  }
+
+  const memberships = await dependencies.listMemberships({
+    userId: input.userId,
+    take: 2,
+  });
+  const nextTenant = memberships.find((membership) => membership.tenantId !== input.tenantId);
+
+  return {
+    deletedTenantId: input.tenantId,
+    nextTenantId: nextTenant?.tenantId ?? memberships[0]?.tenantId ?? null,
+  };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { TenantRole } from "@prisma/client";
 import {
@@ -31,6 +31,7 @@ interface TenantListItem {
   tenantId: string;
   tenantName: string;
   role: TenantRole;
+  isDisabled: boolean;
 }
 
 interface TenantDetailSnapshot {
@@ -56,9 +57,30 @@ interface TenantCenterProps {
   tenants: TenantListItem[];
   selectedTenantDetail: TenantDetailSnapshot | null;
   createTenantAction?: TenantCreateAction;
+  deleteTenantAction?: TenantDeleteAction;
 }
 
+interface TenantDeleteActionState {
+  status: "idle" | "success" | "error";
+  code?:
+    | "VALIDATION_FAILED"
+    | "UNAUTHORIZED"
+    | "TENANT_DELETE_DISABLED"
+    | "TENANT_DELETE_FORBIDDEN_ROLE"
+    | "TENANT_DELETE_BLOCKED_RESOURCE_GROUPS"
+    | "TENANT_DELETE_FAILED"
+    | "UNKNOWN";
+  deletedTenantId?: string;
+  nextTenantId?: string | null;
+}
+
+type TenantDeleteAction = (
+  previousState: TenantDeleteActionState,
+  formData: FormData,
+) => Promise<TenantDeleteActionState>;
+
 const ROLE_ORDER: TenantRole[] = ["OWNER", "ADMIN", "MEMBER"];
+const INITIAL_DELETE_STATE: TenantDeleteActionState = { status: "idle" };
 
 function resolveTenantStatusMessage(
   tenantErrorCode: TenantCenterProps["tenantErrorCode"],
@@ -97,6 +119,27 @@ function roleTone(role: TenantRole): string {
   }
 }
 
+function disabledRowClass(isDisabled: boolean): string {
+  return isDisabled
+    ? "cursor-not-allowed opacity-60"
+    : "corp-motion-interactive group hover:bg-accent/40";
+}
+
+function resolveDeleteErrorMessage(
+  state: TenantDeleteActionState,
+  labels: Dictionary["dashboard"]["tenant"]["delete"]["errors"],
+): string | null {
+  if (state.status !== "error") {
+    return null;
+  }
+
+  if (!state.code) {
+    return labels.UNKNOWN;
+  }
+
+  return labels[state.code] ?? labels.UNKNOWN;
+}
+
 export function TenantCenter({
   locale,
   labels,
@@ -104,6 +147,7 @@ export function TenantCenter({
   tenants,
   selectedTenantDetail,
   createTenantAction,
+  deleteTenantAction,
 }: TenantCenterProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -130,6 +174,13 @@ export function TenantCenter({
 
   function closeTenantDetail() {
     router.replace(buildTenantQuery(null), { scroll: false });
+  }
+
+  function handleTenantDeleted() {
+    startTransition(() => {
+      router.replace(buildTenantQuery(null), { scroll: false });
+      router.refresh();
+    });
   }
 
   return (
@@ -175,8 +226,13 @@ export function TenantCenter({
                     <button
                       key={`${tenant.tenantId}-${tenant.role}`}
                       type="button"
-                      onClick={() => openTenantDetail(tenant.tenantId)}
-                      className="corp-motion-interactive group w-full text-left hover:bg-accent/40"
+                      onClick={() => {
+                        if (!tenant.isDisabled) {
+                          openTenantDetail(tenant.tenantId);
+                        }
+                      }}
+                      disabled={tenant.isDisabled}
+                      className={cn("w-full text-left", disabledRowClass(tenant.isDisabled))}
                     >
                       <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.2fr)_130px_84px] items-center gap-3 px-4 py-3.5 md:grid">
                         <div className="flex min-w-0 items-center gap-3">
@@ -192,10 +248,16 @@ export function TenantCenter({
                           {labels.roleNames[tenant.role]}
                         </span>
 
-                        <span className="inline-flex items-center justify-end gap-1.5 text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
-                          {labels.list.openDetails}
-                          <ChevronRight className="size-4" />
-                        </span>
+                        {tenant.isDisabled ? (
+                          <span className="inline-flex items-center justify-end gap-1.5 text-xs font-medium text-muted-foreground">
+                            {labels.list.cancelledBadge}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center justify-end gap-1.5 text-xs font-medium text-muted-foreground transition-colors group-hover:text-foreground">
+                            {labels.list.openDetails}
+                            <ChevronRight className="size-4" />
+                          </span>
+                        )}
                       </div>
 
                       <div className="space-y-2 px-4 py-3.5 md:hidden">
@@ -207,6 +269,11 @@ export function TenantCenter({
                           <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold", roleTone(tenant.role))}>
                             {labels.roleNames[tenant.role]}
                           </span>
+                          {tenant.isDisabled ? (
+                            <span className="rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                              {labels.list.cancelledBadge}
+                            </span>
+                          ) : null}
                         </div>
                         <p className="font-mono text-xs text-muted-foreground">{tenant.tenantId}</p>
                       </div>
@@ -257,6 +324,8 @@ export function TenantCenter({
             locale={locale}
             labels={labels}
             detail={selectedTenantDetail}
+            deleteTenantAction={deleteTenantAction}
+            onTenantDeleted={handleTenantDeleted}
           />
         ) : null}
       </AppModal>
@@ -268,13 +337,30 @@ function TenantDetailModalBody({
   locale,
   labels,
   detail,
+  deleteTenantAction,
+  onTenantDeleted,
 }: {
   locale: Locale;
   labels: Dictionary["dashboard"]["tenant"];
   detail: TenantDetailSnapshot;
+  deleteTenantAction?: TenantDeleteAction;
+  onTenantDeleted: () => void;
 }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [deleteConfirmAcknowledged, setDeleteConfirmAcknowledged] = useState(false);
+  const [deleteState, runDeleteTenantAction, isDeletePending] = useActionState(
+    async (previousState: TenantDeleteActionState, formData: FormData) => {
+      if (!deleteTenantAction) {
+        const fallbackState: TenantDeleteActionState = {
+          status: "error",
+          code: "UNKNOWN",
+        };
+        return fallbackState;
+      }
+
+      return deleteTenantAction(previousState, formData);
+    },
+    INITIAL_DELETE_STATE,
+  );
   const selectedRoleCards = useMemo(
     () =>
       ROLE_ORDER.map((role) => ({
@@ -283,6 +369,20 @@ function TenantDetailModalBody({
       })),
     [detail.role],
   );
+  const deleteBlockedMessage = detail.deleteBlockedReason === "RESOURCE_GROUPS_PRESENT"
+    ? labels.delete.errors.TENANT_DELETE_BLOCKED_RESOURCE_GROUPS
+    : detail.deleteBlockedReason === "ROLE_INSUFFICIENT"
+      ? labels.delete.errors.TENANT_DELETE_FORBIDDEN_ROLE
+      : null;
+  const deleteErrorMessage = resolveDeleteErrorMessage(deleteState, labels.delete.errors);
+
+  useEffect(() => {
+    if (deleteState.status !== "success") {
+      return;
+    }
+
+    onTenantDeleted();
+  }, [deleteState.status, onTenantDeleted]);
 
   return (
     <div className="relative space-y-6">
@@ -402,8 +502,8 @@ function TenantDetailModalBody({
               type="button"
               variant="destructive"
               className="corp-btn-md"
+              disabled={!deleteTenantAction}
               onClick={() => {
-                setDeleteConfirmAcknowledged(false);
                 setDeleteConfirmOpen(true);
               }}
             >
@@ -422,7 +522,6 @@ function TenantDetailModalBody({
             className="absolute inset-0 rounded-2xl bg-black/35"
             onClick={() => {
               setDeleteConfirmOpen(false);
-              setDeleteConfirmAcknowledged(false);
             }}
           />
 
@@ -431,49 +530,39 @@ function TenantDetailModalBody({
               <h3 className="corp-section-title">{labels.delete.confirmTitle}</h3>
               <p className="corp-body-muted">{labels.delete.confirmDescription}</p>
             </div>
+            <form action={runDeleteTenantAction} className="mt-4 space-y-4">
+              <input type="hidden" name="tenantId" value={detail.tenantId} />
+              <p className="corp-body-muted">{labels.delete.confirmPrompt}</p>
 
-            {!deleteConfirmAcknowledged ? (
-              <div className="mt-4 space-y-4">
-                <p className="corp-body-muted">{labels.delete.confirmPrompt}</p>
-                <div className="flex items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="corp-btn-md"
-                    onClick={() => {
-                      setDeleteConfirmOpen(false);
-                      setDeleteConfirmAcknowledged(false);
-                    }}
-                  >
-                    {labels.delete.confirmCancel}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="corp-btn-md"
-                    onClick={() => setDeleteConfirmAcknowledged(true)}
-                  >
-                    {labels.delete.confirmApprove}
-                  </Button>
-                </div>
+              {deleteBlockedMessage ? (
+                <p className="text-sm text-destructive">{deleteBlockedMessage}</p>
+              ) : null}
+
+              {deleteErrorMessage ? (
+                <p className="text-sm text-destructive">{deleteErrorMessage}</p>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="corp-btn-md"
+                  onClick={() => {
+                    setDeleteConfirmOpen(false);
+                  }}
+                >
+                  {labels.delete.confirmCancel}
+                </Button>
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  className="corp-btn-md"
+                  disabled={isDeletePending || Boolean(deleteBlockedMessage)}
+                >
+                  {labels.delete.confirmApprove}
+                </Button>
               </div>
-            ) : (
-              <div className="mt-4 space-y-4">
-                <p className="corp-body-muted">{labels.delete.disabledByPolicy}</p>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    className="corp-btn-md"
-                    onClick={() => {
-                      setDeleteConfirmOpen(false);
-                      setDeleteConfirmAcknowledged(false);
-                    }}
-                  >
-                    {labels.delete.confirmClose}
-                  </Button>
-                </div>
-              </div>
-            )}
+            </form>
           </section>
         </div>
       ) : null}

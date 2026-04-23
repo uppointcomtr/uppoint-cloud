@@ -147,7 +147,7 @@ export async function deleteTenantDashboardAction(
     context = await ensureAuthorizedSession();
     const input = deleteTenantActionSchema.parse(raw);
 
-    // Tenant delete is policy-disabled at service level (fail-closed).
+    // Tenant cancel is enforced server-side with owner-role and resource-group guardrails.
     const deleted = await deleteTenantForUser({
       userId: context.userId,
       tenantId: input.tenantId,

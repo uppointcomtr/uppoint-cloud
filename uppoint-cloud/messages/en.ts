@@ -746,6 +746,7 @@ export const enMessages = {
         title: "Tenant list",
         description: "Click any tenant row to open subscription details.",
         openDetails: "Open details",
+        cancelledBadge: "Cancelled",
         columns: {
           name: "Tenant name",
           id: "Tenant ID",
@@ -792,7 +793,7 @@ export const enMessages = {
         disabledByPolicy: "Tenant deletion is disabled. Tenants cannot be deleted from this control plane.",
         confirmTitle: "Tenant cancel confirmation",
         confirmDescription: "Confirmation step for tenant cancellation.",
-        confirmPrompt: "This action is not executed in this panel. Even if approved, the tenant will not be deleted. Continue?",
+        confirmPrompt: "Do you confirm that you want to cancel this tenant?",
         confirmCancel: "Cancel",
         confirmApprove: "Confirm",
         confirmClose: "OK",

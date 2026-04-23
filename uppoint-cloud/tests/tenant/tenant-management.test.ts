@@ -136,8 +136,8 @@ describe("tenant management service", () => {
     expect(result).toMatchObject({
       tenantId: "tenant_1",
       role: TenantRole.OWNER,
-      canDelete: false,
-      deleteBlockedReason: "DELETE_DISABLED",
+      canDelete: true,
+      deleteBlockedReason: null,
       permissions: [
         "tenant:read",
         "tenant:manage_members",
@@ -164,7 +164,35 @@ describe("tenant management service", () => {
     } satisfies Partial<TenantManagementError>);
   });
 
-  it("always blocks tenant deletion by policy", async () => {
+  it("cancels tenant when owner role has no attached resource groups", async () => {
+    const softDeleteTenant = vi.fn().mockResolvedValue(undefined);
+    const result = await deleteTenantForUser(
+      {
+        userId: "user_1",
+        tenantId: "tenant_1",
+      },
+      {
+        assertAccess: vi.fn().mockResolvedValue({
+          tenantId: "tenant_1",
+          role: TenantRole.OWNER,
+        }),
+        listResourceGroups: vi.fn().mockResolvedValue([]),
+        softDeleteTenant,
+        listMemberships: vi.fn().mockResolvedValue([
+          { tenantId: "tenant_2", role: TenantRole.OWNER },
+        ]),
+        now: () => new Date("2026-04-22T10:00:00.000Z"),
+      },
+    );
+
+    expect(result).toEqual({
+      deletedTenantId: "tenant_1",
+      nextTenantId: "tenant_2",
+    });
+    expect(softDeleteTenant).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks tenant cancel when requester is not owner", async () => {
     await expect(
       deleteTenantForUser(
         {
@@ -172,7 +200,33 @@ describe("tenant management service", () => {
           tenantId: "tenant_1",
         },
         {
-          assertAccess: vi.fn(),
+          assertAccess: vi.fn().mockResolvedValue({
+            tenantId: "tenant_1",
+            role: TenantRole.ADMIN,
+          }),
+          listResourceGroups: vi.fn().mockResolvedValue([]),
+          softDeleteTenant: vi.fn().mockResolvedValue(undefined),
+          listMemberships: vi.fn().mockResolvedValue([]),
+          now: () => new Date(),
+        },
+      ),
+    ).rejects.toMatchObject({
+      code: "TENANT_DELETE_FORBIDDEN_ROLE",
+    } satisfies Partial<TenantManagementError>);
+  });
+
+  it("blocks tenant cancel when active resource groups are attached", async () => {
+    await expect(
+      deleteTenantForUser(
+        {
+          userId: "user_1",
+          tenantId: "tenant_1",
+        },
+        {
+          assertAccess: vi.fn().mockResolvedValue({
+            tenantId: "tenant_1",
+            role: TenantRole.OWNER,
+          }),
           listResourceGroups: vi.fn().mockResolvedValue([
             {
               id: "rg_1",
@@ -190,7 +244,7 @@ describe("tenant management service", () => {
         },
       ),
     ).rejects.toMatchObject({
-      code: "TENANT_DELETE_DISABLED",
+      code: "TENANT_DELETE_BLOCKED_RESOURCE_GROUPS",
     } satisfies Partial<TenantManagementError>);
   });
 });
