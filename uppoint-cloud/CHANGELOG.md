@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-04-24 (Incus worker host activation hardening)
+
+### Changed
+- Hardened `scripts/run-incus-worker.sh` to read required keys with the shared env reader instead of shell-sourcing `.env`, preventing special characters in unrelated secrets from breaking worker startup.
+- Added `KVM_WORKER_CONTROL_PLANE_URL` so same-host workers can call loopback-only internal provisioning routes without changing `NEXT_PUBLIC_APP_URL`.
+- Extended proxy loopback ingress bypass shape from audit-only to signed internal dispatch/provisioning endpoints; route-level token and HMAC verification remains the enforcement boundary.
+- Changed Incus VM creation order to `init -> configure -> start`, ensuring limits, cloud-init, and NIC configuration are applied before first boot.
+- Added Incus worker provider coverage for the VM initialization command order.
+- Documented `/dev/kvm` as a hard runtime prerequisite before enabling the Incus cron poller.
+
+### Verification
+- `go test ./...` in `workers/incus`
+- `go build -o /opt/uppoint-cloud/workers/incus/bin/incus-worker ./cmd/worker` in `workers/incus`
+
 ## 2026-04-23 (incus-first provisioning runtime v2.1.0)
 
 ### Added

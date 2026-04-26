@@ -76,6 +76,8 @@ export type AuditAction =
   | "instance_provisioning_completed"
   | "instance_provisioning_failed"
   | "instance_provisioning_request_failed"
+  | "instance_iso_upload_completed"
+  | "instance_iso_upload_failed"
   | "user_soft_deleted";
 
 const SENSITIVE_KEY_PATTERN = /(password|secret|token|authorization|cookie|email|phone|name|fullName|firstName|lastName|address)/i;
@@ -110,6 +112,7 @@ const SECURITY_SIGNAL_ACTIONS = new Set<AuditAction>([
   "resource_group_create_failed",
   "instance_provisioning_failed",
   "instance_provisioning_request_failed",
+  "instance_iso_upload_failed",
 ]);
 const AUDIT_FALLBACK_LOG_PATH = env.AUDIT_FALLBACK_LOG_PATH || "/var/log/uppoint-cloud/audit-fallback.log";
 const AUDIT_FALLBACK_CHAIN_STATE_PATH =

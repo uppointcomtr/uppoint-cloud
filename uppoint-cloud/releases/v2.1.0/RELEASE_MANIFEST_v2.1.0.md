@@ -21,7 +21,7 @@
 - Node.js and npm compatible with repository lockfile
 - PostgreSQL reachable with `DATABASE_URL`
 - Redis reachable for rate limiting (`RATE_LIMIT_REDIS_URL`) in production baseline
-- Local Incus daemon (single-host control-plane mode)
+- Local Incus daemon with host KVM support (`/dev/kvm`) for VM provisioning (single-host control-plane mode)
 
 ## Required environment keys (minimum production boot set)
 

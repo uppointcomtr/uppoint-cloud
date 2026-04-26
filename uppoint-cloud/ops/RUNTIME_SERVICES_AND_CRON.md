@@ -12,9 +12,9 @@ Runbook references:
 
 | Unit | Purpose | Enabled | Notes |
 | --- | --- | --- | --- |
-| `uppoint-cloud.service` | Runs Next.js production app (`next start`) | yes (production expected) | Uses `/opt/uppoint-cloud/.env` as EnvironmentFile |
+| `uppoint-cloud.service` | Runs Next.js production app (`next start`) | yes (production expected) | Uses `/opt/uppoint-cloud/.env` as EnvironmentFile; owns `/var/lib/uppoint-cloud` state root and writes local ISO uploads under `iso-uploads/` |
 | `uppoint-tune.service` | Optional boot-time host tuning | optional | Controlled via `/etc/uppoint-cloud/enable-boot-tune` flag |
-| `uppoint-incus-worker.service` | Optional one-shot Incus provisioning worker entrypoint | optional | Runs `/opt/uppoint-cloud/scripts/run-incus-worker.sh`; cron poller is canonical trigger |
+| `uppoint-incus-worker.service` | Optional one-shot Incus provisioning worker entrypoint | optional | Runs `/opt/uppoint-cloud/scripts/run-incus-worker.sh`; cron poller is canonical trigger; allows long first-run image pulls |
 
 Validation commands:
 

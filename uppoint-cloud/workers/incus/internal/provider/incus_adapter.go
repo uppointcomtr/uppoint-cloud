@@ -21,11 +21,12 @@ func NewAdapter(runner executil.Runner) *Adapter {
 
 func (a *Adapter) EnsureInstance(ctx context.Context, job controlplane.ClaimedJob, prep network.Preparation) (string, string, error) {
 	instanceName := sanitizeInstanceName(job.Instance.Name, job.Instance.InstanceID)
+	imageSource := resolveImageSource(job.Instance.ImageCode)
 	cloudInit := buildCloudInit(job)
 
 	if _, err := a.runner.Run(ctx, "incus", "info", instanceName); err != nil {
-		if _, err := a.runner.Run(ctx, "incus", "launch", job.Instance.ImageCode, instanceName, "--vm"); err != nil {
-			return "", "", fmt.Errorf("launch instance %s: %w", instanceName, err)
+		if _, err := a.runner.Run(ctx, "incus", "init", imageSource, instanceName, "--vm"); err != nil {
+			return "", "", fmt.Errorf("init instance %s: %w", instanceName, err)
 		}
 	}
 
@@ -91,6 +92,19 @@ func sanitizeInstanceName(preferred string, fallback string) string {
 		candidate = candidate[:63]
 	}
 	return candidate
+}
+
+func resolveImageSource(imageCode string) string {
+	switch strings.TrimSpace(imageCode) {
+	case "ubuntu-24-04-lts":
+		return "images:ubuntu/24.04/cloud"
+	case "debian-12":
+		return "images:debian/12/cloud"
+	case "almalinux-9":
+		return "images:almalinux/9/cloud"
+	default:
+		return imageCode
+	}
 }
 
 func buildCloudInit(job controlplane.ClaimedJob) string {

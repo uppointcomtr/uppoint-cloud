@@ -31,6 +31,7 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - notification and security signal overview
   - Instance control-plane wizard (`/:locale/dashboard/modules/instances/new`)
     - tenant-scoped resource group creation with default network + firewall policy
+    - tenant-authorized ISO upload test surface backed by local server storage
     - idempotent instance provisioning request submission (`tenant -> resource group -> network/firewall`)
     - Incus-first internal worker protocol (`claim` / `report`) with signed loopback-only internal routes
     - OVS/VLAN day-1 network preparation is modeled as worker-side idempotent stage events
@@ -142,12 +143,15 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `INTERNAL_PROVISIONING_SIGNING_SECRET` (required in production; HMAC signing key for internal provisioning worker requests)
 - `INTERNAL_AUTH_TRANSPORT_MODE` (optional, default `loopback-hmac-v1`; set `mtls-hmac-v1` only after trusted mTLS headers are configured at reverse proxy)
 - `INTERNAL_AUDIT_ENDPOINT_URL` (optional override; defaults to loopback `http://127.0.0.1:3000/api/internal/audit/security-event`; when `UPPOINT_CLOSED_SYSTEM_MODE=true` it must remain loopback-only)
+- `KVM_WORKER_CONTROL_PLANE_URL` (optional but recommended for same-host Incus workers; use loopback such as `http://127.0.0.1:3000` so loopback-only internal provisioning routes stay fail-closed)
 - `INCUS_SOCKET_PATH` (optional but recommended in production; local Incus daemon socket path)
 - `INCUS_ENDPOINT` (optional fallback; loopback-only in closed-system mode)
 - `KVM_WORKER_BATCH_SIZE` (optional, default `10`; max jobs claimed per poll cycle)
 - `KVM_WORKER_LOCK_STALE_SECONDS` (optional, default `180`; stale lock recovery threshold for provisioning jobs)
 - `KVM_OVS_BRIDGE_PREFIX` (optional, default `upkvm`; deterministic OVS bridge/network naming prefix)
 - `KVM_VLAN_RANGE` (optional, default `2000-2999`; VLAN allocation range, must stay within `2-4094`)
+- `INSTANCE_ISO_UPLOAD_DIR` (optional, default `/var/lib/uppoint-cloud/iso-uploads`; tenant-scoped local ISO upload storage)
+- `INSTANCE_ISO_UPLOAD_MAX_BYTES` (optional, default `12884901888`; max ISO upload size, keep aligned with the Nginx endpoint limit)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)

@@ -17,10 +17,10 @@ import (
 )
 
 type Client struct {
-	httpClient   *http.Client
-	baseURL      string
-	origin       string
-	token        string
+	httpClient    *http.Client
+	baseURL       string
+	origin        string
+	token         string
 	signingSecret string
 	transportMode string
 }
@@ -82,6 +82,9 @@ func (c *Client) doSignedJSON(ctx context.Context, method string, path string, p
 	request.Header.Set("x-internal-request-ts", timestamp)
 	request.Header.Set("x-internal-request-signature", signature)
 	request.Header.Set("x-internal-transport", c.transportMode)
+	if isLoopbackHost(request.URL.Hostname()) {
+		request.Header.Set("x-real-ip", "127.0.0.1")
+	}
 
 	response, err := c.httpClient.Do(request)
 	if err != nil {
@@ -125,4 +128,9 @@ func hmacSha256Hex(secret string, canonical string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(canonical))
 	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func isLoopbackHost(host string) bool {
+	normalized := strings.Trim(strings.ToLower(strings.TrimSpace(host)), "[]")
+	return normalized == "127.0.0.1" || normalized == "::1" || normalized == "localhost"
 }

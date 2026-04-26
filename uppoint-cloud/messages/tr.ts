@@ -687,8 +687,31 @@ export const trMessages = {
           createLoading: "Oluşturuluyor...",
           createSuccess: "Resource group oluşturuldu. Liste güncelleniyor.",
         },
+        isoUpload: {
+          title: "2. ISO test yükle",
+          description: "Kurulum testleri için ISO dosyasını tenant bazlı yerel depoya yükleyin.",
+          fields: {
+            file: "ISO dosyası",
+          },
+          hint: "Yalnızca .iso dosyaları kabul edilir; dosya sunucuda tenant klasörüne yazılır.",
+          submitIdle: "ISO yükle",
+          submitLoading: "Yükleniyor...",
+          success: "ISO yüklendi.",
+          sizeLabel: "Boyut",
+          pathLabel: "Sunucu yolu",
+          errors: {
+            MISSING_FILE: "Yüklemek için bir ISO dosyası seçin.",
+            VALIDATION_FAILED: "ISO adı veya yükleme bilgisi geçersiz.",
+            UNSUPPORTED_FILE_TYPE: "Bu dosya türü desteklenmiyor. .iso dosyası seçin.",
+            FILE_TOO_LARGE: "ISO dosyası izin verilen boyutu aşıyor.",
+            MISSING_BODY: "Yükleme gövdesi alınamadı.",
+            EMPTY_UPLOAD: "Boş ISO dosyası yüklenemez.",
+            STORAGE_WRITE_FAILED: "ISO diske yazılamadı.",
+            ISO_UPLOAD_FAILED: "ISO yükleme işlemi tamamlanamadı.",
+          },
+        },
         instance: {
-          title: "2. Instance isteği oluştur",
+          title: "3. Instance isteği oluştur",
           description: "Resource group, network ve firewall seçerek idempotent provisioning isteği gönderin.",
           noResourceGroups: "Devam etmek için önce en az bir resource group oluşturun.",
           fields: {

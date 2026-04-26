@@ -15,6 +15,7 @@ Current scope in this repository state:
 - Exposes a protected dashboard wizard surface at:
   - `/[locale]/dashboard/modules/instances/new`
   - create resource group with default network/firewall
+  - upload tenant-authorized local ISO test images
   - submit idempotent instance provisioning requests
 
 Out of scope right now:
@@ -26,3 +27,4 @@ Out of scope right now:
 Security requirement for future implementation:
 
 - Every instance read/mutation must call `assertInstanceTenantAccess(...)` (or stricter role checks) on the server path before any provider/database operation.
+- ISO uploads must stay local to the server, validate `.iso` input, and remain tenant-authorized before any disk write.

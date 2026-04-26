@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -96,6 +97,23 @@ interface InstanceProvisioningWizardProps {
 const INITIAL_ACTION_STATE: InstanceWizardActionState = { status: "idle" };
 const SELECT_CLASS_NAME = "corp-select";
 
+interface IsoUploadResult {
+  originalFileName: string;
+  storedFileName: string;
+  sizeBytes: number;
+  storagePath: string;
+}
+
+type IsoUploadApiResponse =
+  | { success: true; data: IsoUploadResult }
+  | { success: false; error: string; code: string };
+
+type IsoUploadState =
+  | { status: "idle" }
+  | { status: "uploading" }
+  | { status: "success"; result: IsoUploadResult }
+  | { status: "error"; code: string };
+
 function createUuidV4(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -120,6 +138,28 @@ function resolveErrorMessage(
   return labels[code as keyof typeof labels] ?? labels.UNKNOWN;
 }
 
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB", "TB"] as const;
+  const exponent = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  const scaled = value / (1024 ** exponent);
+  const precision = exponent === 0 ? 0 : 1;
+  return `${scaled.toFixed(precision)} ${units[exponent]}`;
+}
+
+function resolveIsoUploadErrorMessage(
+  code: string,
+  labels: Dictionary["dashboard"]["instancesWizard"],
+): string {
+  const isoErrors = labels.sections.isoUpload.errors;
+  return isoErrors[code as keyof typeof isoErrors]
+    ?? labels.errors[code as keyof typeof labels.errors]
+    ?? isoErrors.ISO_UPLOAD_FAILED;
+}
+
 export function InstanceProvisioningWizard({
   locale,
   labels,
@@ -137,6 +177,8 @@ export function InstanceProvisioningWizard({
     model.planCatalog[0]?.code ?? "",
   );
   const [idempotencyKey, setIdempotencyKey] = useState(() => createUuidV4());
+  const [selectedIsoFile, setSelectedIsoFile] = useState<File | null>(null);
+  const [isoUploadState, setIsoUploadState] = useState<IsoUploadState>({ status: "idle" });
 
   const [createState, runCreateResourceGroup, isCreatePending] = useActionState(
     async (previousState: InstanceWizardActionState, formData: FormData) => {
@@ -198,6 +240,42 @@ export function InstanceProvisioningWizard({
     params.set("tenantId", tenantId);
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
+  }
+
+  async function handleIsoUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!selectedIsoFile || !canManageResources) {
+      setIsoUploadState({ status: "error", code: "MISSING_FILE" });
+      return;
+    }
+
+    setIsoUploadState({ status: "uploading" });
+
+    try {
+      const response = await fetch("/api/instances/iso-images", {
+        method: "POST",
+        headers: {
+          "content-type": selectedIsoFile.type || "application/octet-stream",
+          "x-file-name": encodeURIComponent(selectedIsoFile.name),
+          "x-tenant-id": model.selectedTenantId,
+        },
+        body: selectedIsoFile,
+      });
+      const payload = await response.json().catch(() => null) as IsoUploadApiResponse | null;
+
+      if (!response.ok || !payload?.success) {
+        setIsoUploadState({
+          status: "error",
+          code: payload && !payload.success ? payload.code : "ISO_UPLOAD_FAILED",
+        });
+        return;
+      }
+
+      setIsoUploadState({ status: "success", result: payload.data });
+    } catch {
+      setIsoUploadState({ status: "error", code: "ISO_UPLOAD_FAILED" });
+    }
   }
 
   return (
@@ -303,6 +381,61 @@ export function InstanceProvisioningWizard({
           ) : null}
           {createErrorMessage ? (
             <p className="mt-3 text-sm text-destructive">{createErrorMessage}</p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="corp-surface">
+        <CardHeader className="pb-4">
+          <CardTitle className="corp-section-title">{labels.sections.isoUpload.title}</CardTitle>
+          <CardDescription className="corp-body-muted">{labels.sections.isoUpload.description}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={handleIsoUpload} className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+            <div className="space-y-2">
+              <Label htmlFor="instance-iso-upload" className="corp-field-label">
+                {labels.sections.isoUpload.fields.file}
+              </Label>
+              <Input
+                id="instance-iso-upload"
+                type="file"
+                accept=".iso,application/octet-stream,application/x-cd-image,application/x-iso9660-image"
+                className="corp-input"
+                disabled={!canManageResources || isoUploadState.status === "uploading"}
+                onChange={(event) => {
+                  setSelectedIsoFile(event.currentTarget.files?.[0] ?? null);
+                  setIsoUploadState({ status: "idle" });
+                }}
+              />
+              <p className="corp-field-hint">{labels.sections.isoUpload.hint}</p>
+            </div>
+            <Button
+              type="submit"
+              className="corp-btn-md"
+              disabled={!canManageResources || !selectedIsoFile || isoUploadState.status === "uploading"}
+            >
+              {isoUploadState.status === "uploading"
+                ? labels.sections.isoUpload.submitLoading
+                : labels.sections.isoUpload.submitIdle}
+            </Button>
+          </form>
+
+          {isoUploadState.status === "success" ? (
+            <div className="corp-inline-success space-y-1">
+              <p>{labels.sections.isoUpload.success}</p>
+              <p>
+                {labels.sections.isoUpload.sizeLabel}: {formatBytes(isoUploadState.result.sizeBytes)}
+              </p>
+              <p className="break-all">
+                {labels.sections.isoUpload.pathLabel}: <code>{isoUploadState.result.storagePath}</code>
+              </p>
+            </div>
+          ) : null}
+
+          {isoUploadState.status === "error" ? (
+            <p className="text-sm text-destructive">
+              {resolveIsoUploadErrorMessage(isoUploadState.code, labels)}
+            </p>
           ) : null}
         </CardContent>
       </Card>

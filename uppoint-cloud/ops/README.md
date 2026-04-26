@@ -80,6 +80,11 @@ sudo systemctl start uppoint-incus-worker.service
 sudo systemctl status uppoint-incus-worker.service
 ```
 
+The first Incus worker run can take several minutes while a VM image is pulled
+and cached locally.
+VM provisioning requires host KVM support (`/dev/kvm`). On nested VPS hosts,
+enable nested virtualization before installing the cron poller.
+
 Environment values should be provided in `/opt/uppoint-cloud/.env` (not in git).
 
 Closed-system baseline example (default policy):
@@ -97,12 +102,15 @@ INTERNAL_AUDIT_SIGNING_SECRET=replace-with-strong-random-secret
 INTERNAL_DISPATCH_SIGNING_SECRET=replace-with-strong-random-secret
 INTERNAL_PROVISIONING_SIGNING_SECRET=replace-with-strong-random-secret
 INTERNAL_AUTH_TRANSPORT_MODE=loopback-hmac-v1
+KVM_WORKER_CONTROL_PLANE_URL=http://127.0.0.1:3000
 INCUS_SOCKET_PATH=/var/lib/incus/unix.socket
 INCUS_ENDPOINT=
 KVM_WORKER_BATCH_SIZE=10
 KVM_WORKER_LOCK_STALE_SECONDS=180
 KVM_OVS_BRIDGE_PREFIX=upkvm
 KVM_VLAN_RANGE=2000-2999
+INSTANCE_ISO_UPLOAD_DIR=/var/lib/uppoint-cloud/iso-uploads
+INSTANCE_ISO_UPLOAD_MAX_BYTES=12884901888
 NOTIFICATION_PAYLOAD_SECRET=replace-with-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
@@ -152,6 +160,12 @@ WORM_AUDIT_STORAGE_CLASS=STANDARD_IA
 
 This matches the shipped systemd unit (`EnvironmentFile=/opt/uppoint-cloud/.env`).
 
+ISO upload note:
+
+- `/api/instances/iso-images` stores tenant-authorized test ISO files under `INSTANCE_ISO_UPLOAD_DIR`.
+- The shipped `uppoint-cloud.service` owns the `/var/lib/uppoint-cloud` state root and creates `/var/lib/uppoint-cloud/iso-uploads` on start.
+- If `INSTANCE_ISO_UPLOAD_DIR` is changed outside `/var/lib/uppoint-cloud`, update the systemd writable path and keep the Nginx `client_max_body_size` for this endpoint aligned with `INSTANCE_ISO_UPLOAD_MAX_BYTES`.
+
 PostgreSQL deployment note:
 
 - Default architecture uses self-hosted PostgreSQL on the same server.
@@ -193,6 +207,7 @@ Note:
 - CSP is set in Nginx using per-request nonce (`$request_id`) for both `script-src` and `style-src`.
 - Nginx injects nonce into rendered HTML `<script>` and `<style>` tags via `sub_filter`.
 - Both `script-src` and `style-src` avoid `unsafe-inline`; inline tags must carry request nonce.
+- `/api/instances/iso-images` has endpoint-specific `client_max_body_size 12g` with request buffering disabled for streaming ISO uploads.
 
 Bootstrap HTTP config (used before certificate issuance):
 
@@ -394,6 +409,7 @@ calls to:
 
 Worker runtime defaults:
 
+- `KVM_WORKER_CONTROL_PLANE_URL=http://127.0.0.1:3000` (recommended on same-host workers using `loopback-hmac-v1`)
 - `KVM_WORKER_BATCH_SIZE=10`
 - `KVM_WORKER_LOCK_STALE_SECONDS=180`
 - `KVM_OVS_BRIDGE_PREFIX=upkvm`

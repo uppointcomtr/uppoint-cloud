@@ -10,6 +10,7 @@ Group=root
 WorkingDirectory=/opt/uppoint-cloud
 EnvironmentFile=/opt/uppoint-cloud/.env
 ExecStart=/opt/uppoint-cloud/scripts/run-incus-worker.sh
+TimeoutStartSec=30min
 StandardOutput=journal
 StandardError=journal
 

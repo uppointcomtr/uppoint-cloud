@@ -687,8 +687,31 @@ export const enMessages = {
           createLoading: "Creating...",
           createSuccess: "Resource group created. Refreshing list.",
         },
+        isoUpload: {
+          title: "2. Upload test ISO",
+          description: "Upload an ISO file into tenant-scoped local storage for provisioning tests.",
+          fields: {
+            file: "ISO file",
+          },
+          hint: "Only .iso files are accepted; the file is written under the tenant folder on this server.",
+          submitIdle: "Upload ISO",
+          submitLoading: "Uploading...",
+          success: "ISO uploaded.",
+          sizeLabel: "Size",
+          pathLabel: "Server path",
+          errors: {
+            MISSING_FILE: "Select an ISO file to upload.",
+            VALIDATION_FAILED: "ISO name or upload metadata is invalid.",
+            UNSUPPORTED_FILE_TYPE: "This file type is not supported. Select a .iso file.",
+            FILE_TOO_LARGE: "ISO file exceeds the allowed size.",
+            MISSING_BODY: "Upload body was not received.",
+            EMPTY_UPLOAD: "Empty ISO files cannot be uploaded.",
+            STORAGE_WRITE_FAILED: "ISO could not be written to disk.",
+            ISO_UPLOAD_FAILED: "ISO upload could not be completed.",
+          },
+        },
         instance: {
-          title: "2. Submit instance request",
+          title: "3. Submit instance request",
           description: "Choose resource group, network, and firewall policy to submit an idempotent provisioning request.",
           noResourceGroups: "Create at least one resource group before continuing.",
           fields: {

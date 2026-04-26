@@ -35,10 +35,13 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	baseURL := strings.TrimSpace(getEnv("NEXT_PUBLIC_APP_URL", "https://cloud.uppoint.com.tr"))
+	baseURL := strings.TrimSpace(getEnv(
+		"KVM_WORKER_CONTROL_PLANE_URL",
+		getEnv("NEXT_PUBLIC_APP_URL", "https://cloud.uppoint.com.tr"),
+	))
 	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil || parsedBaseURL.Scheme == "" || parsedBaseURL.Host == "" {
-		return Config{}, fmt.Errorf("invalid NEXT_PUBLIC_APP_URL: %q", baseURL)
+		return Config{}, fmt.Errorf("invalid KVM_WORKER_CONTROL_PLANE_URL/NEXT_PUBLIC_APP_URL: %q", baseURL)
 	}
 
 	origin := parsedBaseURL.Scheme + "://" + parsedBaseURL.Host

@@ -13,10 +13,14 @@ Environment=PORT=3000
 EnvironmentFile=/opt/uppoint-cloud/.env
 # tune-system.sh tarafından oluşturulur; yoksa yoksay (-).
 EnvironmentFile=-/etc/uppoint-cloud-tuned.env
+StateDirectory=uppoint-cloud
+StateDirectoryMode=0750
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache/images
 ExecStartPre=+/usr/bin/install -d -o www-data -g adm -m 0750 /var/log/uppoint-cloud
+ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0750 /var/lib/uppoint-cloud
+ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0750 /var/lib/uppoint-cloud/iso-uploads
 ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3000
 Restart=always
 RestartSec=5
@@ -34,7 +38,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/opt/uppoint-cloud/.next /opt/uppoint-cloud/.next/cache /opt/uppoint-cloud/.next/cache/images /var/log/uppoint-cloud
+ReadWritePaths=/opt/uppoint-cloud/.next /opt/uppoint-cloud/.next/cache /opt/uppoint-cloud/.next/cache/images /var/log/uppoint-cloud /var/lib/uppoint-cloud
 
 [Install]
 WantedBy=multi-user.target

@@ -177,14 +177,26 @@ interface EdgeSecurityAuditEvent {
   reason?: string;
 }
 
-function isTrustedInternalAuditIngress(request: NextRequest, pathname: string): boolean {
-  if (!IS_PRODUCTION || pathname !== "/api/internal/audit/security-event") {
+const INTERNAL_LOOPBACK_TOKEN_HEADERS: Record<string, string> = {
+  "/api/internal/audit/security-event": "x-internal-audit-token",
+  "/api/internal/notifications/dispatch": "x-internal-dispatch-token",
+  "/api/internal/instances/provisioning/claim": "x-internal-provisioning-token",
+  "/api/internal/instances/provisioning/report": "x-internal-provisioning-token",
+};
+
+function isTrustedInternalLoopbackIngress(request: NextRequest, pathname: string): boolean {
+  if (!IS_PRODUCTION) {
+    return false;
+  }
+
+  const tokenHeaderName = INTERNAL_LOOPBACK_TOKEN_HEADERS[pathname];
+  if (!tokenHeaderName) {
     return false;
   }
 
   const requestHost = request.nextUrl.hostname.trim().toLowerCase();
   const realIp = request.headers.get("x-real-ip")?.split(",")[0]?.trim();
-  const token = request.headers.get("x-internal-audit-token")?.trim();
+  const token = request.headers.get(tokenHeaderName)?.trim();
   const requestId = request.headers.get("x-internal-request-id")?.trim();
   const timestamp = request.headers.get("x-internal-request-ts")?.trim();
   const signature = request.headers.get("x-internal-request-signature")?.trim();
@@ -306,7 +318,7 @@ export async function proxy(request: NextRequest) {
   const requestId = getOrCreateRequestId(request);
   const forwardHeaders = buildForwardHeaders(request, requestId);
   const requestHost = getRequestHost(request);
-  const trustedInternalAuditIngress = isTrustedInternalAuditIngress(request, pathname);
+  const trustedInternalLoopbackIngress = isTrustedInternalLoopbackIngress(request, pathname);
   const trustedLoopbackStaticAssetRequest = isTrustedLoopbackStaticAssetRequest({
     pathname,
     method: request.method,
@@ -315,7 +327,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     IS_PRODUCTION
-    && !trustedInternalAuditIngress
+    && !trustedInternalLoopbackIngress
     && !trustedLoopbackStaticAssetRequest
     && hasConflictingForwardedHost(request)
   ) {
@@ -339,7 +351,7 @@ export async function proxy(request: NextRequest) {
 
   if (
     IS_PRODUCTION
-    && !trustedInternalAuditIngress
+    && !trustedInternalLoopbackIngress
     && !trustedLoopbackStaticAssetRequest
     && !isAllowedHost(requestHost, ALLOWED_HOSTS)
   ) {
@@ -361,7 +373,7 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  if (IS_PRODUCTION && !trustedInternalAuditIngress && isApiMutation(pathname, request.method)) {
+  if (IS_PRODUCTION && !trustedInternalLoopbackIngress && isApiMutation(pathname, request.method)) {
     const origin = request.headers.get("origin");
 
     if (!isAllowedOrigin(origin, ALLOWED_ORIGINS)) {
