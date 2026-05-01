@@ -1,4 +1,10 @@
-import { InstanceProvisioningStatus } from "@prisma/client";
+import {
+  FirewallRuleAction,
+  FirewallRuleDirection,
+  InstancePowerState,
+  InstanceProvisioningStatus,
+  ResourceGroupStatus,
+} from "@prisma/client";
 import { describe, expect, it, vi } from "vitest";
 
 const prismaMock = vi.hoisted(() => ({
@@ -13,9 +19,162 @@ import {
   claimProvisioningJobs,
   reportProvisioningJob,
   InstanceProvisioningControlPlaneError,
+  listResourceGroupHierarchyForTenant,
 } from "@/db/repositories/instance-control-plane-repository";
 
 describe("instance control-plane repository", () => {
+  it("loads tenant-scoped resource hierarchy with nested resources", async () => {
+    const now = new Date("2026-05-01T10:00:00.000Z");
+    const client = {
+      resourceGroup: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "rg_1",
+            tenantId: "tenant_1",
+            name: "Production",
+            slug: "production",
+            regionCode: "tr-ist-1",
+            createdAt: now,
+            updatedAt: now,
+            networks: [
+              {
+                id: "net_1",
+                tenantId: "tenant_1",
+                resourceGroupId: "rg_1",
+                name: "default-vnet",
+                cidr: "10.10.10.0/24",
+                createdAt: now,
+                updatedAt: now,
+              },
+            ],
+            firewallPolicies: [
+              {
+                id: "fw_1",
+                tenantId: "tenant_1",
+                resourceGroupId: "rg_1",
+                name: "default-fw",
+                description: "Default policy",
+                defaultInboundAction: FirewallRuleAction.DENY,
+                defaultOutboundAction: FirewallRuleAction.ALLOW,
+                createdAt: now,
+                updatedAt: now,
+                rules: [
+                  {
+                    id: "rule_1",
+                    tenantId: "tenant_1",
+                    firewallPolicyId: "fw_1",
+                    name: "allow-ssh",
+                    direction: FirewallRuleDirection.INGRESS,
+                    action: FirewallRuleAction.ALLOW,
+                    protocol: "tcp",
+                    portRange: "22",
+                    sourceCidr: "0.0.0.0/0",
+                    destinationCidr: null,
+                    priority: 100,
+                    enabled: true,
+                    createdAt: now,
+                    updatedAt: now,
+                  },
+                ],
+              },
+            ],
+            cloudInstances: [
+              {
+                id: "instance_1",
+                tenantId: "tenant_1",
+                resourceGroupId: "rg_1",
+                networkId: "net_1",
+                firewallPolicyId: "fw_1",
+                name: "vm-one",
+                powerState: InstancePowerState.RUNNING,
+                lifecycleStatus: InstanceProvisioningStatus.COMPLETED,
+                providerInstanceRef: "incus-vm-one",
+                planCode: "vm-basic-1",
+                imageCode: "ubuntu-24-04-lts",
+                regionCode: "tr-ist-1",
+                cpuCores: 2,
+                memoryMb: 4096,
+                diskGb: 60,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ],
+            provisioningJobs: [
+              {
+                id: "job_1",
+                tenantId: "tenant_1",
+                resourceGroupId: "rg_1",
+                instanceId: "instance_1",
+                requestedByUserId: "user_1",
+                status: InstanceProvisioningStatus.COMPLETED,
+                attemptCount: 1,
+                maxAttempts: 5,
+                nextAttemptAt: now,
+                lockedAt: null,
+                lockedBy: null,
+                providerRef: "incus-vm-one",
+                providerMessage: null,
+                createdAt: now,
+                updatedAt: now,
+                lastErrorCode: null,
+                lastErrorMessage: null,
+                instance: {
+                  id: "instance_1",
+                  name: "vm-one",
+                  providerInstanceRef: "incus-vm-one",
+                },
+                events: [
+                  {
+                    id: "event_1",
+                    tenantId: "tenant_1",
+                    jobId: "job_1",
+                    instanceId: "instance_1",
+                    eventType: "provisioning_completed",
+                    createdAt: now,
+                  },
+                ],
+              },
+            ],
+          },
+        ]),
+      },
+    };
+
+    const result = await listResourceGroupHierarchyForTenant(
+      { tenantId: "tenant_1" },
+      client as never,
+    );
+
+    expect(client.resourceGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "tenant_1",
+          status: ResourceGroupStatus.ACTIVE,
+          deletedAt: null,
+        }),
+        select: expect.objectContaining({
+          networks: expect.objectContaining({
+            where: expect.objectContaining({ tenantId: "tenant_1" }),
+          }),
+          firewallPolicies: expect.objectContaining({
+            where: expect.objectContaining({ tenantId: "tenant_1" }),
+          }),
+          cloudInstances: expect.objectContaining({
+            where: expect.objectContaining({ tenantId: "tenant_1" }),
+          }),
+          provisioningJobs: expect.objectContaining({
+            where: expect.objectContaining({ tenantId: "tenant_1" }),
+          }),
+        }),
+      }),
+    );
+    expect(result[0]?.networks[0]?.cidr).toBe("10.10.10.0/24");
+    expect(result[0]?.firewallPolicies[0]?.rules[0]?.direction).toBe("INGRESS");
+    expect(result[0]?.instances[0]?.powerState).toBe("running");
+    expect(result[0]?.provisioningJobs[0]?.state).toBe("completed");
+    expect(result[0]?.provisioningJobs[0]?.recentEvents[0]?.eventType).toBe("provisioning_completed");
+  });
+
   it("claims due jobs atomically and returns worker payload", async () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([{ id: "job_1" }]),

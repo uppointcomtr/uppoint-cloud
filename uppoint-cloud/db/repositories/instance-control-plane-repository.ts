@@ -21,7 +21,9 @@ import type {
   InstanceRuntimeView,
   InstanceLifecycleState,
   InstanceProvisioningJob,
+  InstanceProvisioningJobHierarchyView,
   InstanceProvisioningRequest,
+  ResourceGroupHierarchyView,
   ResourceGroupView,
   VirtualNetworkView,
 } from "@/types/instance-control-plane";
@@ -136,6 +138,46 @@ function mapFirewallPolicy(model: {
     description: model.description,
     createdAt: model.createdAt,
     updatedAt: model.updatedAt,
+  };
+}
+
+function mapProvisioningJob(model: {
+  id: string;
+  tenantId: string;
+  resourceGroupId: string;
+  instanceId: string | null;
+  requestedByUserId: string;
+  status: InstanceProvisioningStatus;
+  attemptCount: number;
+  maxAttempts: number;
+  nextAttemptAt: Date;
+  lockedAt: Date | null;
+  lockedBy: string | null;
+  providerRef: string | null;
+  providerMessage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
+}): InstanceProvisioningJob {
+  return {
+    id: model.id,
+    tenantId: model.tenantId,
+    resourceGroupId: model.resourceGroupId,
+    instanceId: model.instanceId,
+    requestedByUserId: model.requestedByUserId,
+    state: mapProvisioningState(model.status),
+    attemptCount: model.attemptCount,
+    maxAttempts: model.maxAttempts,
+    nextAttemptAt: model.nextAttemptAt,
+    lockedAt: model.lockedAt,
+    lockedBy: model.lockedBy,
+    providerRef: model.providerRef,
+    providerMessage: model.providerMessage,
+    createdAt: model.createdAt,
+    updatedAt: model.updatedAt,
+    lastErrorCode: model.lastErrorCode,
+    lastErrorMessage: model.lastErrorMessage,
   };
 }
 
@@ -304,6 +346,229 @@ export async function listActiveInstancesForTenant(
     providerInstanceRef: instance.providerInstanceRef,
     createdAt: instance.createdAt,
     updatedAt: instance.updatedAt,
+  }));
+}
+
+export async function listResourceGroupHierarchyForTenant(
+  input: {
+    tenantId: string;
+    takeResourceGroups?: number;
+    takeNetworksPerGroup?: number;
+    takeFirewallPoliciesPerGroup?: number;
+    takeRulesPerPolicy?: number;
+    takeInstancesPerGroup?: number;
+    takeJobsPerGroup?: number;
+    takeEventsPerJob?: number;
+  },
+  client: InstanceRepositoryClient = prisma,
+): Promise<ResourceGroupHierarchyView[]> {
+  const resourceGroups = await client.resourceGroup.findMany({
+    where: {
+      tenantId: input.tenantId,
+      deletedAt: null,
+      status: ResourceGroupStatus.ACTIVE,
+    },
+    orderBy: { createdAt: "asc" },
+    take: input.takeResourceGroups ?? 50,
+    select: {
+      id: true,
+      tenantId: true,
+      name: true,
+      slug: true,
+      regionCode: true,
+      createdAt: true,
+      updatedAt: true,
+      networks: {
+        where: {
+          tenantId: input.tenantId,
+          deletedAt: null,
+          status: NetworkStatus.ACTIVE,
+        },
+        orderBy: { createdAt: "asc" },
+        take: input.takeNetworksPerGroup ?? 20,
+        select: {
+          id: true,
+          tenantId: true,
+          resourceGroupId: true,
+          name: true,
+          cidr: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+      firewallPolicies: {
+        where: {
+          tenantId: input.tenantId,
+          deletedAt: null,
+          status: FirewallStatus.ACTIVE,
+        },
+        orderBy: { createdAt: "asc" },
+        take: input.takeFirewallPoliciesPerGroup ?? 20,
+        select: {
+          id: true,
+          tenantId: true,
+          resourceGroupId: true,
+          name: true,
+          description: true,
+          defaultInboundAction: true,
+          defaultOutboundAction: true,
+          createdAt: true,
+          updatedAt: true,
+          rules: {
+            where: {
+              tenantId: input.tenantId,
+              deletedAt: null,
+            },
+            orderBy: { priority: "asc" },
+            take: input.takeRulesPerPolicy ?? 30,
+            select: {
+              id: true,
+              tenantId: true,
+              firewallPolicyId: true,
+              name: true,
+              direction: true,
+              action: true,
+              protocol: true,
+              portRange: true,
+              sourceCidr: true,
+              destinationCidr: true,
+              priority: true,
+              enabled: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      },
+      cloudInstances: {
+        where: {
+          tenantId: input.tenantId,
+          deletedAt: null,
+        },
+        orderBy: [
+          { updatedAt: "desc" },
+          { createdAt: "desc" },
+        ],
+        take: input.takeInstancesPerGroup ?? 50,
+        select: {
+          id: true,
+          tenantId: true,
+          resourceGroupId: true,
+          networkId: true,
+          firewallPolicyId: true,
+          name: true,
+          powerState: true,
+          lifecycleStatus: true,
+          providerInstanceRef: true,
+          planCode: true,
+          imageCode: true,
+          regionCode: true,
+          cpuCores: true,
+          memoryMb: true,
+          diskGb: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+      provisioningJobs: {
+        where: {
+          tenantId: input.tenantId,
+        },
+        orderBy: [
+          { updatedAt: "desc" },
+          { createdAt: "desc" },
+        ],
+        take: input.takeJobsPerGroup ?? 20,
+        select: {
+          id: true,
+          tenantId: true,
+          resourceGroupId: true,
+          instanceId: true,
+          requestedByUserId: true,
+          status: true,
+          attemptCount: true,
+          maxAttempts: true,
+          nextAttemptAt: true,
+          lockedAt: true,
+          lockedBy: true,
+          providerRef: true,
+          providerMessage: true,
+          createdAt: true,
+          updatedAt: true,
+          lastErrorCode: true,
+          lastErrorMessage: true,
+          instance: {
+            select: {
+              id: true,
+              name: true,
+              providerInstanceRef: true,
+            },
+          },
+          events: {
+            orderBy: { createdAt: "desc" },
+            take: input.takeEventsPerJob ?? 6,
+            select: {
+              id: true,
+              tenantId: true,
+              jobId: true,
+              instanceId: true,
+              eventType: true,
+              createdAt: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return resourceGroups.map((resourceGroup) => ({
+    ...mapResourceGroup(resourceGroup),
+    networks: resourceGroup.networks.map(mapVirtualNetwork),
+    firewallPolicies: resourceGroup.firewallPolicies.map((policy) => ({
+      ...mapFirewallPolicy(policy),
+      defaultInboundAction: policy.defaultInboundAction,
+      defaultOutboundAction: policy.defaultOutboundAction,
+      rules: policy.rules.map((rule) => ({
+        id: rule.id,
+        tenantId: rule.tenantId,
+        firewallPolicyId: rule.firewallPolicyId,
+        name: rule.name,
+        direction: rule.direction,
+        action: rule.action,
+        protocol: rule.protocol,
+        portRange: rule.portRange,
+        sourceCidr: rule.sourceCidr,
+        destinationCidr: rule.destinationCidr,
+        priority: rule.priority,
+        enabled: rule.enabled,
+        createdAt: rule.createdAt,
+        updatedAt: rule.updatedAt,
+      })),
+    })),
+    instances: resourceGroup.cloudInstances.map((instance) => ({
+      instanceId: instance.id,
+      tenantId: instance.tenantId,
+      resourceGroupId: instance.resourceGroupId,
+      networkId: instance.networkId,
+      firewallPolicyId: instance.firewallPolicyId,
+      name: instance.name,
+      powerState: mapPowerState(instance.powerState),
+      lifecycleState: mapProvisioningState(instance.lifecycleStatus),
+      providerInstanceRef: instance.providerInstanceRef,
+      planCode: instance.planCode,
+      imageCode: instance.imageCode,
+      regionCode: instance.regionCode,
+      cpuCores: instance.cpuCores,
+      memoryMb: instance.memoryMb,
+      diskGb: instance.diskGb,
+      createdAt: instance.createdAt,
+      updatedAt: instance.updatedAt,
+    })),
+    provisioningJobs: resourceGroup.provisioningJobs.map((job): InstanceProvisioningJobHierarchyView => ({
+      ...mapProvisioningJob(job),
+      instance: job.instance,
+      recentEvents: job.events,
+    })),
   }));
 }
 
@@ -538,25 +803,7 @@ export async function findProvisioningJobByIdempotencyKey(
     return null;
   }
 
-  return {
-    id: job.id,
-    tenantId: job.tenantId,
-    resourceGroupId: job.resourceGroupId,
-    instanceId: job.instanceId,
-    requestedByUserId: job.requestedByUserId,
-    state: mapProvisioningState(job.status),
-    attemptCount: job.attemptCount,
-    maxAttempts: job.maxAttempts,
-    nextAttemptAt: job.nextAttemptAt,
-    lockedAt: job.lockedAt,
-    lockedBy: job.lockedBy,
-    providerRef: job.providerRef,
-    providerMessage: job.providerMessage,
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
-    lastErrorCode: job.lastErrorCode,
-    lastErrorMessage: job.lastErrorMessage,
-  };
+  return mapProvisioningJob(job);
 }
 
 export async function createProvisioningRequest(

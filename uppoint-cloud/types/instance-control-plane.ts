@@ -43,6 +43,32 @@ export interface FirewallPolicyView {
   updatedAt: Date;
 }
 
+export type FirewallRuleDirectionView = "INGRESS" | "EGRESS";
+export type FirewallRuleActionView = "ALLOW" | "DENY";
+
+export interface FirewallRuleView {
+  id: string;
+  tenantId: string;
+  firewallPolicyId: string;
+  name: string;
+  direction: FirewallRuleDirectionView;
+  action: FirewallRuleActionView;
+  protocol: string;
+  portRange: string | null;
+  sourceCidr: string | null;
+  destinationCidr: string | null;
+  priority: number;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FirewallPolicyHierarchyView extends FirewallPolicyView {
+  defaultInboundAction: FirewallRuleActionView;
+  defaultOutboundAction: FirewallRuleActionView;
+  rules: FirewallRuleView[];
+}
+
 export interface InstanceRuntimeView {
   instanceId: string;
   tenantId: string;
@@ -53,6 +79,17 @@ export interface InstanceRuntimeView {
   providerInstanceRef?: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CloudInstanceHierarchyView extends InstanceRuntimeView {
+  networkId: string;
+  firewallPolicyId: string;
+  planCode: string;
+  imageCode: string;
+  regionCode: string;
+  cpuCores: number;
+  memoryMb: number;
+  diskGb: number;
 }
 
 export interface InstanceProvisioningRequest {
@@ -91,6 +128,37 @@ export interface InstanceProvisioningJob {
   createdAt: Date;
   updatedAt: Date;
   lastErrorCode?: string | null;
+}
+
+export interface InstanceProvisioningEventView {
+  id: string;
+  tenantId: string;
+  jobId: string;
+  instanceId: string | null;
+  eventType: string;
+  createdAt: Date;
+}
+
+export interface InstanceProvisioningJobHierarchyView extends InstanceProvisioningJob {
+  instance: {
+    id: string;
+    name: string;
+    providerInstanceRef: string | null;
+  } | null;
+  recentEvents: InstanceProvisioningEventView[];
+}
+
+export interface ResourceGroupHierarchyView extends ResourceGroupView {
+  networks: VirtualNetworkView[];
+  firewallPolicies: FirewallPolicyHierarchyView[];
+  instances: CloudInstanceHierarchyView[];
+  provisioningJobs: InstanceProvisioningJobHierarchyView[];
+}
+
+export interface InstanceResourceGroupHierarchyView {
+  tenantId: string;
+  generatedAt: Date;
+  resourceGroups: ResourceGroupHierarchyView[];
 }
 
 export type ProvisioningWorkerEventType =
