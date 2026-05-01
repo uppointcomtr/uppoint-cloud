@@ -1,6 +1,7 @@
 import "server-only";
 
 import { NotificationOutboxStatus, TenantRole } from "@prisma/client";
+import type { PlatformRole } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/db/client";
@@ -18,6 +19,7 @@ export interface DashboardUserSnapshot {
   failedLoginAttempts: number;
   lockedUntil: Date | null;
   lastLoginAt: Date | null;
+  platformRole: PlatformRole | null;
 }
 
 export interface DashboardAuditEvent {
@@ -56,6 +58,7 @@ export async function findActiveUserDashboardSnapshot(
       failedLoginAttempts: true,
       lockedUntil: true,
       lastLoginAt: true,
+      platformRole: true,
     },
   });
 }

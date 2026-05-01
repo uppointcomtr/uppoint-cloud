@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Bell, Building2, LayoutDashboard, Layers3, ShieldCheck, UserCircle2 } from "lucide-react";
+import { Bell, Building2, LayoutDashboard, Layers3, ServerCog, ShieldCheck, UserCircle2 } from "lucide-react";
 
 import { LocaleSwitcher } from "@/components/shared/locale-switcher";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -34,6 +34,7 @@ interface DashboardPanelProps {
   overview: DashboardOverview;
   activeSection: DashboardSection;
   modulesContent?: ReactNode;
+  operationsContent?: ReactNode;
   tenantContent?: ReactNode;
   createTenantAction?: TenantCreateAction;
 }
@@ -80,6 +81,8 @@ function getSectionPath(locale: Locale, section: DashboardSection, tenantId?: st
       return appendTenantContext(withLocale("/dashboard/tenant", locale), tenantId);
     case "modules":
       return appendTenantContext(withLocale("/dashboard/modules", locale), tenantId);
+    case "operations":
+      return appendTenantContext(withLocale("/dashboard/operations", locale), tenantId);
   }
 }
 
@@ -103,6 +106,7 @@ export function DashboardPanel({
   overview,
   activeSection,
   modulesContent,
+  operationsContent,
   tenantContent,
   createTenantAction,
 }: DashboardPanelProps) {
@@ -119,6 +123,9 @@ export function DashboardPanel({
     { section: "tenant", label: dashboard.nav.tenant, icon: Building2 },
     { section: "modules", label: dashboard.nav.modules, icon: Layers3 },
   ];
+  if (overview.user.platformRole) {
+    navItems.push({ section: "operations", label: dashboard.nav.operations, icon: ServerCog });
+  }
   const activeNavItem = navItems.find((item) => item.section === activeSection) ?? navItems[0];
   const ActiveSectionIcon = activeNavItem.icon;
 
@@ -303,6 +310,12 @@ export function DashboardPanel({
           {activeSection === "modules" ? (
             <>
               {modulesContent ?? <ModulesCard locale={locale} overview={overview} labels={dashboard} activeTenantId={activeTenantId} />}
+            </>
+          ) : null}
+
+          {activeSection === "operations" ? (
+            <>
+              {operationsContent}
             </>
           ) : null}
         </section>

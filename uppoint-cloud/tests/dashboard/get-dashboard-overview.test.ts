@@ -24,6 +24,7 @@ function createBaseDependencies(overrides?: Partial<DashboardOverviewDependencie
       failedLoginAttempts: 1,
       lockedUntil: null,
       lastLoginAt: new Date("2026-03-05T08:00:00.000Z"),
+      platformRole: null,
     })),
     countUserNotificationByStatus: vi.fn(async ({ status }) => {
       if (status === NotificationOutboxStatus.PENDING) {

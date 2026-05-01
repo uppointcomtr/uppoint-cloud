@@ -17,7 +17,14 @@ import type { DashboardOverview } from "../server/get-dashboard-overview";
 
 const corporateCardClass = "corp-surface";
 
-export type DashboardActiveSection = "overview" | "account" | "security" | "notifications" | "tenant" | "modules";
+export type DashboardActiveSection =
+  | "overview"
+  | "account"
+  | "security"
+  | "notifications"
+  | "tenant"
+  | "modules"
+  | "operations";
 
 interface DashboardSectionProps {
   locale: Locale;
@@ -84,6 +91,7 @@ function createTenantHref(
     notifications: "/dashboard/notifications",
     tenant: "/dashboard/tenant",
     modules: "/dashboard/modules",
+    operations: "/dashboard/operations",
   };
 
   return `${withLocale(sectionPath[activeSection], locale)}?tenantId=${encodeURIComponent(tenantId)}`;

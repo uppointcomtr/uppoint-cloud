@@ -17,6 +17,7 @@ interface InternalRouteGuardInput {
     action: string;
     max: number;
     windowSeconds: number;
+    includeAdaptiveSignals?: boolean;
   };
   unauthorizedAuditAction:
     | "internal_dispatch_unauthorized"
@@ -35,6 +36,7 @@ export async function enforceInternalRouteGuard(
     rateLimitAction: input.ipRateLimit.action,
     rateLimitMax: input.ipRateLimit.max,
     rateLimitWindowSeconds: input.ipRateLimit.windowSeconds,
+    includeAdaptiveSignals: input.ipRateLimit.includeAdaptiveSignals,
     auditActionName: input.ipRateLimit.action,
     auditScope: "ip",
   });

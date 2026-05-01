@@ -28,18 +28,8 @@ export const PLAN_CATALOG: PlanCatalogItem[] = [
   { code: "vm-standard-4", label: "Standard 4 vCPU / 8 GB RAM", cpuCores: 4, memoryMb: 8192, diskGb: 120 },
 ];
 
-export const IMAGE_CATALOG: ImageCatalogItem[] = [
-  { code: "ubuntu-24-04-lts", label: "Ubuntu Server 24.04 LTS", family: "linux" },
-  { code: "debian-12", label: "Debian 12", family: "linux" },
-  { code: "almalinux-9", label: "AlmaLinux 9", family: "linux" },
-];
-
 export function findPlanByCode(code: string): PlanCatalogItem | null {
   return PLAN_CATALOG.find((item) => item.code === code) ?? null;
-}
-
-export function findImageByCode(code: string): ImageCatalogItem | null {
-  return IMAGE_CATALOG.find((item) => item.code === code) ?? null;
 }
 
 export function findRegionByCode(code: string): RegionCatalogItem | null {

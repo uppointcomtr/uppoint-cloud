@@ -15,7 +15,7 @@ export const submitInstanceProvisioningSchema = z.object({
   idempotencyKey: z.string().trim().uuid(),
   name: z.string().trim().regex(/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/),
   planCode: z.string().trim().min(2).max(64),
-  imageCode: z.string().trim().min(2).max(64),
+  imageCode: z.string().trim().min(2).max(128),
   regionCode: z.string().trim().min(3).max(32),
   cpuCores: z.coerce.number().int().min(1).max(64),
   memoryMb: z.coerce.number().int().min(1024).max(262144),

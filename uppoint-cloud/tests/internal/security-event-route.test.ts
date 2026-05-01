@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   logAuditMock,
@@ -38,6 +38,70 @@ vi.mock("@/lib/env", () => ({
 import * as securityEventRoute from "@/app/api/internal/audit/security-event/route";
 
 describe("internal security event route", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getClientIpMock.mockResolvedValue("unknown");
+  });
+
+  it("keeps signed edge security event ingestion burst-tolerant", async () => {
+    withRateLimitMock.mockResolvedValueOnce(null);
+    verifyInternalRequestAuthMock.mockResolvedValueOnce({
+      requestId: "req_valid_security_event_1",
+      rawBody: JSON.stringify({
+        action: "edge_host_rejected",
+        requestId: "edge-event-1",
+        path: "/.env",
+        method: "HEAD",
+        host: "scanner.example",
+        reason: "HOST_NOT_ALLOWLISTED",
+      }),
+    });
+    withRateLimitByIdentifierMock
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    logAuditMock.mockResolvedValueOnce(undefined);
+
+    const response = await securityEventRoute.POST(
+      new Request("https://cloud.uppoint.com.tr/api/internal/audit/security-event", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(withRateLimitMock).toHaveBeenCalledWith(
+      "internal-audit-security-event",
+      5000,
+      60,
+      { includeAdaptiveSignals: false },
+    );
+    expect(withRateLimitByIdentifierMock).toHaveBeenNthCalledWith(
+      1,
+      "internal-audit-security-event-replay",
+      "req_valid_security_event_1",
+      1,
+      300,
+      { includeAdaptiveSignals: false },
+    );
+    expect(withRateLimitByIdentifierMock).toHaveBeenNthCalledWith(
+      2,
+      "internal-audit-security-event-request",
+      "edge_host_rejected:edge-event-1",
+      40,
+      60,
+      { includeAdaptiveSignals: false },
+    );
+    expect(logAuditMock).toHaveBeenCalledWith(
+      "edge_host_rejected",
+      "unknown",
+      undefined,
+      expect.objectContaining({
+        requestId: "edge-event-1",
+        path: "/.env",
+        result: "FAILURE",
+      }),
+    );
+  });
+
   it("audits unauthorized internal requests", async () => {
     withRateLimitMock.mockResolvedValueOnce(null);
     verifyInternalRequestAuthMock.mockResolvedValueOnce(null);

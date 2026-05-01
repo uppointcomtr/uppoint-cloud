@@ -18,6 +18,9 @@ const securityEventSchema = z.object({
   reason: z.string().trim().max(128).optional(),
 });
 
+const EDGE_SECURITY_EVENT_IP_RATE_LIMIT_MAX = 5000;
+const EDGE_SECURITY_EVENT_IP_RATE_LIMIT_WINDOW_SECONDS = 60;
+
 export async function POST(request: Request) {
   const internalGuard = await enforceInternalRouteGuard({
     request,
@@ -27,8 +30,9 @@ export async function POST(request: Request) {
     signingSecret: env.INTERNAL_AUDIT_SIGNING_SECRET ?? "",
     ipRateLimit: {
       action: "internal-audit-security-event",
-      max: 300,
-      windowSeconds: 60,
+      max: EDGE_SECURITY_EVENT_IP_RATE_LIMIT_MAX,
+      windowSeconds: EDGE_SECURITY_EVENT_IP_RATE_LIMIT_WINDOW_SECONDS,
+      includeAdaptiveSignals: false,
     },
     unauthorizedAuditAction: "internal_audit_security_event_unauthorized",
   });
@@ -45,6 +49,7 @@ export async function POST(request: Request) {
     verifiedRequest.requestId,
     1,
     300,
+    { includeAdaptiveSignals: false },
   );
   if (replayRateLimitResponse) {
     await logAudit("internal_audit_security_event_replay_blocked", ip, undefined, {
@@ -83,6 +88,7 @@ export async function POST(request: Request) {
     `${event.action}:${event.requestId}`,
     40,
     60,
+    { includeAdaptiveSignals: false },
   );
   if (identifierRateLimitResponse) {
     return identifierRateLimitResponse;

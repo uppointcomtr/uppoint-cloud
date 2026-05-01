@@ -34,9 +34,10 @@ func TestBuildCloudInitUsesRealNewLines(t *testing.T) {
 }
 
 func TestEnsureInstanceInitializesBeforeConfigAndStart(t *testing.T) {
+	expectedName := buildInstanceName("vm-test", "inst-test")
 	runner := &recordingRunner{
 		failures: map[string]error{
-			"incus info vm-test": errors.New("not found"),
+			"incus info " + expectedName: errors.New("not found"),
 		},
 	}
 	adapter := NewAdapter(runner)
@@ -48,6 +49,7 @@ func TestEnsureInstanceInitializesBeforeConfigAndStart(t *testing.T) {
 			ImageCode:     "ubuntu-24-04-lts",
 			CPUCores:      2,
 			MemoryMB:      4096,
+			DiskGB:        60,
 			AdminUsername: "cloudadmin",
 			SSHPublicKey:  &sshKey,
 		},
@@ -65,7 +67,7 @@ func TestEnsureInstanceInitializesBeforeConfigAndStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureInstance returned error: %v", err)
 	}
-	if providerRef != "incus/vm-test" {
+	if providerRef != "incus/"+expectedName {
 		t.Fatalf("unexpected providerRef: %q", providerRef)
 	}
 	if !strings.Contains(providerMessage, "bridge=upkvm-rg vlan=2001") {
@@ -73,10 +75,11 @@ func TestEnsureInstanceInitializesBeforeConfigAndStart(t *testing.T) {
 	}
 
 	expectedPrefix := []string{
-		"incus info vm-test",
-		"incus init images:ubuntu/24.04/cloud vm-test --vm",
-		"incus config set vm-test limits.cpu 2",
-		"incus config set vm-test limits.memory 4096MB",
+		"incus info " + expectedName,
+		"incus init images:ubuntu/24.04/cloud " + expectedName + " --vm",
+		"incus config device override " + expectedName + " root size=60GiB",
+		"incus config set " + expectedName + " limits.cpu 2",
+		"incus config set " + expectedName + " limits.memory 4096MB",
 	}
 	if len(runner.commands) < len(expectedPrefix) {
 		t.Fatalf("expected at least %d commands, got %d: %#v", len(expectedPrefix), len(runner.commands), runner.commands)
@@ -84,8 +87,23 @@ func TestEnsureInstanceInitializesBeforeConfigAndStart(t *testing.T) {
 	if !reflect.DeepEqual(runner.commands[:len(expectedPrefix)], expectedPrefix) {
 		t.Fatalf("unexpected command prefix:\nexpected: %#v\nactual:   %#v", expectedPrefix, runner.commands[:len(expectedPrefix)])
 	}
-	if runner.commands[len(runner.commands)-1] != "incus start vm-test" {
+	if runner.commands[len(runner.commands)-1] != "incus start "+expectedName {
 		t.Fatalf("expected final command to start instance, got commands: %#v", runner.commands)
+	}
+}
+
+func TestBuildInstanceNameIncludesStableInstanceSuffix(t *testing.T) {
+	first := buildInstanceName("web", "inst_a")
+	second := buildInstanceName("web", "inst_b")
+
+	if first == second {
+		t.Fatalf("expected instance id suffix to prevent name collisions, got %q", first)
+	}
+	if len(first) > 63 || len(second) > 63 {
+		t.Fatalf("instance names must stay within Incus limit: %q %q", first, second)
+	}
+	if !strings.HasPrefix(first, "vm-web-") {
+		t.Fatalf("unexpected instance name format: %q", first)
 	}
 }
 

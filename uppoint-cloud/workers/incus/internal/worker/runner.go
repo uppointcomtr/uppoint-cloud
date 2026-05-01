@@ -20,6 +20,7 @@ type NetworkPreparer interface {
 
 type InstanceProvider interface {
 	EnsureInstance(ctx context.Context, job controlplane.ClaimedJob, prep network.Preparation) (string, string, error)
+	CleanupInstance(ctx context.Context, job controlplane.ClaimedJob) error
 }
 
 type Runner struct {
@@ -84,8 +85,8 @@ func (r *Runner) processJob(ctx context.Context, job controlplane.ClaimedJob) er
 		JobID:     job.JobID,
 		EventType: "network_prepared",
 		NetworkPreparation: &controlplane.ReportNetworkPreparation{
-			VLANTag:       prep.VLANTag,
-			BridgeName:    prep.BridgeName,
+			VLANTag:        prep.VLANTag,
+			BridgeName:     prep.BridgeName,
 			OVSNetworkName: prep.OVSNetworkName,
 		},
 		Metadata: map[string]any{
@@ -97,6 +98,9 @@ func (r *Runner) processJob(ctx context.Context, job controlplane.ClaimedJob) er
 
 	providerRef, providerMessage, err := r.instanceProvider.EnsureInstance(ctx, job, prep)
 	if err != nil {
+		if cleanupErr := r.instanceProvider.CleanupInstance(ctx, job); cleanupErr != nil {
+			log.Printf("incus-worker: job=%s cleanup failed after provider error: %v", job.JobID, cleanupErr)
+		}
 		return r.reportFailure(ctx, job, "INCUS_CREATE_OR_START_FAILED", err)
 	}
 

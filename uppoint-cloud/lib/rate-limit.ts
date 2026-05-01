@@ -170,6 +170,10 @@ interface RateLimitCheckResult {
   retryAfterSeconds?: number;
 }
 
+interface RateLimitOptions {
+  includeAdaptiveSignals?: boolean;
+}
+
 interface AdaptiveRateLimitContext {
   fingerprintHash: string | null;
   asnBucket: string | null;
@@ -503,6 +507,7 @@ export async function withRateLimit(
   action: string,
   max: number,
   windowSeconds: number,
+  options: RateLimitOptions = {},
 ): Promise<Response | null> {
   const ip = await resolveClientIpFromHeaders();
 
@@ -529,6 +534,10 @@ export async function withRateLimit(
     });
   }
 
+  if (options.includeAdaptiveSignals === false) {
+    return null;
+  }
+
   const adaptiveResponse = await withAdaptiveRateLimit({
     action,
     windowSeconds,
@@ -550,6 +559,7 @@ export async function withRateLimitByIdentifier(
   identifier: string,
   max: number,
   windowSeconds: number,
+  options: RateLimitOptions = {},
 ): Promise<Response | null> {
   const normalizedIdentifier = normalizeRateLimitIdentifier(identifier);
   const result = await checkRateLimit(action, `id:${normalizedIdentifier}`, max, windowSeconds);
@@ -560,6 +570,10 @@ export async function withRateLimitByIdentifier(
       max,
       windowSeconds,
     });
+  }
+
+  if (options.includeAdaptiveSignals === false) {
+    return null;
   }
 
   const adaptiveResponse = await withAdaptiveRateLimit({

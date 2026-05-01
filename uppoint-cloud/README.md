@@ -31,10 +31,13 @@ Production-oriented foundation for `cloud.uppoint.com.tr`.
     - notification and security signal overview
   - Instance control-plane wizard (`/:locale/dashboard/modules/instances/new`)
     - tenant-scoped resource group creation with default network + firewall policy
-    - tenant-authorized ISO upload test surface backed by local server storage
+    - approved instance image catalog loaded from `modules/instances/image-catalog/`
     - idempotent instance provisioning request submission (`tenant -> resource group -> network/firewall`)
     - Incus-first internal worker protocol (`claim` / `report`) with signed loopback-only internal routes
     - OVS/VLAN day-1 network preparation is modeled as worker-side idempotent stage events
+    - Incus worker readiness, dry-run reconciliation, and health probes guard automatic provisioning
+    - platform operations center for role-gated provisioning visibility (`/[locale]/dashboard/operations`)
+    - explicit instance operation state-machine contract for create/reinstall/delete/power operations
   - Account center (`/:locale/dashboard/account`)
     - dedicated profile-management surface linked from the profile dropdown and dashboard navigation
     - full-name update now requires in-flow email verification code confirmation before persistence
@@ -150,12 +153,18 @@ Optional keys below are feature-gated or ops-tuning related; keep closed-system 
 - `KVM_WORKER_LOCK_STALE_SECONDS` (optional, default `180`; stale lock recovery threshold for provisioning jobs)
 - `KVM_OVS_BRIDGE_PREFIX` (optional, default `upkvm`; deterministic OVS bridge/network naming prefix)
 - `KVM_VLAN_RANGE` (optional, default `2000-2999`; VLAN allocation range, must stay within `2-4094`)
-- `INSTANCE_ISO_UPLOAD_DIR` (optional, default `/var/lib/uppoint-cloud/iso-uploads`; tenant-scoped local ISO upload storage)
-- `INSTANCE_ISO_UPLOAD_MAX_BYTES` (optional, default `12884901888`; max ISO upload size, keep aligned with the Nginx endpoint limit)
+- `KVM_INCUS_STORAGE_POOL` (optional, default `default`; storage pool inspected by the KVM readiness gate)
+- `KVM_WORKER_ALLOW_DIR_STORAGE` (optional, default `false`; production readiness refuses Incus `dir` storage unless this lab-only override is explicitly set)
+- `KVM_MIN_FREE_DISK_GB` (optional, default `20`; readiness free-space floor for the Incus storage source)
+- `KVM_MIN_FREE_MEMORY_MB` (optional, default `1024`; readiness free-memory floor)
+- `KVM_HEALTH_PENDING_MAX_AGE_SECONDS` (optional, default `900`; health probe threshold for old pending provisioning jobs)
+- `UPPOINT_ENABLE_KVM_RECONCILIATION_EXECUTE` (optional, default `false`; required before the Incus reconciliation script mutates host resources)
+- `KVM_RECONCILE_DELETE_EMPTY_BRIDGES` (optional, default `false`; extra execute-mode guard for deleting empty OVS bridges)
 - `AUTH_TRUST_HOST`
 - `AUTH_BCRYPT_ROUNDS`
 - `AUTH_SESSION_REVALIDATE_SECONDS` (optional, default `300`)
 - `AUTH_PASSWORD_RESET_TOKEN_TTL_MINUTES`
+- `User.platformRole` is the persistent platform RBAC assignment for admin/operator surfaces; grant it deliberately in the database (`SUPPORT`, `SECURITY`, or `PLATFORM_ADMIN`) and keep customer tenant roles separate.
 - `AUDIT_LOG_RETENTION_DAYS` (optional, default `180`, min `30`)
 - `HEALTHCHECK_TOKEN` (required in production; callers must send `x-health-token`)
 - `UPPOINT_ALLOWED_HOSTS` (optional, comma-separated host allowlist for production request host validation)
@@ -572,6 +581,7 @@ Run this checklist after deployment or UI-affecting changes:
 - `logAudit()` emits structured `[security-signal]` log lines for high-risk auth/tenant failures (`rate_limit_exceeded`, OTP failures, tenant access denials) to support alert pipelines.
 - Production edge guard rejects invalid host/origin requests (`INVALID_HOST_HEADER`, `ORIGIN_NOT_ALLOWED`) and emits edge rejection events into audit storage via internal ingest route.
 - Edge security telemetry treats non-2xx internal audit ingest responses as delivery failures and emits structured local error logs instead of silently succeeding.
+- Internal audit ingest remains HMAC/token/replay guarded, but server-to-server edge telemetry bypasses browser/device adaptive rate-limit signals so scanner bursts do not self-block the audit sink.
 - Dashboard tenant resolution audit semantics distinguish:
   - missing tenant context,
   - explicit tenant selection required,
@@ -617,6 +627,18 @@ npx prisma migrate deploy
 npm run build:deploy
 sudo systemctl enable --now uppoint-cloud.service
 ```
+
+Before enabling automatic Incus provisioning, run:
+
+```bash
+npm run verify:kvm-readiness
+```
+
+The readiness gate is intentionally fail-closed in production when KVM, Incus,
+OVS, signed worker env, loopback worker URL, cron installation, host capacity,
+or storage policy is not satisfied. Incus `dir` storage is accepted only for
+lab/manual testing with the explicit `KVM_WORKER_ALLOW_DIR_STORAGE=true`
+override.
 
 Service file:
 - [ops/systemd/uppoint-cloud.service](/opt/uppoint-cloud/ops/systemd/uppoint-cloud.service)

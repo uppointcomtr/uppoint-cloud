@@ -142,6 +142,9 @@ function createWizardDependencies() {
       instanceId: "instance_1",
       reused: false,
     }),
+    loadImageCatalog: vi.fn().mockResolvedValue([
+      { code: "ubuntu-24-04-lts", label: "Ubuntu Server 24.04 LTS", family: "linux" },
+    ]),
     logAudit: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -164,6 +167,9 @@ describe("getInstanceWizardBootstrap", () => {
       tenantId: "tenant_1",
       take: 100,
     });
+    expect(result.imageCatalog).toEqual([
+      { code: "ubuntu-24-04-lts", label: "Ubuntu Server 24.04 LTS", family: "linux" },
+    ]);
   });
 });
 

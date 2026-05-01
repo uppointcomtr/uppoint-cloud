@@ -6,6 +6,8 @@ const INSTANCE_ENTRYPOINT_GUARD_EXEMPT_FILES = new Set([
   // Internal worker protocol uses token+signature+replay guard and does not rely on user session tenant context.
   "app/api/internal/instances/provisioning/claim/route.ts",
   "app/api/internal/instances/provisioning/report/route.ts",
+  // Closed image upload endpoint always returns 410 and never reads or mutates tenant-scoped data.
+  "app/api/instances/iso-images/route.ts",
 ]);
 
 function collectFilesRecursively(rootDir: string): string[] {

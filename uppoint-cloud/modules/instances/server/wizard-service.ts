@@ -17,10 +17,9 @@ import {
 import { listActiveUserTenantMembershipOptions } from "@/db/repositories/dashboard-repository";
 import { logAudit } from "@/lib/audit-log";
 import {
-  findImageByCode,
   findPlanByCode,
   findRegionByCode,
-  IMAGE_CATALOG,
+  type ImageCatalogItem,
   PLAN_CATALOG,
   REGION_CATALOG,
 } from "@/modules/instances/domain/catalog";
@@ -34,6 +33,10 @@ import {
   createResourceGroupSchema,
   submitInstanceProvisioningSchema,
 } from "@/modules/instances/schemas/wizard-schemas";
+import {
+  findApprovedImageByCode,
+  loadApprovedInstanceImageCatalog,
+} from "@/modules/instances/server/image-catalog";
 import { assertInstanceTenantAccess } from "@/modules/instances/server/security-boundary";
 import { resolveUserTenantContext } from "@/modules/tenant/server/user-tenant";
 
@@ -52,7 +55,7 @@ export interface InstanceWizardBootstrap {
   networks: VirtualNetworkView[];
   firewallPolicies: FirewallPolicyView[];
   planCatalog: typeof PLAN_CATALOG;
-  imageCatalog: typeof IMAGE_CATALOG;
+  imageCatalog: ImageCatalogItem[];
   regionCatalog: typeof REGION_CATALOG;
 }
 
@@ -91,6 +94,7 @@ interface WizardDependencies {
   findFirewallPolicy: typeof findActiveFirewallPolicyForTenant;
   createResourceGroup: typeof createResourceGroupWithDefaults;
   createProvisioningRequest: typeof createProvisioningRequest;
+  loadImageCatalog: typeof loadApprovedInstanceImageCatalog;
   logAudit: typeof logAudit;
 }
 
@@ -106,6 +110,7 @@ const defaultDependencies: WizardDependencies = {
   findFirewallPolicy: async (input) => findActiveFirewallPolicyForTenant(input),
   createResourceGroup: async (input) => createResourceGroupWithDefaults(input),
   createProvisioningRequest: async (input) => createProvisioningRequest(input),
+  loadImageCatalog: async () => loadApprovedInstanceImageCatalog(),
   logAudit,
 };
 
@@ -141,11 +146,12 @@ export async function getInstanceWizardBootstrap(
     minimumRole: TenantRole.MEMBER,
   });
 
-  const [tenantOptionsRaw, resourceGroups, networks, firewallPolicies] = await Promise.all([
+  const [tenantOptionsRaw, resourceGroups, networks, firewallPolicies, imageCatalog] = await Promise.all([
     dependencies.listTenantOptions({ userId: input.userId, take: 20 }),
     dependencies.listResourceGroups({ tenantId: selectedTenant.tenantId, take: 100 }),
     dependencies.listNetworks({ tenantId: selectedTenant.tenantId, take: 200 }),
     dependencies.listFirewallPolicies({ tenantId: selectedTenant.tenantId, take: 200 }),
+    dependencies.loadImageCatalog(),
   ]);
 
   const tenantOptions = tenantOptionsRaw.map((option) => ({
@@ -161,7 +167,7 @@ export async function getInstanceWizardBootstrap(
     networks,
     firewallPolicies,
     planCatalog: PLAN_CATALOG,
-    imageCatalog: IMAGE_CATALOG,
+    imageCatalog,
     regionCatalog: REGION_CATALOG,
   };
 }
@@ -281,7 +287,8 @@ export async function submitInstanceProvisioningFromWizard(
       throw new InstanceWizardError("PLAN_NOT_FOUND", "Plan not found");
     }
 
-    const image = findImageByCode(input.imageCode);
+    const imageCatalog = await dependencies.loadImageCatalog();
+    const image = findApprovedImageByCode(imageCatalog, input.imageCode);
     if (!image) {
       throw new InstanceWizardError("IMAGE_NOT_FOUND", "Image not found");
     }

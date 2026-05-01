@@ -7,6 +7,7 @@ Security hardening roadmap reference:
 - [Restore Drill Runbook](/opt/uppoint-cloud/ops/runbooks/restore-drill.md)
 - [Cron Failure Response Runbook](/opt/uppoint-cloud/ops/runbooks/cron-failure-response.md)
 - [OTP Provider Failure Runbook](/opt/uppoint-cloud/ops/runbooks/otp-provider-failure.md)
+- [Runbook Coverage Matrix](/opt/uppoint-cloud/ops/RUNBOOK_COVERAGE.md)
 - [Runtime Services and Cron Catalog](/opt/uppoint-cloud/ops/RUNTIME_SERVICES_AND_CRON.md)
 - Run security gate before security-sensitive release decisions:
   - `cd /opt/uppoint-cloud && npm run verify:security-gate`
@@ -84,6 +85,21 @@ The first Incus worker run can take several minutes while a VM image is pulled
 and cached locally.
 VM provisioning requires host KVM support (`/dev/kvm`). On nested VPS hosts,
 enable nested virtualization before installing the cron poller.
+Before enabling automatic polling, run the fail-closed readiness gate:
+
+```bash
+cd /opt/uppoint-cloud
+npm run verify:kvm-readiness
+```
+
+Incus host package note:
+
+- Production VM provisioning on Ubuntu 24.04 uses the signed Zabbly Incus `lts-6.0`
+  APT channel for Incus daemon/client packages. The Ubuntu native Incus 6.0 package
+  can fail OVS-backed VM NIC startup with OVSDB JSON-RPC protocol errors.
+- Keep `/etc/apt/sources.list.d/zabbly-incus-lts-6.0.sources` pinned to the LTS
+  channel, not `stable` or `daily`, unless an owner-approved maintenance plan
+  explicitly changes the Incus upgrade policy.
 
 Environment values should be provided in `/opt/uppoint-cloud/.env` (not in git).
 
@@ -109,8 +125,13 @@ KVM_WORKER_BATCH_SIZE=10
 KVM_WORKER_LOCK_STALE_SECONDS=180
 KVM_OVS_BRIDGE_PREFIX=upkvm
 KVM_VLAN_RANGE=2000-2999
-INSTANCE_ISO_UPLOAD_DIR=/var/lib/uppoint-cloud/iso-uploads
-INSTANCE_ISO_UPLOAD_MAX_BYTES=12884901888
+KVM_INCUS_STORAGE_POOL=default
+KVM_WORKER_ALLOW_DIR_STORAGE=false
+KVM_MIN_FREE_DISK_GB=20
+KVM_MIN_FREE_MEMORY_MB=1024
+KVM_HEALTH_PENDING_MAX_AGE_SECONDS=900
+UPPOINT_ENABLE_KVM_RECONCILIATION_EXECUTE=false
+KVM_RECONCILE_DELETE_EMPTY_BRIDGES=false
 NOTIFICATION_PAYLOAD_SECRET=replace-with-strong-random-secret
 AUTH_TRUST_HOST=true
 AUTH_BCRYPT_ROUNDS=12
@@ -160,11 +181,11 @@ WORM_AUDIT_STORAGE_CLASS=STANDARD_IA
 
 This matches the shipped systemd unit (`EnvironmentFile=/opt/uppoint-cloud/.env`).
 
-ISO upload note:
+Instance image catalog note:
 
-- `/api/instances/iso-images` stores tenant-authorized test ISO files under `INSTANCE_ISO_UPLOAD_DIR`.
-- The shipped `uppoint-cloud.service` owns the `/var/lib/uppoint-cloud` state root and creates `/var/lib/uppoint-cloud/iso-uploads` on start.
-- If `INSTANCE_ISO_UPLOAD_DIR` is changed outside `/var/lib/uppoint-cloud`, update the systemd writable path and keep the Nginx `client_max_body_size` for this endpoint aligned with `INSTANCE_ISO_UPLOAD_MAX_BYTES`.
+- The provisioning wizard only lists operator-approved image manifests under `modules/instances/image-catalog/`.
+- `/api/instances/iso-images` is intentionally disabled with `410 IMAGE_UPLOAD_DISABLED`; users do not have a frontend or API upload path.
+- Add or remove image options by changing the source-controlled catalog manifests and redeploying the app.
 
 PostgreSQL deployment note:
 
@@ -207,7 +228,7 @@ Note:
 - CSP is set in Nginx using per-request nonce (`$request_id`) for both `script-src` and `style-src`.
 - Nginx injects nonce into rendered HTML `<script>` and `<style>` tags via `sub_filter`.
 - Both `script-src` and `style-src` avoid `unsafe-inline`; inline tags must carry request nonce.
-- `/api/instances/iso-images` has endpoint-specific `client_max_body_size 12g` with request buffering disabled for streaming ISO uploads.
+- `/api/instances/iso-images` must not regain an endpoint-specific large upload body limit unless owner-approved image upload behavior is explicitly reintroduced.
 
 Bootstrap HTTP config (used before certificate issuance):
 
@@ -352,13 +373,14 @@ sudo cp /opt/uppoint-cloud/ops/cron/uppoint-postgres-restore-drill /etc/cron.d/u
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-db-cleanup /etc/cron.d/uppoint-db-cleanup
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-dispatch /etc/cron.d/uppoint-notification-dispatch
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-incus-provisioning /etc/cron.d/uppoint-incus-provisioning
+sudo cp /opt/uppoint-cloud/ops/cron/uppoint-incus-provisioning-health /etc/cron.d/uppoint-incus-provisioning-health
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-notification-canary /etc/cron.d/uppoint-notification-canary
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-integrity-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-audit-anchor-export /etc/cron.d/uppoint-audit-anchor-export
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-auth-abuse-check /etc/cron.d/uppoint-auth-abuse-check
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-slo-report /etc/cron.d/uppoint-security-slo-report
 sudo cp /opt/uppoint-cloud/ops/cron/uppoint-security-gate-weekly /etc/cron.d/uppoint-security-gate-weekly
-sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-incus-provisioning /etc/cron.d/uppoint-notification-canary /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report /etc/cron.d/uppoint-security-gate-weekly
+sudo chmod 644 /etc/cron.d/uppoint-postgres-backup /etc/cron.d/uppoint-postgres-restore-drill /etc/cron.d/uppoint-db-cleanup /etc/cron.d/uppoint-notification-dispatch /etc/cron.d/uppoint-incus-provisioning /etc/cron.d/uppoint-incus-provisioning-health /etc/cron.d/uppoint-notification-canary /etc/cron.d/uppoint-audit-integrity-check /etc/cron.d/uppoint-audit-anchor-export /etc/cron.d/uppoint-auth-abuse-check /etc/cron.d/uppoint-security-slo-report /etc/cron.d/uppoint-security-gate-weekly
 ```
 
 `uppoint-notification-dispatch` uses least-privilege execution:
@@ -372,7 +394,10 @@ sudo /opt/uppoint-cloud/scripts/backup-db.sh
 sudo /opt/uppoint-cloud/scripts/restore-drill-db.sh --check-only
 sudo /opt/uppoint-cloud/scripts/cleanup-db.sh
 sudo /opt/uppoint-cloud/scripts/dispatch-notifications.sh
+sudo /opt/uppoint-cloud/scripts/verify-kvm-readiness.sh
 sudo /opt/uppoint-cloud/scripts/run-incus-worker.sh
+sudo /opt/uppoint-cloud/scripts/check-incus-provisioning-health.sh
+sudo /opt/uppoint-cloud/scripts/reconcile-incus-provisioning.sh
 sudo /opt/uppoint-cloud/scripts/run-notification-canary.sh
 sudo /opt/uppoint-cloud/scripts/verify-audit-integrity.sh
 sudo /opt/uppoint-cloud/scripts/export-audit-anchor.sh
@@ -414,6 +439,11 @@ Worker runtime defaults:
 - `KVM_WORKER_LOCK_STALE_SECONDS=180`
 - `KVM_OVS_BRIDGE_PREFIX=upkvm`
 - `KVM_VLAN_RANGE=2000-2999`
+- `KVM_INCUS_STORAGE_POOL=default`
+- `KVM_WORKER_ALLOW_DIR_STORAGE=false` (keep `false` in production; set `true` only for documented lab/manual runs on `dir` storage)
+- `KVM_MIN_FREE_DISK_GB=20`
+- `KVM_MIN_FREE_MEMORY_MB=1024`
+- `KVM_HEALTH_PENDING_MAX_AGE_SECONDS=900`
 - `INCUS_SOCKET_PATH=/var/lib/incus/unix.socket` (preferred local daemon path)
 
 Manual worker run:
@@ -423,10 +453,26 @@ sudo /opt/uppoint-cloud/scripts/run-incus-worker.sh
 tail -n 100 /var/log/uppoint-cloud/incus-provisioning-worker.log
 ```
 
+Provisioning health and drift checks:
+
+```bash
+sudo /opt/uppoint-cloud/scripts/check-incus-provisioning-health.sh
+sudo /opt/uppoint-cloud/scripts/reconcile-incus-provisioning.sh
+tail -n 100 /var/log/uppoint-cloud/incus-provisioning-health.log
+```
+
+`reconcile-incus-provisioning.sh` is dry-run by default. Execute mode is blocked
+unless `UPPOINT_ENABLE_KVM_RECONCILIATION_EXECUTE=true` is set. Empty OVS bridge
+deletion has an additional guard: `KVM_RECONCILE_DELETE_EMPTY_BRIDGES=true`.
+The script does not delete database rows; DB drift candidates are reported for
+operator review because that is a destructive data change.
+
 Production guard:
 
 - `INTERNAL_AUTH_TRANSPORT_MODE=loopback-hmac-v1` is the default and must be present on signed internal requests via `x-internal-transport`.
 - In production + `loopback-hmac-v1`, internal routes require loopback source (`127.0.0.1` / `::1`) in addition to token + signature checks.
+- `scripts/run-incus-worker.sh` runs `verify-kvm-readiness.sh --worker-preflight` before the worker binary unless `KVM_WORKER_SKIP_PREFLIGHT=1` is explicitly set for a controlled maintenance run.
+- `verify-kvm-readiness.sh` refuses Incus `dir` storage in production unless `KVM_WORKER_ALLOW_DIR_STORAGE=true` is explicitly set; prefer ZFS or LVM-thin with capacity/snapshot/backup procedures before customer provisioning.
 - For staged mTLS rollout use `INTERNAL_AUTH_TRANSPORT_MODE=mtls-hmac-v1` only after Nginx is configured to set trusted client-cert headers (`x-ssl-client-verify`, `x-ssl-client-serial`) for internal calls.
 - keep dispatcher traffic local (`--resolve cloud.uppoint.com.tr:443:127.0.0.1` default in script).
 - `dispatch-notifications.sh` blocks production loopback-mode remote target overrides unless both of these are explicitly set for an owner-approved exception:

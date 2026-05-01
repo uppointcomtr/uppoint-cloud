@@ -12,6 +12,7 @@ interface FailClosedIpRateLimitInput {
   auditScope: string;
   userId?: string;
   auditMetadata?: Record<string, unknown>;
+  includeAdaptiveSignals?: boolean;
 }
 
 interface FailClosedIdentifierRateLimitInput {
@@ -38,6 +39,7 @@ export async function enforceFailClosedIpRateLimit(
     input.rateLimitAction,
     input.rateLimitMax,
     input.rateLimitWindowSeconds,
+    { includeAdaptiveSignals: input.includeAdaptiveSignals },
   );
   const ip = await getClientIp();
 

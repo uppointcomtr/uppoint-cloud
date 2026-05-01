@@ -20,7 +20,6 @@ ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-c
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0755 /opt/uppoint-cloud/.next/cache/images
 ExecStartPre=+/usr/bin/install -d -o www-data -g adm -m 0750 /var/log/uppoint-cloud
 ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0750 /var/lib/uppoint-cloud
-ExecStartPre=+/usr/bin/install -d -o www-data -g www-data -m 0750 /var/lib/uppoint-cloud/iso-uploads
 ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3000
 Restart=always
 RestartSec=5

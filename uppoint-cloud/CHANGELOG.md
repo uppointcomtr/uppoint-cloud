@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-04-26 (Incus provisioning prod-readiness hardening)
+
+### Added
+- Added fail-closed KVM/Incus readiness verification (`npm run verify:kvm-readiness`) covering KVM, Incus, OVS, signed worker env, loopback worker URL, cron installation, storage driver policy, and host capacity.
+- Added dry-run Incus provisioning reconciliation for stale OVS ports, empty bridges, DB VLAN allocation drift candidates, and orphan Incus instance candidates.
+- Added Incus provisioning health probe (`npm run verify:kvm-health`) and cron template for pending job age, stuck locks, failed events, Incus daemon health, OVS drift, worker cron, and log freshness.
+
+### Changed
+- Hardened the Incus worker:
+  - collision-resistant provider instance names based on `CloudInstance.id`
+  - root disk sizing from `diskGb`
+  - Incus NIC VLAN attachment instead of creating stale-prone phantom OVS ports
+  - allowlisted host command runner
+  - best-effort partial Incus instance cleanup after provider failures
+- Wired worker startup through readiness preflight unless explicitly skipped for controlled maintenance.
+- Updated ops docs, runtime cron inventory, module boundary docs, logrotate, and findings register for the provisioning readiness work.
+
+### Verification
+- Pending in this working tree until full verification is run after implementation.
+
 ## 2026-04-24 (Incus worker host activation hardening)
 
 ### Changed

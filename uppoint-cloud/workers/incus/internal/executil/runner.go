@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -14,7 +15,17 @@ type Runner interface {
 
 type CommandRunner struct{}
 
+var allowedCommands = map[string]struct{}{
+	"incus":     {},
+	"ovs-vsctl": {},
+}
+
 func (r *CommandRunner) Run(ctx context.Context, command string, args ...string) (string, error) {
+	commandName := filepath.Base(strings.TrimSpace(command))
+	if _, ok := allowedCommands[commandName]; !ok {
+		return "", fmt.Errorf("command not allowed: %s", commandName)
+	}
+
 	cmd := exec.CommandContext(ctx, command, args...)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

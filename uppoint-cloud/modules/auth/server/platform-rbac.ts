@@ -7,6 +7,8 @@ export type PlatformRole =
 
 export type PlatformPermission =
   | "platform:audit:read"
+  | "platform:operations:read"
+  | "platform:operations:write"
   | "platform:users:manage"
   | "platform:tenants:manage"
   | "platform:security:respond";
@@ -14,13 +16,17 @@ export type PlatformPermission =
 const ROLE_PERMISSIONS: Record<PlatformRole, ReadonlySet<PlatformPermission>> = {
   SUPPORT: new Set<PlatformPermission>([
     "platform:audit:read",
+    "platform:operations:read",
   ]),
   SECURITY: new Set<PlatformPermission>([
     "platform:audit:read",
+    "platform:operations:read",
     "platform:security:respond",
   ]),
   PLATFORM_ADMIN: new Set<PlatformPermission>([
     "platform:audit:read",
+    "platform:operations:read",
+    "platform:operations:write",
     "platform:users:manage",
     "platform:tenants:manage",
     "platform:security:respond",

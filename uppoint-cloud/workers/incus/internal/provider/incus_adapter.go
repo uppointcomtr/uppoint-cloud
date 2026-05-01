@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -20,7 +22,7 @@ func NewAdapter(runner executil.Runner) *Adapter {
 }
 
 func (a *Adapter) EnsureInstance(ctx context.Context, job controlplane.ClaimedJob, prep network.Preparation) (string, string, error) {
-	instanceName := sanitizeInstanceName(job.Instance.Name, job.Instance.InstanceID)
+	instanceName := buildInstanceName(job.Instance.Name, job.Instance.InstanceID)
 	imageSource := resolveImageSource(job.Instance.ImageCode)
 	cloudInit := buildCloudInit(job)
 
@@ -28,6 +30,10 @@ func (a *Adapter) EnsureInstance(ctx context.Context, job controlplane.ClaimedJo
 		if _, err := a.runner.Run(ctx, "incus", "init", imageSource, instanceName, "--vm"); err != nil {
 			return "", "", fmt.Errorf("init instance %s: %w", instanceName, err)
 		}
+	}
+
+	if _, err := a.runner.Run(ctx, "incus", "config", "device", "override", instanceName, "root", fmt.Sprintf("size=%dGiB", job.Instance.DiskGB)); err != nil {
+		return "", "", fmt.Errorf("set root disk size: %w", err)
 	}
 
 	if _, err := a.runner.Run(ctx, "incus", "config", "set", instanceName, "limits.cpu", strconv.Itoa(job.Instance.CPUCores)); err != nil {
@@ -54,10 +60,19 @@ func (a *Adapter) EnsureInstance(ctx context.Context, job controlplane.ClaimedJo
 		"nictype=bridged",
 		"parent="+prep.BridgeName,
 		"name=eth0",
+		"vlan="+strconv.Itoa(prep.VLANTag),
 	); err != nil {
 		if !strings.Contains(strings.ToLower(err.Error()), "already exists") {
 			return "", "", fmt.Errorf("attach nic: %w", err)
 		}
+	}
+
+	if _, err := a.runner.Run(ctx, "incus", "config", "device", "set", instanceName, "eth0", "parent", prep.BridgeName); err != nil {
+		return "", "", fmt.Errorf("set nic parent: %w", err)
+	}
+
+	if _, err := a.runner.Run(ctx, "incus", "config", "device", "set", instanceName, "eth0", "vlan", strconv.Itoa(prep.VLANTag)); err != nil {
+		return "", "", fmt.Errorf("set nic vlan: %w", err)
 	}
 
 	if _, err := a.runner.Run(ctx, "incus", "start", instanceName); err != nil {
@@ -71,27 +86,75 @@ func (a *Adapter) EnsureInstance(ctx context.Context, job controlplane.ClaimedJo
 	return providerRef, providerMessage, nil
 }
 
-func sanitizeInstanceName(preferred string, fallback string) string {
-	candidate := strings.ToLower(strings.TrimSpace(preferred))
-	if candidate == "" {
-		candidate = strings.ToLower(strings.TrimSpace(fallback))
+func (a *Adapter) CleanupInstance(ctx context.Context, job controlplane.ClaimedJob) error {
+	instanceName := buildInstanceName(job.Instance.Name, job.Instance.InstanceID)
+	if _, err := a.runner.Run(ctx, "incus", "delete", instanceName, "--force"); err != nil {
+		normalized := strings.ToLower(err.Error())
+		if strings.Contains(normalized, "not found") || strings.Contains(normalized, "doesn't exist") {
+			return nil
+		}
+		return fmt.Errorf("delete partial instance %s: %w", instanceName, err)
 	}
-	if candidate == "" {
-		return "vm-default"
+	return nil
+}
+
+func buildInstanceName(preferred string, instanceID string) string {
+	base := sanitizeNameSegment(preferred)
+	suffix := shortHash(instanceID)
+	if suffix == "" {
+		suffix = shortHash(preferred)
+	}
+	if suffix == "" {
+		suffix = "default"
 	}
 
-	replacer := strings.NewReplacer(
-		"_", "-",
-		" ", "-",
-		"/", "-",
-		".", "-",
-		":", "-",
-	)
-	candidate = replacer.Replace(candidate)
-	if len(candidate) > 63 {
-		candidate = candidate[:63]
+	prefix := "vm"
+	maxBaseLength := 63 - len(prefix) - len(suffix) - 2
+	if maxBaseLength < 1 {
+		maxBaseLength = 1
+	}
+	if len(base) > maxBaseLength {
+		base = strings.Trim(base[:maxBaseLength], "-")
+	}
+	if base == "" {
+		base = "instance"
+	}
+
+	return fmt.Sprintf("%s-%s-%s", prefix, base, suffix)
+}
+
+func sanitizeNameSegment(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	var builder strings.Builder
+	lastWasHyphen := false
+
+	for _, char := range normalized {
+		isAllowed := (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')
+		if isAllowed {
+			builder.WriteRune(char)
+			lastWasHyphen = false
+			continue
+		}
+		if !lastWasHyphen {
+			builder.WriteRune('-')
+			lastWasHyphen = true
+		}
+	}
+
+	candidate := strings.Trim(builder.String(), "-")
+	if candidate == "" {
+		return "instance"
 	}
 	return candidate
+}
+
+func shortHash(value string) string {
+	normalized := strings.TrimSpace(value)
+	if normalized == "" {
+		return ""
+	}
+	digest := sha256.Sum256([]byte(normalized))
+	return hex.EncodeToString(digest[:])[:10]
 }
 
 func resolveImageSource(imageCode string) string {

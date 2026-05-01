@@ -34,6 +34,11 @@ load_worker_env "KVM_OVS_BRIDGE_PREFIX"
 load_worker_env "KVM_VLAN_RANGE"
 load_worker_env "KVM_WORKER_HTTP_TIMEOUT_SECONDS"
 load_worker_env "KVM_WORKER_BINARY_PATH"
+load_worker_env "KVM_WORKER_SKIP_PREFLIGHT"
+load_worker_env "KVM_WORKER_ALLOW_DIR_STORAGE"
+load_worker_env "KVM_MIN_FREE_DISK_GB"
+load_worker_env "KVM_MIN_FREE_MEMORY_MB"
+load_worker_env "KVM_INCUS_STORAGE_POOL"
 load_worker_env "INCUS_SOCKET_PATH"
 load_worker_env "INCUS_ENDPOINT"
 
@@ -47,6 +52,10 @@ fi
 if ! command -v go >/dev/null 2>&1; then
   echo "[incus-worker] FAIL: go command not found" >&2
   exit 1
+fi
+
+if [ "${KVM_WORKER_SKIP_PREFLIGHT:-0}" != "1" ]; then
+  "${APP_ROOT}/scripts/verify-kvm-readiness.sh" --worker-preflight
 fi
 
 mkdir -p "$(dirname "$WORKER_BINARY_PATH")"

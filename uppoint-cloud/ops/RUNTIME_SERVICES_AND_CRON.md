@@ -3,16 +3,23 @@
 This document is the operational inventory of systemd units and cron jobs used by `cloud.uppoint.com.tr`.
 
 Runbook references:
+- [Runbook Coverage Matrix](/opt/uppoint-cloud/ops/RUNBOOK_COVERAGE.md)
 - [Secret Rotation](/opt/uppoint-cloud/ops/runbooks/secret-rotation.md)
 - [Restore Drill](/opt/uppoint-cloud/ops/runbooks/restore-drill.md)
 - [Cron Failure Response](/opt/uppoint-cloud/ops/runbooks/cron-failure-response.md)
 - [OTP Provider Failure](/opt/uppoint-cloud/ops/runbooks/otp-provider-failure.md)
+- [Internal HMAC Route Failure](/opt/uppoint-cloud/ops/runbooks/internal-hmac-route-failure.md)
+- [Audit Integrity and Anchor Failure](/opt/uppoint-cloud/ops/runbooks/audit-integrity-anchor-failure.md)
+- [Closed-System Egress Violation](/opt/uppoint-cloud/ops/runbooks/closed-system-egress-violation.md)
+- [Notification Canary and Security SLO Failure](/opt/uppoint-cloud/ops/runbooks/notification-canary-slo-failure.md)
+- [Nginx Drift and Edge Audit Emit](/opt/uppoint-cloud/ops/runbooks/nginx-edge-drift-response.md)
+- [Incus Provisioning Failure](/opt/uppoint-cloud/ops/runbooks/incus-provisioning-failure.md)
 
 ## Systemd services
 
 | Unit | Purpose | Enabled | Notes |
 | --- | --- | --- | --- |
-| `uppoint-cloud.service` | Runs Next.js production app (`next start`) | yes (production expected) | Uses `/opt/uppoint-cloud/.env` as EnvironmentFile; owns `/var/lib/uppoint-cloud` state root and writes local ISO uploads under `iso-uploads/` |
+| `uppoint-cloud.service` | Runs Next.js production app (`next start`) | yes (production expected) | Uses `/opt/uppoint-cloud/.env` as EnvironmentFile; owns `/var/lib/uppoint-cloud` state root; instance images shown in the wizard come only from `modules/instances/image-catalog/` |
 | `uppoint-tune.service` | Optional boot-time host tuning | optional | Controlled via `/etc/uppoint-cloud/enable-boot-tune` flag |
 | `uppoint-incus-worker.service` | Optional one-shot Incus provisioning worker entrypoint | optional | Runs `/opt/uppoint-cloud/scripts/run-incus-worker.sh`; cron poller is canonical trigger; allows long first-run image pulls |
 
@@ -23,6 +30,11 @@ systemctl status uppoint-cloud.service
 systemctl status uppoint-tune.service
 systemctl status uppoint-incus-worker.service
 ```
+
+Host package note:
+- Incus daemon/client packages on Ubuntu 24.04 should come from the signed Zabbly
+  Incus `lts-6.0` APT channel. This keeps the worker on the LTS line while avoiding
+  known Ubuntu native Incus 6.0 OVSDB protocol failures during VM NIC startup.
 
 ## Cron jobs (`/etc/cron.d`)
 
@@ -39,6 +51,7 @@ Closed-system policy note:
 | `uppoint-db-cleanup` | `0 3 * * *` | DB retention cleanup (auth/token tables + instance provisioning event retention) | `/var/log/uppoint-db-cleanup.log` | None (log-only) |
 | `uppoint-notification-dispatch` | `* * * * *` | Notification outbox dispatch | `/var/log/uppoint-cloud/dispatch-notifications.log` | Message-level audit (`notification_delivery_terminal_failed`) on terminal failures |
 | `uppoint-incus-provisioning` | `* * * * *` | Incus provisioning worker poller (claim -> OVS/VLAN prepare -> instance create/start -> report) | `/var/log/uppoint-cloud/incus-provisioning-worker.log` | Audit actions (`instance_provisioning_started/completed/failed`, `internal_provisioning_*`) |
+| `uppoint-incus-provisioning-health` | `*/5 * * * *` | Incus provisioning health probe (pending age, stuck locks, Incus/OVS drift, cron/log freshness) | `/var/log/uppoint-cloud/incus-provisioning-health.log` | Fails job/log on threshold breach; investigate with readiness and reconciliation scripts |
 | `uppoint-notification-canary` | `*/30 * * * *` | Notification canary health check (`probe-only` by default, no outbound email) | `/var/log/uppoint-notification-canary.log` | None (log-only; can be switched to `enqueue-email` only with explicit env mode) |
 | `uppoint-audit-integrity-check` | `20 3 * * *` | Audit chain integrity verification | `/var/log/uppoint-audit-integrity-check.log` | None (log-only; investigated via security gate/SLO pipeline) |
 | `uppoint-audit-anchor-export` | `40 3 * * *` | Audit chain-head anchor export | `/var/log/uppoint-audit-anchor-export.log` | None in closed-system baseline |
@@ -58,6 +71,7 @@ ls -la /etc/cron.d/uppoint-*
 tail -n 100 /var/log/uppoint-audit-anchor-replication.log
 tail -n 100 /var/log/uppoint-auth-abuse-check.log
 tail -n 100 /var/log/uppoint-cloud/incus-provisioning-worker.log
+tail -n 100 /var/log/uppoint-cloud/incus-provisioning-health.log
 tail -n 100 /var/log/uppoint-notification-canary.log
 tail -n 100 /var/log/uppoint-cloud/security-alerts.log
 tail -n 100 /var/log/uppoint-security-slo-report.log

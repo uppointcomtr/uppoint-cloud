@@ -71,6 +71,12 @@ enum InstancePowerState {
   ERROR
 }
 
+enum PlatformRole {
+  SUPPORT
+  SECURITY
+  PLATFORM_ADMIN
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -84,6 +90,7 @@ model User {
   failedLoginAttempts  Int       @default(0)
   lockedUntil          DateTime?
   lastLoginAt          DateTime?
+  platformRole         PlatformRole?
   deletedAt            DateTime?
   accounts      Account[]
   sessions      Session[]
@@ -97,6 +104,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  @@index([platformRole])
   @@index([deletedAt])
 }
 

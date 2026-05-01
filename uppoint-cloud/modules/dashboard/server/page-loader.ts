@@ -36,6 +36,7 @@ export async function loadDashboardPageData(input: {
     | "/dashboard/notifications"
     | "/dashboard/tenant"
     | "/dashboard/modules"
+    | "/dashboard/operations"
     | "/dashboard/modules/instances/new";
   rawSearchParams: Record<string, string | string[] | undefined>;
 }): Promise<DashboardPageData> {

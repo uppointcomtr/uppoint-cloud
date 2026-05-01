@@ -42,7 +42,7 @@ const submitProvisioningActionSchema = tenantGuardSchema.extend({
   idempotencyKey: z.string().trim().uuid(),
   name: z.string().trim().regex(/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/),
   planCode: z.string().trim().min(2).max(64),
-  imageCode: z.string().trim().min(2).max(64),
+  imageCode: z.string().trim().min(2).max(128),
   regionCode: z.string().trim().min(3).max(32),
   cpuCores: z.string().trim().min(1),
   memoryMb: z.string().trim().min(1),

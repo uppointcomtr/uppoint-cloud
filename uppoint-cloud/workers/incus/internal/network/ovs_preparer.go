@@ -18,8 +18,8 @@ type Preparer struct {
 }
 
 type Preparation struct {
-	VLANTag       int
-	BridgeName    string
+	VLANTag        int
+	BridgeName     string
 	OVSNetworkName string
 }
 
@@ -39,18 +39,6 @@ func (p *Preparer) Prepare(ctx context.Context, job controlplane.ClaimedJob) (Pr
 		return Preparation{}, fmt.Errorf("create bridge %s: %w", plan.BridgeName, err)
 	}
 
-	if _, err := p.runner.Run(
-		ctx,
-		"ovs-vsctl",
-		"--may-exist",
-		"add-port",
-		plan.BridgeName,
-		plan.OVSNetworkName,
-		"tag="+fmt.Sprintf("%d", plan.VLANTag),
-	); err != nil {
-		return Preparation{}, fmt.Errorf("attach vlan port %s: %w", plan.OVSNetworkName, err)
-	}
-
 	return plan, nil
 }
 
@@ -63,8 +51,8 @@ func (p *Preparer) Plan(job controlplane.ClaimedJob) Preparation {
 	ovsNetworkName := fmt.Sprintf("%s-%s-v%d", p.bridgePrefix, networkSuffix, vlanTag)
 
 	return Preparation{
-		VLANTag:       vlanTag,
-		BridgeName:    bridgeName,
+		VLANTag:        vlanTag,
+		BridgeName:     bridgeName,
 		OVSNetworkName: ovsNetworkName,
 	}
 }

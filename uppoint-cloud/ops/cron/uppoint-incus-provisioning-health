@@ -1,0 +1,4 @@
+# Uppoint Cloud Incus provisioning health probe (every 5 minutes)
+# Reports pending age, stuck locks, Incus health, OVS drift, and worker cron/log freshness.
+
+*/5 * * * * root /usr/bin/env -i PATH=/usr/local/bin:/usr/bin:/bin /usr/bin/flock -n /var/lock/uppoint-incus-provisioning-health.lock /opt/uppoint-cloud/scripts/check-incus-provisioning-health.sh >> /var/log/uppoint-cloud/incus-provisioning-health.log 2>&1

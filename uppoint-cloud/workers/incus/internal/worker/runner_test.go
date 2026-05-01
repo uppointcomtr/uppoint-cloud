@@ -10,10 +10,10 @@ import (
 )
 
 type fakeControlPlane struct {
-	claimedJobs    []controlplane.ClaimedJob
-	reports        []controlplane.ReportRequest
-	claimErr       error
-	reportErr      error
+	claimedJobs []controlplane.ClaimedJob
+	reports     []controlplane.ReportRequest
+	claimErr    error
+	reportErr   error
 }
 
 func (f *fakeControlPlane) Claim(_ context.Context, _ controlplane.ClaimRequest) ([]controlplane.ClaimedJob, error) {
@@ -44,9 +44,10 @@ func (f *fakeNetworkPreparer) Prepare(_ context.Context, _ controlplane.ClaimedJ
 }
 
 type fakeProvider struct {
-	providerRef string
-	message     string
-	err         error
+	providerRef  string
+	message      string
+	err          error
+	cleanupCalls int
 }
 
 func (f *fakeProvider) EnsureInstance(_ context.Context, _ controlplane.ClaimedJob, _ network.Preparation) (string, string, error) {
@@ -56,11 +57,16 @@ func (f *fakeProvider) EnsureInstance(_ context.Context, _ controlplane.ClaimedJ
 	return f.providerRef, f.message, nil
 }
 
+func (f *fakeProvider) CleanupInstance(_ context.Context, _ controlplane.ClaimedJob) error {
+	f.cleanupCalls += 1
+	return nil
+}
+
 func TestRunOnceReportsSuccessLifecycle(t *testing.T) {
 	cp := &fakeControlPlane{
 		claimedJobs: []controlplane.ClaimedJob{{
-			JobID: "job_1",
-			Network: controlplane.ClaimedNetwork{NetworkID: "net_1"},
+			JobID:    "job_1",
+			Network:  controlplane.ClaimedNetwork{NetworkID: "net_1"},
 			Instance: controlplane.ClaimedInstance{InstanceID: "instance_1", Name: "vm-one"},
 		}},
 	}
@@ -89,8 +95,8 @@ func TestRunOnceReportsSuccessLifecycle(t *testing.T) {
 func TestRunOnceReportsFailure(t *testing.T) {
 	cp := &fakeControlPlane{
 		claimedJobs: []controlplane.ClaimedJob{{
-			JobID: "job_1",
-			Network: controlplane.ClaimedNetwork{NetworkID: "net_1"},
+			JobID:    "job_1",
+			Network:  controlplane.ClaimedNetwork{NetworkID: "net_1"},
 			Instance: controlplane.ClaimedInstance{InstanceID: "instance_1", Name: "vm-one"},
 		}},
 	}
@@ -104,6 +110,31 @@ func TestRunOnceReportsFailure(t *testing.T) {
 		t.Fatalf("expected 1 failure report call, got %d", len(cp.reports))
 	}
 	if cp.reports[0].EventType != "provisioning_failed" {
+		t.Fatalf("expected provisioning_failed report")
+	}
+}
+
+func TestRunOnceCleansUpPartialProviderInstanceOnProviderFailure(t *testing.T) {
+	cp := &fakeControlPlane{
+		claimedJobs: []controlplane.ClaimedJob{{
+			JobID:    "job_1",
+			Network:  controlplane.ClaimedNetwork{NetworkID: "net_1"},
+			Instance: controlplane.ClaimedInstance{InstanceID: "instance_1", Name: "vm-one"},
+		}},
+	}
+	netPrep := &fakeNetworkPreparer{prep: network.Preparation{VLANTag: 2101, BridgeName: "upkvm-rg-1", OVSNetworkName: "upkvm-net-1-v2101"}}
+	provider := &fakeProvider{err: errors.New("incus failed")}
+
+	runner := NewRunner(cp, netPrep, provider, "worker-1", 10, 180)
+	_ = runner.RunOnce(context.Background())
+
+	if provider.cleanupCalls != 1 {
+		t.Fatalf("expected partial provider cleanup after provider failure, got %d", provider.cleanupCalls)
+	}
+	if len(cp.reports) != 2 {
+		t.Fatalf("expected network_prepared and provisioning_failed reports, got %d", len(cp.reports))
+	}
+	if cp.reports[1].EventType != "provisioning_failed" {
 		t.Fatalf("expected provisioning_failed report")
 	}
 }
